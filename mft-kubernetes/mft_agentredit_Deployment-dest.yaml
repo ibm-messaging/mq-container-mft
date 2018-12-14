@@ -16,10 +16,10 @@ spec:
         - name: MQ_QMGR_NAME
           value: "QM1"
         - name: MQ_QMGR_HOST
-          value: "159.122.181.5"
+          value: "QMgr Host name"
         - name: MQ_QMGR_PORT
-          value: "31883"
+          value: "QMgr Port"
         - name: MQ_QMGR_CHL
-          value: "MFT.SVRCONN"
+          value: "QMgr SVRCONN Channel"
         - name: MFT_AGENT_NAME
           value: "AGENTDEST"
