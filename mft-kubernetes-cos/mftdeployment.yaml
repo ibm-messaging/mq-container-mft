@@ -1,0 +1,33 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: mft-kube-deployment-dest
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mqft-kube-dest
+    spec:
+      containers:
+      - name: agentdest
+        image: registry.eu-de.bluemix.net/mft-images/mftagents3fs:1.0
+        volumeMounts:
+        - name: mftstore
+          mountPath: /home/MFTLocalStore
+        env:
+        - name: MQ_QMGR_NAME
+          value: "MFT_QMA"
+        - name: MQ_QMGR_HOST
+          value: "mft-qma-b188.qm2.eu-gb.mqcloud.ibm.com"
+        - name: MQ_QMGR_PORT
+          value: "30846"
+        - name: MQ_QMGR_CHL
+          value: "CLOUD.ADMIN.SVRCONN"
+        - name: MFT_AGENT_NAME
+          value: "IBMCLOUD_AGENT"
+      volumes:
+      - name: mftstore
+        persistentVolumeClaim:
+          claimName: mymftpvc
+
