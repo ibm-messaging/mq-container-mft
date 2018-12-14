@@ -11,7 +11,8 @@ lastupdated: "2018-12-14"
 {:pre: .pre}
 
 # Running MQ Managed File Transfer using Cloud Object Storage
-{: #mft_intro}
+{: #mft_intro}  
+
 Moving files from on-premise to cloud is one of the fastest spreading usecase for hybrid integration scenarios. MQ MFT with IBM Cloud provides solutions that addresses the use case with reliable and secured file transfer capabilities. MQ MFT provides capabilities to schedule, monitor, automate file transfers with complete audit logging capabilities.
 
 ![Image showing file transfer scenario](./scenario.JPG)  
@@ -42,7 +43,7 @@ In this tutorial we demonstrate a hybrid integration scenario, where a file is t
     - [Creating a secret for the object storage service credentials](https://console.bluemix.net/docs/containers/cs_storage_cos.html#create_cos_secret)
     - [Installing the IBM Cloud Object Storage plug-in](https://console.bluemix.net/docs/containers/cs_storage_cos.html#install_cos)
     - [Deciding on the object storage configuration](https://console.bluemix.net/docs/containers/cs_storage_cos.html#configure_cos)  
-    - [Adding object storage to apps](https://console.bluemix.net/docs/containers/cs_storage_cos.html#add_cos)
+    - [Adding object storage to apps](https://console.bluemix.net/docs/containers/cs_storage_cos.html#add_cos)  
     Note: You can use the **pvc.yaml** and **mftdeployment.yaml** file provided as part of this tutorial. Modify the files based on your environment.
 
 ### Create an MFT Agent in your on premise environment
@@ -139,7 +140,7 @@ spec:
 
 A copy of this deployment file is provided as part of the repository files, it can be updated based on your environment and used to deploy the MFT agents in kubernetes environment.  
 
-###### Apply the deployment on your Kubernetes cluster
+### Apply the deployment on your Kubernetes cluster
 1. Run following command to create the MFT Agent deployment
     ```
     kubectl create -f filepath/mftdeployment.yaml
@@ -195,8 +196,8 @@ If the command output in your environment is similar to the above Sample output,
     fteCreateTransfer -p QM1 -sa AGENTSRC -sm QM1 -da IBMCLOUD_AGENT -dm QM1 -df /tmp/cos.txt /home/MFTLocalStore/cos.txt
     ```
 5. Wait a seconds and check if file is transferred to configured bucket on **IBM Cloud Object Storage**.  
-    5.1 If the file is not available yet, wait a couple of seconds, refresh the bucket and check. 
-    5.2 If 5.1 doesn't help, then check into Agent's log (available in *agents* directory in the BFG_DATA path.)
+    5.1 If the file is not available yet, wait a couple of seconds, refresh the bucket and check.   
+    5.2 If `5.1` doesn't help, then check into Agent's log (available in *agents* directory in the BFG_DATA path.)
 
 ### Conclusion 
 As part of this tutorial, we have provisioned cloud object storage service instance as persistent volume in your kubernetes cluster, used it as PVC for the mft agent deployment and performed a file transfer, where the file is transferred to a bucket on cloud object storage.
