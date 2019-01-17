@@ -31,11 +31,11 @@ In this tutorial we demonstrate a hybrid integration scenario, where a file is t
    - [MFT-Containers](https://github.com/darbhakiran/mqmft-container)
    - [Create Kubernetes cluster](https://console.bluemix.net/docs/containers/container_index.html#container_index)  
 
-2. Configure your Cloud Object Storage service instance as persistent volume for your Kubernetes cluster.
+2. Configure your Cloud Object Storage service instance as persistent volume for your Kubernetes cluster.  
     **Note:** 
-         1. Sample configuration file(pvc.yaml) to use cloud object storage as Peristent Volume Claim is provided as part of this tutorial, you can use this and modify it based on your environment if required.
-         2. Sample configuration file for MFT Agent deployment as a pod with its persitent volume claim binded to persistent volume that referencing your service instance of cloud object storage.
-         3. This tutorial uses static provisioning with regional setup of the cloud object storage.
+         1. Sample configuration file(pvc.yaml) to use cloud object storage as Peristent Volume Claim is provided as part of this tutorial, you can use this and modify it based on your environment if required.  
+         2. Sample configuration file for MFT Agent deployment as a pod with its persitent volume claim binded to persistent volume that referencing your service instance of cloud object storage.  
+         3. This tutorial uses static provisioning with regional setup of the cloud object storage.  
 
     Please follow the topic [Storing data on IBM Cloud Object Storage](https://console.bluemix.net/docs/containers/cs_storage_cos.html)  
     Execute the steps listed under following sections only
