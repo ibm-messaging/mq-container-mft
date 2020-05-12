@@ -1,17 +1,10 @@
 ---
 copyright:
-  years: 2017, 2018
-lastupdated: "2018-12-14"
+  years: 2017, 2020
+lastupdated: "2020-05-12"
 ---
 
-{:new_window: target="_blank"}
-{:shortdesc: .shortdesc}
-{:screen: .screen}
-{:codeblock: .codeblock}
-{:pre: .pre}
-
 # MQ Managed File Transfer for Containers
-{: #mft_intro}
 
 #### What is IBM MQ Managed File Transfer(MFT) ?
 For many organizations, the exchange of files between business systems remains a common and important integration methodology. Files are the simplest unit of data to exchange and often represent the lowest common denominator for an enterprise infrastructure.
@@ -28,7 +21,6 @@ You can find more information at [IBM Knowledge Centre](https://www.ibm.com/supp
 MQ Advanced supports running MFT Agents in docker containers and this guide will help you setup MFT for docker, run MFT agents in containers and also run a successful file transfer using  MFT agents running in containers.
 
 ## Prerequisites
-{: #mft_containers_prereq}
 
 * [Install Docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
 * Clone the repository **mft-containers** into your computer:
@@ -45,35 +37,32 @@ MQ Advanced supports running MFT Agents in docker containers and this guide will
 * Download **9.1.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into mft-containers/agent/
 **Note: 9.1.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** has to be in same path as **Dockerfile-agent**.
 
-{:shortdesc}
-
 ---
-### MFT Container Customisations
-{: #mft_containers_customizations}
+### MFT Container Customisations  
+
 We will add few customizations that would simplify the configuration of MFT for coordination queue manager and agent setup.
 **Note:** These custimization are only needed to simplify the MFT configuration. The same steps, that are set of mqsc commands, can be executed on base mq image directly using *docker exec*.  
 
 #### Understanding Customizations  
 1. Configuring MFT Coordination Queue manager:
-    1.1 Coordination manager requires set of system queues and topics to be created, this is one time activity.
-    1.2 Agents will need a SVRCONN channel using which they can communication with MQ queue manager. This SVRCONN channel has to be setup with appropriate CHLAUTH/CONNAUTH rules. This guide creates a new channel **MFT_SVRCONN** and setup CHLAUTH/CONNAUTH rules such that any user with a valid password can connect to queue manager.
-    1.3 **mft_setupCoordination.sh** available in **mft-containers/server** directory is aimed at simplifying this configuration.
-    * *mft-containers/server/setupQMForMFTAgents.mqsc* : MQSC script file that has definations for new resources.
+    1.1 Coordination manager requires set of system queues and topics to be created, this is one time activity.  
+    1.2 Agents will need a SVRCONN channel using which they can communication with MQ queue manager. This SVRCONN channel has to be setup with appropriate CHLAUTH/CONNAUTH rules. This guide creates a new channel **MFT_SVRCONN** and setup CHLAUTH/CONNAUTH rules such that any user with a valid password can connect to queue manager.  
+    1.3 **mft_setupCoordination.sh** available in **mft-containers/server** directory is aimed at simplifying this configuration.  
+    * *mft-containers/server/setupQMForMFTAgents.mqsc* : MQSC script file that has definations for new resources.  
     
-2. New Agent Setup:
-Every MFT Agent needs set of system queues to be created on the coordination queue manager. 
+2. New Agent Setup:  
+Every MFT Agent needs set of system queues to be created on the coordination queue manager.  
     2.1 **mft_setupAgent.sh** available in **mft-containers/server/** directory is aimed at simplifying this configuration
-     - *mft-containers/server/createAgent.mqsc*: MQSC file that has definitions for creating new queues for Agent.
+     - *mft-containers/server/createAgent.mqsc*: MQSC file that has definitions for creating new queues for Agent.  
 
     2.2 **mft-containers/server/mft_removeAgent.sh** available in **server** directory is to remote the agent resuorces from the coordination manager. This is to be executed if an mft agent has to be deleted.
-    - *deleteAgent.mqsc*: MQSC script file that has definitions for delete Agent's resouces on coordination queue manager.
+    - *deleteAgent.mqsc*: MQSC script file that has definitions for delete Agent's resouces on coordination queue manager.  
 
 All the cutomizations (.sh and .mqsc) files are copied into **/etc/mqm/mft/** path of the container.
 
 ---
 
 ### Creating Customized MQ Queue Manager for MFT in containers
-{: #mft_containers_cqm_setup}
 
 1. Open a command shell and navigate to path of **mft-containers/server**. For example */home/mft-containers/server*(on Linux) or *C:\\mft-containers\\server*(on Windows).  
 2. Run a docker command to make sure docker is setup and docker service is running
@@ -103,7 +92,6 @@ All the cutomizations (.sh and .mqsc) files are copied into **/etc/mqm/mft/** pa
 ---
 
 ### Agent setup for MFT Containers
-{: #mft_containers_agent_setup}
 
 Agent package contains a Dockerfile-agent to build the MFT agent docker image. MFT Agent is setup and started as part of the **mqft.sh** script. This package assumes a single queue manager(**QM1**) as coordination queue manager, command queue manager and agent queue manager.
 **Note:** As per your application architecture, you can consider to have separate queue managers for coordination, command and agents.
@@ -157,7 +145,6 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
 ---
 
 ### Create a File Transfer with MFT Agents in Containers
-{: #mft_containers_filetransfer_demo}
 
 We will create a text file on **AGENTSRC** that will be transferred to **AGENTDEST**. We then transfer this file using the **fteCreateTransfer** command.
 
@@ -189,6 +176,6 @@ We will create a text file on **AGENTSRC** that will be transferred to **AGENTDE
     **Note:** If the output of above command is *Hello World*, that confirms file transfer is complete and successful.
 
 ---
-### Conclusion
-{: #mft_containers_conclusion}
+### Conclusion  
+
 As part of this document we have created a customized MQ image for MFT, started MFT agents in containers and demonstrated that file transfer runs between the agents in containers and transferred file exists in destination agent.

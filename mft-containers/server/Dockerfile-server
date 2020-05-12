@@ -13,12 +13,12 @@
 # limitations under the License.
 
 FROM ibmcom/mq
-
-RUN useradd mftadmin -G mqm && \
-    echo mftadmin:passw0rd | chpasswd
-
+USER 0
 RUN mkdir -p /etc/mqm/mft
 COPY *.mqsc /etc/mqm/mft/ 
 COPY *.sh /etc/mqm/mft/ 
-RUN chmod +x /usr/local/bin/*.sh
+COPY mq.htpasswd /etc/mqm
+RUN chmod 0660 /etc/mqm/mft/*.*
 RUN chmod +x /etc/mqm/mft/*.sh
+RUN chmod 0660 /etc/mqm/mq.htpasswd
+USER 1001

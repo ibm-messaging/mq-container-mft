@@ -13,8 +13,8 @@
 # limitations under the License.
 FROM ubuntu:16.04
 
-COPY *-IBM-MQFA-Redist-LinuxX64.tar.gz *.sh *.xml /tmp/
-
+COPY *-IBM-MQFA-Redist-LinuxX64.tar.gz *.sh /tmp/
+COPY *.xml /usr/local/bin/
 RUN export DEBIAN_FRONTEND=noninteractive \
   # Install additional packages required by MQ, this install process and the runtime scripts
   && apt-get update -y \
