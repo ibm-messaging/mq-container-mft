@@ -211,6 +211,7 @@ This tutorial uses single queue manager topology, where a single queue manager i
     **Note:** 
     1. `<PODNAME>` is the name of the queue manager pod, created in above section.
     2. **mqft_setupAgent.sh** script requires MFT agent name as input parameter
+    3. To configure a IBM MQ Managed file transfer protocol Bridge Agent(PBA agent) [click here](./README_pbagent.md) for the steps.
 
     
 ### MFT Agents deployment on to Kubernetes cluster

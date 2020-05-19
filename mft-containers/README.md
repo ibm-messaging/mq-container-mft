@@ -1,7 +1,7 @@
 ---
 copyright:
   years: 2017, 2020
-lastupdated: "2020-05-12"
+lastupdated: "2020-05-19"
 ---
 
 # MQ Managed File Transfer for Containers
@@ -115,7 +115,8 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
     **Note:** 
     1. QM1-Container-id is the id of the queue manager container created in above section.
     2. **mqft_setupAgent.sh** script requires MFT agent name as input parameter
-    
+    3. To configure a IBM MQ Managed file transfer protocol Bridge Agent(PBA agent) [click here](./README_pbagent.md) for the steps.
+
 5. Once the docker-agent build is successful, run a new container of it, which is agent in container. 
     ```
     docker run --env MQ_QMGR_NAME=QM1  --env MQ_QMGR_HOST=<docker-host-ip> --env MQ_QMGR_PORT=1414 --env MQ_QMGR_CHL=MFT.SVRCONN --env MFT_AGENT_NAME=AGENTSRC -d --name=AGENTSRC mftagentredist

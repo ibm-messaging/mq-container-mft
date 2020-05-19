@@ -1,6 +1,6 @@
 #!/bin/bash
 # -*- mode: sh -*-
-# © Copyright IBM Corporation 2015, 2017
+# © Copyright IBM Corporation 2015, 2020
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,9 @@ export PATH=$PATH:/var/mqm/mft/bin
 
 echo "Setting up FTE Environment for this Agent : " ${BFG_DATA}
 cp -f /usr/local/bin/MQMFTCredentials.xml  $HOME
+cp -f /usr/local/bin/ProtocolBridgeCredentials.xml $HOME
 chmod go-rw $HOME/MQMFTCredentials.xml
+chmod go-rw $HOME/ProtocolBridgeCredentials.xml
 chmod go-rwx /usr/local/bin/MQMFTCredentials.xml
 pwd
 ls -l $HOME
@@ -44,9 +46,15 @@ echo "Setting up Command manager for this agent"
 fteSetupCommands -connectionQMgr  ${MQ_QMGR_NAME} -connectionQMgrHost ${MQ_QMGR_HOST} -connectionQMgrPort  ${MQ_QMGR_PORT} -connectionQMgrChannel ${MQ_QMGR_CHL} -f
 echo "Command manager setup completed"
 
-echo "Creating MFT Agent"
-fteCreateAgent -agentName ${MFT_AGENT_NAME} -agentQMgr ${MQ_QMGR_NAME} -agentQMgrHost ${MQ_QMGR_HOST} -agentQMgrPort ${MQ_QMGR_PORT} -agentQMgrChannel ${MQ_QMGR_CHL} -credentialsFile "/usr/local/bin/MQMFTCredentials.xml" -f
-echo "Agent creation was successful"
+if ["${IS_PBA_AGENT}" == "true"]; then
+  echo "Creating a MFT PBA Agent"
+  fteCreateBridgeAgent -agentName ${MFT_AGENT_NAME} -agentQMgr ${MQ_QMGR_NAME} -agentQMgrHost ${MQ_QMGR_HOST} -agentQMgrPort ${MQ_QMGR_PORT} -agentQMgrChannel ${MQ_QMGR_CHL} -bt ${PROTOCOL_FILE_SERVER_TYPE} -bh ${SERVER_HOST_NAME} -btz ${SERVER_TIME_ZONE} -bm ${SERVER_PLATFORM} -bsl ${SERVER_LOCALE} -bfe ${SERVER_FILE_ENCODING} -credentialsFile "/usr/local/bin/MQMFTCredentials.xml" -f
+  echo "MFT PBA Agent creation was successful"
+else
+  echo "Creating a MFT Agent"
+  fteCreateAgent -agentName ${MFT_AGENT_NAME} -agentQMgr ${MQ_QMGR_NAME} -agentQMgrHost ${MQ_QMGR_HOST} -agentQMgrPort ${MQ_QMGR_PORT} -agentQMgrChannel ${MQ_QMGR_CHL} -credentialsFile "/usr/local/bin/MQMFTCredentials.xml" -f
+  echo "Agent creation was successful"
+fi
 
 
 if [ "${MFT_AGENT_NAME}" == "A1" ]; then
