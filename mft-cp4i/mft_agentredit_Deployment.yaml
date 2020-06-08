@@ -1,0 +1,26 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: mft-cp4i-a1
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mqft-cp4i
+    spec:
+      containers:
+      - name: agentdest
+        image: image-registry.openshift-image-registry.svc:5000/mq914mft/mftagent:1.0
+        imagePullPolicy: Always
+        env:
+        - name: MQ_QMGR_NAME
+          value: "mqmft1"
+        - name: MQ_QMGR_HOST
+          value: "10.254.24.120"
+        - name: MQ_QMGR_PORT
+          value: "1414"
+        - name: MQ_QMGR_CHL
+          value: "DEV.ADMIN.SVRCONN"
+        - name: MFT_AGENT_NAME
+          value: "A1"
