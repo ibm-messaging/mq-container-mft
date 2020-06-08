@@ -20,6 +20,7 @@ This tutorial will guide you in configuring *MFT Agents* on Cloudpak for integra
 8. List Agents
 9. Initial a file transfer from A1⇒ A2
 10. Verify file transfer was successful and file exits on A2 container.
+11. Troubleshooting
 
 #### 1. Downloading mft-cp4i package and cluster setup
 
@@ -86,6 +87,10 @@ This tutorial will guide you in configuring *MFT Agents* on Cloudpak for integra
 4. Run `oc get pods` to know if a deployment is created. If created, then you will a pod by name
 `mft-cp4i-a1-xxxx-xxxx`   
 	`ex: mft-cp4i-a1-6f7b555d4c-xdw9r`  
+5. Any changes can be made to the Agent container by ssh'ing into the container using the command  
+`oc exec -ti <agent-pod-name> bash`  
+ This ssh's into the Agent Pod and allows users to make changes as necessary.  
+
 
 ### 7. Deploy MFT Agent - A2  
 1. Same as Step-6 above, except that update  
@@ -129,3 +134,5 @@ BFGCL0182I: The request is now waiting to be processed by the agent.
 [root@mqopr]#
 ```  
 
+### Troubleshooting
+1. Startup script creates mft agent and waits for agent to get to ready. If agent cannot communicate with Coordination/Agent queue managers, then there's a chance that the agent pod goes into error state. To handle this case, an environment variable `MFT_WAIT_FOR_AGENT` is added with default of 30seconds. Script will sleep for this wait time allowing you to make changes to MQMFTCredentials.xml or any other customizations required within the Agent container.
