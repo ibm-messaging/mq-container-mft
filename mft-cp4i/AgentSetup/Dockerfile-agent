@@ -66,6 +66,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
   && locale-gen
 ENV BFG_DATA=/var/mqm/mft/mftdata
 ENV HOME=/home/mftadmin
+ENV MFT_WAIT_FOR_AGENT=30
 COPY *.xml /home/mftadmin/
 RUN chown -R mftadmin:root /home/mftadmin/* \
   && chmod go-rw /home/mftadmin//MQMFTCredentials.xml

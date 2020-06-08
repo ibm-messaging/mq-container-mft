@@ -59,5 +59,8 @@ echo "MFT Agent Started"
 
 fteListAgents -p ${MQ_QMGR_NAME}
 
+#Wait before monitoring agent for container
+sleep ${MFT_WAIT_FOR_AGENT}
+
 # Monitor a particular directory to upload files to dropbox.
 mft-monitor-agent.sh

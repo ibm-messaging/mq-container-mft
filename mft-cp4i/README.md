@@ -2,11 +2,11 @@
 
 ## MFT Agents for Cloudpak for Integration platform
 
-This tutorial will guide you in configuring *MFT Agents* on Cloudpak for integration components. Further, this tutorial will guide you in performing MFT operations on the *Agents* such as listing agents, performing file transfers using the agents.  
+This tutorial will guide you in configuring *MFT Agents* on Cloudpak for integration platform. Further, this tutorial will guide you in performing MFT operations on the *Agents* such as listing agents, performing file transfers using the agents.  
 
 **Prerequisites**:
  1. This tutorial assumes that you have created an Openshift CP4I cluster and having an IBM MQ Queue manager running under a cluster namespace. For more details on this  please refer - https://www.ibm.com/support/knowledgecenter/SSGT7J_20.1/welcome.html  
- 2. Before you start any steps in this tutorial, open a terminal and log into your Openshift cluster using `oc login` Here after we call such terminal (oc logged-in) as **oc-terminal**   
+ 2. Before you start on any steps in this tutorial, open a terminal and log into your Openshift cluster using `oc login` Here after we call such terminal (oc logged-in) as **oc-terminal**   
  3. This tutorial is using single queue manager topology for MFT configuration, where the same queue manager serves as Coordination, Command and Agent queue managers.  
 
 ### Tutorial Overview
@@ -58,10 +58,10 @@ This tutorial will guide you in configuring *MFT Agents* on Cloudpak for integra
 #### 4. Build MFT Agent Docker image  
 1. Perform all the below steps on oc-terminal  
 2. Navigate to `<path>/mft-cp4i/AgentSetup`
-3. Dowload MFT Agents redistributable package from [here] (https://www.ibm.com/support/pages/downloading-ibm-mq-version-915-continuous-delivery) 
-	a. Scroll down the page to find **Clients** section and within that the **IBM MQ redistributable Managed File Transfer Agents** download link. 
-	b.This redistributable package is used to build the MFT Agents  image to containerize MFT Agents.
-	c. Basic design is to have an MFT agent per container. This is done for ease of maintainability of MFT Agents.
+3. Dowload MFT Agents redistributable package from [here] (https://www.ibm.com/support/pages/downloading-ibm-mq-version-915-continuous-delivery)  
+	a. Scroll down the page to find **Clients** section and within that the **IBM MQ redistributable Managed File Transfer Agents** download link.  
+	b.This redistributable package is used to build the MFT Agents  image to containerize MFT Agents.  
+	c. Basic design is to have an MFT agent per container. This is done for ease of maintainability of MFT Agents.  
 4. Run the command `docker build -t mftagent:1.0 -f Dockerfile-agent .`  
 5. Once the docker image building is successful, move to next section  
 
