@@ -18,7 +18,7 @@ This tutorial will guide you in configuring *MFT Agents* on Cloudpak for integra
 6. Deploy MFT Agent - A1
 7. Deploy MFT Agent - A2
 8. List Agents
-9. Initial a file transfer from A1⇒ A2
+9. Initiate a file transfer from A1⇒ A2
 10. Verify file transfer was successful and file exits on A2 container.
 11. Troubleshooting
 
@@ -119,7 +119,7 @@ A1              QUICKSTART              READY           0:01:42
 A2              QUICKSTART              READY           0:02:26
 ```  
 
-### 9.  Initial a file transfer from A1⇒ A2  
+### 9.  Initiate a file transfer from A1⇒ A2  
 1. Execute all below step on the oc-terminal  
 2. We will now, run a transfer from A1 Agent (pod - `mft-cp4i-a1-6f7b555d4c-xdw9r`) to A2 Agent (pod - `mft-cp4i-a2-7ff4646fb6-z98z4`). This means, a file is attempted to transfer from one pod to another pod  
 3. As part of the setup, we created a sample file `/tmp/demofiles/samplefile.txt` in A1 pod only.   Inspect `<path>/AgentSetup/mqft.sh` file on how this was achieved  
