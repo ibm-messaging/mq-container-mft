@@ -42,9 +42,16 @@ echo "Setting up Command manager for this agent"
 fteSetupCommands -connectionQMgr  ${MQ_QMGR_NAME} -connectionQMgrHost ${MQ_QMGR_HOST} -connectionQMgrPort  ${MQ_QMGR_PORT} -connectionQMgrChannel ${MQ_QMGR_CHL} -f
 echo "Command manager setup completed"
 
-echo "Creating MFT Agent"
-fteCreateAgent -agentName ${MFT_AGENT_NAME} -agentQMgr ${MQ_QMGR_NAME} -agentQMgrHost ${MQ_QMGR_HOST} -agentQMgrPort ${MQ_QMGR_PORT} -agentQMgrChannel ${MQ_QMGR_CHL} -credentialsFile "$HOME/MQMFTCredentials.xml" -f
-echo "Agent creation was successful"
+if [ "${IS_PBA_AGENT}" == "true" ]; then
+  echo "Creating MFT PBA Agent"
+  fteCreateBridgeAgent -agentName ${MFT_AGENT_NAME} -agentQMgr ${MQ_QMGR_NAME} -agentQMgrHost ${MQ_QMGR_HOST} -agentQMgrPort ${MQ_QMGR_PORT} -agentQMgrChannel ${MQ_QMGR_CHL} -bt ${PROTOCOL_FILE_SERVER_TYPE} -bh ${SERVER_HOST_NAME} -bm ${SERVER_PLATFORM} -bfe ${SERVER_FILE_ENCODING} -credentialsFile "$HOME/MQMFTCredentials.xml" -f
+  # to be added if support for FTPS and nondefault port is required : -btz ${SERVER_TIME_ZONE} -bsl ${SERVER_LOCALE} -blf ${SERVER_LISTING_FORMAT} -bts ${TRUSTSTORE_FILE_PATH} -bp ${SERVER_PORT} 
+  echo "MFT PBA Agent creation was successful"
+else
+  echo "Creating MFT Agent"
+  fteCreateAgent -agentName ${MFT_AGENT_NAME} -agentQMgr ${MQ_QMGR_NAME} -agentQMgrHost ${MQ_QMGR_HOST} -agentQMgrPort ${MQ_QMGR_PORT} -agentQMgrChannel ${MQ_QMGR_CHL} -credentialsFile "$HOME/MQMFTCredentials.xml" -f
+  echo "Agent creation was successful"
+fi
 
 
 if [ "${MFT_AGENT_NAME}" == "A1" ]; then
@@ -58,9 +65,6 @@ fteStartAgent -p  ${MQ_QMGR_NAME} ${MFT_AGENT_NAME}
 echo "MFT Agent Started"
 
 fteListAgents -p ${MQ_QMGR_NAME}
-
-#Wait before monitoring agent for container
-sleep ${MFT_WAIT_FOR_AGENT}
 
 # Monitor a particular directory to upload files to dropbox.
 mft-monitor-agent.sh
