@@ -34,5 +34,7 @@ spec:
           value: "UNIX"
         - name: SERVER_FILE_ENCODING # Required if IS_PBA_AGENT=true e.g.: UTF-8
           value: "UTF-8"
+        - name: "MFT_TRANSFER_LOGS_ENABLED"
+          value: "true"
 
 

@@ -53,6 +53,10 @@ else
   echo "Agent creation was successful"
 fi
 
+if [ "${MFT_TRANSFER_LOGS_ENABLED}" == "true" ]; then
+echo "Setting up logs for transfers"
+echo 'logCapture=true' >> /var/mqm/mft/mftdata/mqft/config/${MQ_QMGR_NAME}/agents/${MFT_AGENT_NAME}/agent.properties
+fi
 
 if [ "${MFT_AGENT_NAME}" == "A1" ]; then
   echo "Creating a sample file"
@@ -65,6 +69,9 @@ fteStartAgent -p  ${MQ_QMGR_NAME} ${MFT_AGENT_NAME}
 echo "MFT Agent Started"
 
 fteListAgents -p ${MQ_QMGR_NAME}
+
+echo "Sleeping to give opprutunity to customiz agents"
+sleep ${MFT_WAIT_FOR_AGENT}
 
 # Monitor a particular directory to upload files to dropbox.
 mft-monitor-agent.sh

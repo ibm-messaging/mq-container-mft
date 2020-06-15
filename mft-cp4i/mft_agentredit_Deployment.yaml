@@ -24,3 +24,5 @@ spec:
           value: "DEV.ADMIN.SVRCONN"
         - name: MFT_AGENT_NAME
           value: "A1"
+        - name: "MFT_TRANSFER_LOGS_ENABLED"
+          value: "true"
