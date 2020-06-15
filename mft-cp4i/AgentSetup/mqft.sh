@@ -54,8 +54,8 @@ else
 fi
 
 if [ "${MFT_TRANSFER_LOGS_ENABLED}" == "true" ]; then
-echo "Setting up logs for transfers"
-echo 'logCapture=true' >> /var/mqm/mft/mftdata/mqft/config/${MQ_QMGR_NAME}/agents/${MFT_AGENT_NAME}/agent.properties
+  echo "Setting up logs for transfers"
+  echo 'logCapture=true' >> ${BFG_DATA}/mqft/config/${MQ_QMGR_NAME}/agents/${MFT_AGENT_NAME}/agent.properties
 fi
 
 if [ "${MFT_AGENT_NAME}" == "A1" ]; then
