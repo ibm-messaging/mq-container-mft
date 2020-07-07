@@ -15,16 +15,17 @@
 # limitations under the License.
 
 set -e
-su mftadmin
+su samantha
+echo "Entering mqft.sh"
 cd /var/mqm/mft/bin
 
 export PATH=$PATH:/var/mqm/mft/bin
-#export MQ_QMGR_NAME=QMT
-#export MQ_QMGR_HOST=158.175.87.102
-#export MQ_QMGR_PORT=31957
-#export MQ_QMGR_CHL=CLOUD.APP.SVRCONN
-#export MFT_AGENT_NAME=KX
-
+export MQ_QMGR_NAME=MFTHAQM
+export MQ_QMGR_HOST=9.202.176.145
+export MQ_QMGR_PORT=1414
+export MQ_QMGR_CHL=MFT_HA_CHN
+export MFT_AGENT_NAME=KXAGNT
+ 
 echo "Setting up FTE Environment for this Agent : " ${BFG_DATA}
 cp -f /usr/local/bin/MQMFTCredentials.xml  $HOME
 cp -f /usr/local/bin/ProtocolBridgeCredentials.xml $HOME

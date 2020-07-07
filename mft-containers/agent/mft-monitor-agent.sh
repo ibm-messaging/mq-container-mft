@@ -18,10 +18,17 @@ set -e
 
 cd /var/mqm/mft/bin
 
+
 state()
 {
-  ftePingAgent -m ${MQ_QMGR_NAME} -w 10 ${MFT_AGENT_NAME} | awk -F ':' '/BFGCL0213I/{print $1}; NR in nr'
+  ftePingAgent -m ${MQ_QMGR_NAME} -w 10 ${MFT_AGENT_NAME} | awk -F ':' '/BFGCL0793I/{print $1}; NR in nr'
 }
+
+stateUnknown()
+{
+  fteListAgents ${MFT_AGENT_NAME} | awk -F ':' '/UNKNOWN/{print $1}; NR in nr'
+}
+
 trap "source mft-stop-container.sh" SIGTERM SIGINT
 echo "Monitoring MFT Agent" ${MFT_AGENT_NAME}
 
@@ -32,7 +39,7 @@ done
 ftePingAgent -m ${MQ_QMGR_NAME} -w 10 ${MFT_AGENT_NAME}
 echo "IBM MFT Agent ${MFT_AGENT_NAME} is now fully running"
 
-until [ "`state`" != "BFGCL0213I" ]; do
+until [ "`stateUnknown`" != "UNKNOWN" ]; do
   sleep 5
 done
 

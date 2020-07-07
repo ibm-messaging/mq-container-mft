@@ -16,4 +16,5 @@
 
 set -e
 
+
 /opt/mqm/mft/bin/fteStopAgent -m ${MQ_QMGR_NAME} ${MFT_AGENT_NAME}
