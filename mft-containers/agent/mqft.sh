@@ -16,7 +16,7 @@
 
 set -e
 su samantha
-echo "Entering mqft.sh"
+
 cd /var/mqm/mft/bin
 
 export PATH=$PATH:/var/mqm/mft/bin
@@ -25,7 +25,9 @@ export MQ_QMGR_HOST=9.202.176.145
 export MQ_QMGR_PORT=1414
 export MQ_QMGR_CHL=MFT_HA_CHN
 export MFT_AGENT_NAME=KXAGNT
- 
+export BFG_DATA=/mftdata
+
+echo $MQ_QMGR_NAME $MQ_QMGR_PORT
 echo "Setting up FTE Environment for this Agent : " ${BFG_DATA}
 cp -f /usr/local/bin/MQMFTCredentials.xml  $HOME
 cp -f /usr/local/bin/ProtocolBridgeCredentials.xml $HOME
@@ -34,11 +36,11 @@ chmod go-rw $HOME/ProtocolBridgeCredentials.xml
 chmod go-rwx /usr/local/bin/MQMFTCredentials.xml
 pwd
 ls -l $HOME
+
 source fteCreateEnvironment
 
 # Assumption is that a single queue manager will be used as Coorindation/Command/Agent.
-# User should have passed us the queue manager details as environment variables. 
-
+# User should have passed us the queue manager details as environment variables.
 echo "Setting up Coordination manager for this agent"
 fteSetupCoordination -coordinationQMgr ${MQ_QMGR_NAME} -coordinationQMgrHost ${MQ_QMGR_HOST} -coordinationQMgrPort ${MQ_QMGR_PORT} -coordinationQMgrChannel ${MQ_QMGR_CHL} -f
 echo "Coordination manager setup completed"
@@ -66,11 +68,17 @@ else
   mkdir -p /tmp/dropboxfiles
 fi
 
+# Enable queue input out from this agent
+echo "enableQueueInputOutput=true" >> $BFG_DATA/mqft/config/$MQ_QMGR_NAME/agents/$MFT_AGENT_NAME/agent.properties
+
 #echo "Starting MFT Agent...."
 fteStartAgent -p  ${MQ_QMGR_NAME} ${MFT_AGENT_NAME}
 echo "MFT Agent Started"
 
 fteListAgents -p ${MQ_QMGR_NAME}
+
+fteCreateTransfer -gt task.xml -sa KXAGNT -sm MFTHAQM -da KXAGNT -dm MFTHAQM -dq "SWIFTQ@MFTHAQM" -qs 1K "/mftdata/xferdata/source.txt"
+fteCreateMonitor -ma KXAGNT -mn FILEMON -md "/mftdata/trigger" -tr "match,*.txt" -f -mt task.xml
 
 # Monitor a particular directory to upload files to dropbox.
 mft-monitor-agent.sh

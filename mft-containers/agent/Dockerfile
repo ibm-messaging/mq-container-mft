@@ -13,12 +13,6 @@ RUN yum -y update
 
 # Get EPEL
 # RUN rpm -iUvh http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-ENV agentName=""
-ENV agentQMgr=""
-ENV agentQMgrHost=""
-ENV agentQMgrPort=""
-ENV agentQMgrChn=""
-
 
 # Install additional packages
 RUN yum --assumeyes --allowerasing install bash \
