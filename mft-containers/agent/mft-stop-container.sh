@@ -15,6 +15,5 @@
 # limitations under the License.
 
 set -e
-
-
-/opt/mqm/mft/bin/fteStopAgent -m ${MQ_QMGR_NAME} ${MFT_AGENT_NAME}
+echo "Stopping agent " ${MFT_AGENT_NAME}
+/var/mqm/mft/bin/fteStopAgent -m ${MQ_QMGR_NAME} ${MFT_AGENT_NAME}

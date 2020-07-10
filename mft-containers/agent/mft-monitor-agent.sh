@@ -26,17 +26,18 @@ state()
 
 stateUnknown()
 {
-  fteListAgents ${MFT_AGENT_NAME} | awk -F ':' '/UNKNOWN/{print $1}; NR in nr'
+  fteListAgents ${MFT_AGENT_NAME} | awk -F ':' '/UNKNOWN/{print $3}; NR in nr'
 }
 
-trap "source mft-stop-container.sh" SIGTERM SIGINT
+trap "mft-stop-container.sh"  1 2 3 6 15
+
 echo "Monitoring MFT Agent" ${MFT_AGENT_NAME}
 
 # Loop until "ftePingAgent" says the MFT Agent is running
-until [ "`state`" == "BFGCL0213I" ]; do
-  sleep 1
-done
-ftePingAgent -m ${MQ_QMGR_NAME} -w 10 ${MFT_AGENT_NAME}
+#until [ "`state`" == "BFGCL0213I" ]; do
+#  sleep 1
+#done
+#ftePingAgent -m ${MQ_QMGR_NAME} -w 10 ${MFT_AGENT_NAME}
 echo "IBM MFT Agent ${MFT_AGENT_NAME} is now fully running"
 
 until [ "`stateUnknown`" != "UNKNOWN" ]; do
