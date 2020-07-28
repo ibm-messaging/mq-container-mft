@@ -3,7 +3,7 @@ FROM registry.access.redhat.com/ubi8/ubi:8.1
 
 # Add the Agent redistributable package
 COPY 9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz /mftdkr/9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz
-COPY *.sh /mftdkr/
+#COPY *.sh /mftdkr/
 
 # Copy golang package
 COPY go1.14.6.linux-amd64.tar.gz /golang/go1.14.6.linux-amd64.tar.gz
@@ -43,8 +43,8 @@ RUN yum --assumeyes --allowerasing install bash \
   && mkdir -p /var/mqm/mft \
   && useradd samantha \
   && echo samantha:H0neycomb | chpasswd \
-  && mv /mftdkr/*.sh /usr/local/bin/  \
-  && chmod +x /usr/local/bin/*.sh \
+#  && mv /mftdkr/*.sh /usr/local/bin/  \
+#  && chmod +x /usr/local/bin/*.sh \
   && mv /mftdkr/*.gz /var/mqm/mft/ \
   && cd /var/mqm/mft \
   && tar -zxvf ./9.*.tar.gz \
@@ -70,4 +70,4 @@ RUN chmod go-rw $HOME/ProtocolBridgeCredentials.xml
 RUN chmod go-rwx /usr/local/bin/MQMFTCredentials.xml
 
 #ENTRYPOINT ["mqft.sh"]
-ENTRYPOINT exec "/mftdkr/mftcfg" ${ENV_AGQMGR} ${ENV_AGQMGRHOST} ${ENV_AGQMGRPORT} ${ENV_AGQMGRCHN} ${ENV_AGNAME} ${ENV_BFGDATA}
+ENTRYPOINT exec "/mftdkr/mftcfg" ${ENV_AGQMGR} ${ENV_AGQMGRHOST} ${ENV_AGQMGRPORT} ${ENV_AGQMGRCHN} ${ENV_AGNAME} ${ENV_BFGDATA} ${ENV_MON_TIME}
