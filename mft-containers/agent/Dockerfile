@@ -5,15 +5,17 @@ FROM registry.access.redhat.com/ubi8/ubi:8.1
 COPY 9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz /mftdkr/9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz
 COPY *.sh /mftdkr/
 
+# Copy golang package
+COPY go1.14.6.linux-amd64.tar.gz /golang/go1.14.6.linux-amd64.tar.gz
+
+# copy Golang app to monitor agent
+COPY mftcfg /mftdkr
+
 # Add the required XML files
 COPY *.xml /usr/local/bin/
-COPY monitor /mftdkr/monitor/
 
 # Update current packages 
 RUN yum -y update
-
-# Get EPEL
-# RUN rpm -iUvh http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 
 # Install additional packages
 RUN yum --assumeyes --allowerasing install bash \
@@ -25,7 +27,7 @@ RUN yum --assumeyes --allowerasing install bash \
   findutils \
   gawk \
   grep \
-# C Runtime
+# Get C Runtime
   glibc \
 # check Redhat's system version
   redhat-lsb-core \
@@ -36,10 +38,7 @@ RUN yum --assumeyes --allowerasing install bash \
   sed \
   tar \
   util-linux \
-#  epel-release \
-#  inotify-tools \
   glibc-all-langpacks \
-#  s3fs - not available on UBI \
 # Download and extract the MQ installation files
   && mkdir -p /var/mqm/mft \
   && useradd samantha \
@@ -48,17 +47,27 @@ RUN yum --assumeyes --allowerasing install bash \
   && chmod +x /usr/local/bin/*.sh \
   && mv /mftdkr/*.gz /var/mqm/mft/ \
   && cd /var/mqm/mft \
-  && tar -zxvf ./*.tar.gz \
+  && tar -zxvf ./9.*.tar.gz \
+  && cd /golang \
+  && tar -zxvf ./go*.tar.gz \
   && yum update \
   # Remove tar.gz files unpacked by RPM postinst scripts
   && find /var/mqm/mft -name '*.tar.gz' -delete \
+  && find /golang -name '*.tar.gz' -delete \
   # Apply any bug fixes not included in base Ubuntu or MQ image.
   # Don't upgrade everything based on Docker best practices https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/#run
-#  && yum -y install krb5-server krb5-libs \
-#  && yum update libexpat1 \
   # End of bug fixes
-  && rm -rf /var/lib/apt/lists/*
-#  && localedef -f UTF-8 -i en_US ./en_US.UTF-8 
-#  && localedef 
+  && rm -rf /var/lib/apt/lists/* 
 # Call our entry point
-ENTRYPOINT ["mqft.sh"]
+ENV GOPATH=/usr/local/go
+ENV PATH=$PATH:/var/mqm/mft/bin:/var/mqm/mft/java/jre64/jre/bin:$GOPATH/bin
+ENV BFG_DATA=${ENV_BFGDATA}
+#RUN /usr/local/bin/setpath.sh
+RUN cp -f /usr/local/bin/MQMFTCredentials.xml  $HOME
+RUN cp -f /usr/local/bin/ProtocolBridgeCredentials.xml $HOME
+RUN chmod go-rw $HOME/MQMFTCredentials.xml
+RUN chmod go-rw $HOME/ProtocolBridgeCredentials.xml
+RUN chmod go-rwx /usr/local/bin/MQMFTCredentials.xml
+
+#ENTRYPOINT ["mqft.sh"]
+ENTRYPOINT exec "/mftdkr/mftcfg" ${ENV_AGQMGR} ${ENV_AGQMGRHOST} ${ENV_AGQMGRPORT} ${ENV_AGQMGRCHN} ${ENV_AGNAME} ${ENV_BFGDATA}

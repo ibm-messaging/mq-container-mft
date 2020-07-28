@@ -1,7 +1,7 @@
 ---
 copyright:
   years: 2017, 2020
-lastupdated: "2020-05-19"
+lastupdated: "2020-07-31"
 ---
 
 # MQ Managed File Transfer for Containers
@@ -13,7 +13,7 @@ Although the exchange of files is conceptually simple, doing so in the enterpris
 
 IBM® MQ File Transfer Edition provides an enterprise-grade managed file transfer capability that is both robust and easy to use. MQ File Transfer Edition exploits the proven reliability and connectivity of MQ to transfer files across a wide range of platforms and networks. MQ File Transfer Edition takes advantage of existing MQ networks, and you can integrate it easily with existing file transfer systems.
 
-You can find more information at [IBM Knowledge Centre](https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_9.1.0/com.ibm.mq.pro.doc/wmqfte_intro.htm)
+You can find more information at [IBM Knowledge Centre](https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_9.2.0/com.ibm.mq.pro.doc/wmqfte_intro.htm)
 
 ---
 
@@ -31,11 +31,11 @@ MQ Advanced supports running MFT Agents in docker containers and this guide will
         ```
     2. Clone the current repository into **mft-containers** directory
         ```
-        HTTPS: git clone https://github.com/darbhakiran/mft-containers.git
-        SSH: git clone git@github.com:darbhakiran/mft-containers.git
+        HTTPS: git clone https://github.com/ibm-messaging/mft-cloud.git
+        SSH: git clone git@github.com:ibm-messaging/mft-cloud.git
         ```
-* Download **9.1.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into mft-containers/agent/
-**Note: 9.1.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** has to be in same path as **Dockerfile-agent**.
+* Download **9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into mft-containers/agent/
+**Note: 9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** has to be in same path as **Dockerfile**.
 
 ---
 ### MFT Container Customisations  

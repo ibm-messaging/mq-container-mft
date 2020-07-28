@@ -75,15 +75,16 @@ echo "highlyAvailable=true" >> $BFG_DATA/mqft/config/$MQ_QMGR_NAME/agents/$MFT_A
 fteStartAgent -p  ${MQ_QMGR_NAME} ${MFT_AGENT_NAME}
 echo "MFT Agent Started"
 
-fteListAgents -p ${MQ_QMGR_NAME}
+fteListAgents -p ${MQ_QMGR_NAME} ${MFT_AGENT_NAME}
 
-fteCreateTransfer -gt task.xml -sa KXAGNT -sm MFTHAQM -da KXAGNT -dm MFTHAQM -dq "SWIFTQ@MFTHAQM" -qs 1K "/mftdata/xferdata/source.txt"
-fteCreateMonitor -ma KXAGNT -mn FILEMON -md "/mftdata/trigger" -tr "match,*.txt" -f -mt task.xml
-
+if ["${ENV_CREATE_MONITOR}" == "Y"];then
+  fteCreateTransfer -gt task.xml -sa ${MFT_AGENT_NAME} -sm ${MQ_QMGR_NAME} -da ${MFT_AGENT_NAME} -dm ${MQ_QMGR_NAME} -dq "SWIFTQ@MFTHAQM" -qs 1K "/mftdata/xferdata/source.txt"
+  fteCreateMonitor -ma ${MFT_AGENT_NAME} -mn FILEMON -md "/mftdata/trigger" -tr "match,*.txt" -f -mt task.xml
+fi
 
 # Monitor a particular directory to upload files to dropbox.
 cd /mftdkr
-echo "Starting monitoring application"
+echo "Starting monitor application"
 # Run Java monitoring application
 
 exec java -cp . monitor.MftAgent ${MFT_AGENT_NAME}
