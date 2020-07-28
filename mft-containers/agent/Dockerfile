@@ -9,7 +9,7 @@ COPY *.sh /mftdkr/
 COPY go1.14.6.linux-amd64.tar.gz /golang/go1.14.6.linux-amd64.tar.gz
 
 # copy Golang app to monitor agent
-COPY mftcfg /mftdkr
+COPY /golang/mftcfg /mftdkr
 
 # Add the required XML files
 COPY *.xml /usr/local/bin/

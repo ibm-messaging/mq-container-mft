@@ -1,7 +1,7 @@
 ---
 copyright:
   years: 2017, 2020
-lastupdated: "2020-07-31"
+lastupdated: "2020-07-28"
 ---
 
 # MQ Managed File Transfer for Containers
@@ -45,6 +45,7 @@ We will add few customizations that would simplify the configuration of MFT for 
 
 #### Understanding Customizations  
 1. Configuring MFT Coordination Queue manager:
+
     1.1 Coordination manager requires set of system queues and topics to be created, this is one time activity.  
     1.2 Agents will need a SVRCONN channel using which they can communication with MQ queue manager. This SVRCONN channel has to be setup with appropriate CHLAUTH/CONNAUTH rules. This guide creates a new channel **MFT_SVRCONN** and setup CHLAUTH/CONNAUTH rules such that any user with a valid password can connect to queue manager.  
     1.3 **mft_setupCoordination.sh** available in **mft-containers/server** directory is aimed at simplifying this configuration.  
