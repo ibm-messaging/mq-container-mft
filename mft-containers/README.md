@@ -97,7 +97,7 @@ All the cutomizations (.sh and .mqsc) files are copied into **/etc/mqm/mft/** pa
 Agent package contains a Dockerfile-agent to build the MFT agent docker image. MFT Agent is setup and started as part of the **mqft.sh** script. This package assumes a single queue manager(**QM1**) as coordination queue manager, command queue manager and agent queue manager.
 **Note:** As per your application architecture, you can consider to have separate queue managers for coordination, command and agents.
 
-1. Copy the MFT redistributable package: **9.1.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** to the Agent directory. For example 
+1. Copy the MFT redistributable package: **9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** to the Agent directory. For example 
     ```
     On Linux: /home/mft-containers/agent 
     On Windows: %HOMEDRIVE$\mft-containers/agent 
@@ -106,7 +106,7 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
 
 3. Build mft agent image.
     ```
-    docker build -t mftagentredist -f Dockerfile-agent
+    docker build -t mftagentredist -f Dockerfile-agent .
     ```
 4. We will create two agents as part of this document to demonstrate mft agents in container. These agents are **AGENTSRC** and **AGENTDEST**. As a first step of agent configuration, we have to create their congfiguration on coordination queue manager.
     ```
@@ -118,10 +118,20 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
     2. **mqft_setupAgent.sh** script requires MFT agent name as input parameter
     3. To configure a IBM MQ Managed file transfer protocol Bridge Agent(PBA agent) [click here](./README_pbagent.md) for the steps.
 
-5. Once the docker-agent build is successful, run a new container of it, which is agent in container. 
+5. We will create a volume on the host system. This volume will be mounted to container and used as persistent storage for agent configuration and logs. 
+    ```
+    docker volume create mftdata 
+    ```
+   Verify the volume creation by
+    ```
+    docker volume inspect mftdata 
+    ```
+   
+6. Once the docker-agent build is successful, run a new container of it, which is agent in container. 
     ```
     docker run --env MQ_QMGR_NAME=QM1  --env MQ_QMGR_HOST=<docker-host-ip> --env MQ_QMGR_PORT=1414 --env MQ_QMGR_CHL=MFT.SVRCONN --env MFT_AGENT_NAME=AGENTSRC -d --name=AGENTSRC mftagentredist
-    
+    docker run --mount type=volume,source=mftdata,target=/mftdata -e ENV_BFGDATA="/mftdata" -e ENV_AGNAME="AGENTSRC" -e ENV_AGQMGR="QM1" -e ENV_AGQMGRHOST=<docker-host-ip> -e ENV_AGQMGRPORT="1414" -e ENV_AGQMGRCHN="MFT.SVRCONN" -e ENV_MON_TIME="150" mftagent:latest
+   
     docker run --env MQ_QMGR_NAME=QM1  --env MQ_QMGR_HOST=<docker-host-ip> --env MQ_QMGR_PORT=1414 --env MQ_QMGR_CHL=MFT.SVRCONN --env MFT_AGENT_NAME=AGENTDEST -d --name=AGENTDEST mftagentredist
     ```
     **Note:** 
