@@ -59,4 +59,4 @@ RUN chmod go-rw $HOME/MQMFTCredentials.xml
 RUN chmod go-rw $HOME/ProtocolBridgeCredentials.xml
 RUN chmod go-rwx /usr/local/bin/MQMFTCredentials.xml
 
-ENTRYPOINT exec "/mftdkr/mftcfg" ${BFG_CONFIG}
+ENTRYPOINT exec "/mftdkr/mftcfg" ${AGENT_CONFIG_FILE}
