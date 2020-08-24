@@ -117,7 +117,6 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
     **Note:** 
     1. QM1-Container-id is the id of the queue manager container created in above section.
     2. **mqft_setupAgent.sh** script requires MFT agent name as input parameter
-    3. To configure a IBM MQ Managed file transfer protocol Bridge Agent(PBA agent) [click here](./README_pbagent.md) for the steps.
 
 5. We will create a volume on the host system. This volume will be mounted to container and used as persistent storage for agent configuration and logs. The JSON file for setting up an agent can be specified in this volume itself.
     ```
