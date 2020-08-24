@@ -154,13 +154,13 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
       "maximumDisplayLines" : 50,
       "coordinationQMgr" : {
         "name":"MFTQM",
-        "host":"9.202.176.145",
+        "host":"coordqmhost.com",
         "port":1414,
         "channel":"MFT.CHN"
       },
       "commandsQMgr" : {
         "name":"MFTQM",
-        "host":"9.202.176.145",
+        "host":"cmdqmhost.com",
         "port":1414,
         "channel":"MFT.CHN"
       },
@@ -168,14 +168,14 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
         "name":"AGNTSRC",
         "agentType" : "STANDARD",
         "qmgrName":"MFTQM",
-        "qmgrHost":"9.202.176.145",
+        "qmgrHost":"agentqmhost.com",
         "qmgrPort":1414,
         "qmgrChannel":"MFT.CHN",
         "credentialsFile":"/usr/local/bin/MQMFTCredentials.xml",
 	    "protocolBridge" : {
 		  "credentialsFile":"/usr/local/bin/ProtocolBridgeCredentials.xml",
 		  "serverType":"SFTP",
-		  "serverHost":"9.199.144.110",
+		  "serverHost":"mysftp.com",
 		  "serverTimezone":"",
 		  "serverPlatform":"UNIX",
 		  "serverLocale":"en-US",
