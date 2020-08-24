@@ -1,7 +1,7 @@
 ---
 copyright:
   years: 2017, 2020
-lastupdated: "2020-07-28"
+lastupdated: "2020-08-24"
 ---
 
 # MQ Managed File Transfer for Containers
