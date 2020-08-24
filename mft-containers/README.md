@@ -104,7 +104,8 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
     ```
 2. Open a command shell and navigate to path of **mft-containers/agent** repository. For example */home/mft-containers/server*(on Linux) or *C:\\mft-containers\\server*(on Windows).  
 
-3. Build mft agent image.
+3. Build IBM MQ Managed File Transfer agent docker image.
+   This MQ MFT docker image uses a golang application to create an agent and monitor status of agent. The agent configuration is specified using a JSON file. The JSON file must be located on a persistent volume. 
     ```
     docker build -t mftagentredist -f Dockerfile-agent .
     ```
@@ -118,7 +119,7 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
     2. **mqft_setupAgent.sh** script requires MFT agent name as input parameter
     3. To configure a IBM MQ Managed file transfer protocol Bridge Agent(PBA agent) [click here](./README_pbagent.md) for the steps.
 
-5. We will create a volume on the host system. This volume will be mounted to container and used as persistent storage for agent configuration and logs. 
+5. We will create a volume on the host system. This volume will be mounted to container and used as persistent storage for agent configuration and logs. The JSON file for setting up an agent can be specified in this volume itself.
     ```
     docker volume create mftdata 
     ```
@@ -129,21 +130,72 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
    
 6. Once the docker-agent build is successful, run a new container of it, which is agent in container. 
     ```
-    docker run --env MQ_QMGR_NAME=QM1  --env MQ_QMGR_HOST=<docker-host-ip> --env MQ_QMGR_PORT=1414 --env MQ_QMGR_CHL=MFT.SVRCONN --env MFT_AGENT_NAME=AGENTSRC -d --name=AGENTSRC mftagentredist
-    docker run --mount type=volume,source=mftdata,target=/mftdata -e ENV_BFGDATA="/mftdata" -e ENV_AGNAME="AGENTSRC" -e ENV_AGQMGR="QM1" -e ENV_AGQMGRHOST=<docker-host-ip> -e ENV_AGQMGRPORT="1414" -e ENV_AGQMGRCHN="MFT.SVRCONN" -e ENV_MON_TIME="150" mftagent:latest
-   
-    docker run --env MQ_QMGR_NAME=QM1  --env MQ_QMGR_HOST=<docker-host-ip> --env MQ_QMGR_PORT=1414 --env MQ_QMGR_CHL=MFT.SVRCONN --env MFT_AGENT_NAME=AGENTDEST -d --name=AGENTDEST mftagentredist
+    docker run --mount type=volume,source=mftdata,target=/mftdata -e AGENT_CONFIG_FILE="/mftdata/agentconfigsrc.json" -d --name=AGENTSRC mftagentredist
+    docker run --mount type=volume,source=mftdata,target=/mftdata -e AGENT_CONFIG_FILE="/mftdata/agentconfigdest.json" -d --name=AGENTDEST mftagentredist   
     ```
     **Note:** 
-    1. <docker-host-ip>: Is the IP Address of the docker host. This could be found out by running `docker inspect` command and look for ipv4address field.
-    2. MQ_QMGR_NAME=QM1: Is the queue manager we created and configured as coordination queue manager in above section.
-    3. mftagentredist: Is the docker image of mft redistributable agents.
+    1. AGENT_CONFIG_FILE is the environment variable that points to a JSON file containing required information for creating an agent. The path will be on persistent volume mounted on a container.
+    2. mftagentredist: Is the docker image of mft redistributable agents.
     
-6. Run the below command to list the docker containers, find newly created containers **AGENTSRC**, **AGENTDEST** and make a note of their container-ids.
+	While most the attributes of JSON file are self explanatory, here is a brief explanation of on some of them.
+    ```
+	dataPath: Absolute path where agent configuration will be created.
+	agentMonitorInterval: Frequency at which container will monitor the status of an agent. A monitor program 'mftcfg' is used to monitor the status of agent.
+	displayAgentLogs: Read and display logs on console from output0.log file of an agent.
+	maximumDisplayLines: The number of lines from the output0.log file to display. The latest lines from the log file will be displayed.
+    ```
+	
+	The following is an example of an agent configuration JSON file
+    ```
+	{
+      "dataPath" : "/mftdata",
+      "agentMonitorInterval" : 150,
+      "displayAgentLogs" : false,
+      "maximumDisplayLines" : 50,
+      "coordinationQMgr" : {
+        "name":"MFTQM",
+        "host":"9.202.176.145",
+        "port":1414,
+        "channel":"MFT.CHN"
+      },
+      "commandsQMgr" : {
+        "name":"MFTQM",
+        "host":"9.202.176.145",
+        "port":1414,
+        "channel":"MFT.CHN"
+      },
+      "agent" : {
+        "name":"AGNTSRC",
+        "agentType" : "STANDARD",
+        "qmgrName":"MFTQM",
+        "qmgrHost":"9.202.176.145",
+        "qmgrPort":1414,
+        "qmgrChannel":"MFT.CHN",
+        "credentialsFile":"/usr/local/bin/MQMFTCredentials.xml",
+	    "protocolBridge" : {
+		  "credentialsFile":"/usr/local/bin/ProtocolBridgeCredentials.xml",
+		  "serverType":"SFTP",
+		  "serverHost":"9.199.144.110",
+		  "serverTimezone":"",
+		  "serverPlatform":"UNIX",
+		  "serverLocale":"en-US",
+		  "serverFileEncoding":"UTF-8",
+		  "serverPort":22,
+		  "serverTrustStoreFile" : "",
+		  "serverLimitedWrite":"",
+		  "serverListFormat" :"",
+		  "serverUserId":"sftpuser",
+		  "serverPassword":"sftpPassw@rd"
+	    }
+	  }
+   }
+    ```
+
+7. Run the below command to list the docker containers, find newly created containers **AGENTSRC**, **AGENTDEST** and make a note of their container-ids.
     ```
     docker ps
     ```
-7. Check if the mft agents accept commands and show output. For example, run following command on Agent containers
+8. Check if the mft agents accept commands and show output. For example, run following command on Agent containers
     ```
     docker exec -ti <AGENTSRC-container-id> fteListAgents
     docker exec -ti <AGENTDEST-container-id> fteListAgents

@@ -9,82 +9,26 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"strconv"
 	"bufio"
-    "encoding/json"
     "io/ioutil"
 	"container/list"
+    "github.com/tidwall/gjson"	
 )
-
-type CoordinationQMgr struct {
-	Name string `json:"name"`
-	Host string `json:"host"`
-	Port int `json:"port"`
-	Channel string `json:"channel"`
-}
-
-type CommandsQMgr struct {
-	Name string `json:"name"`
-	Host string `json:"host"`
-	Port int `json:"port"`
-	Channel string `json:"channel"`
-}
-
-type Agent struct {
-	Name string `json:"name"`
-	QMgr string `json:"qmgr"`
-	QMgrHost string `json:"qmgrHost"`
-	QMgrPort int `json:"qmgrPort"`
-	QMgrChannel string `json:"qmgrChannel"`
-	CredentialsFile string `json:"credentialsFile"`
-}
-
-type ProtocolBridge struct {
-    CredentialsFile string `json:"credentialsFile"`
-    ServerType string `json:"serverType"`
-    ServerHost string `json:"serverHost"`
-    ServerTimezone string `json:"serverTimezone"`
-    ServerPlatform string `json:"serverPlatform"`
-    ServerLocale string `json:"serverLocale"`
-    ServerFileEncoding string `json:"serverFileEncoding"`
-    ServerPort int `json:"serverPort"`
-    ServerTrustStoreFile string `json:"serverTrustStoreFile"`
-    ServerLimitedWrite string `json:"serverLimitedWrite"`
-    ServerListFormat string `json:"serverListFormat"`
-    ServerUserId string `json:"serverUserId"`
-    ServerPassword string `json:"serverPassword"`
-}
-
-type AgentConfiguration struct {
-  DataPath string `json:"dataPath"`
-  MonitorInterval int `json:"monitoringInterval"`
-  DisplayAgentLogs bool `json:"displayAgentLogs"`
-  DisplayLines int `json:"displayLineCount"`
-  AgentType string `json:"agentType"`
-  CoordQMgr CoordinationQMgr `json:"coordinationQMgr"`
-  CmdsQMgr CommandsQMgr `json:"commandsQMgr"`
-  Agent Agent `json:"agent"`
-  ProtocolBridge ProtocolBridge `json:"protocolBridge"`
-}
 
 // Main entry point to program.
 func main () {
   var bfgDataPath string
   var bfgConfigFilePath string 
-  var sleepTime int
-  var agentConfig AgentConfiguration
-  var agentMonitorIntervalStr  string
+  var agentConfig string 
   var e error
   var showAgentLogs bool
-  var displayLines int
+  var displayLines int64
+  var monitorWaitInterval int64
   // Variables for Stdout and Stderr
   var outb, errb bytes.Buffer
 
   // 1- ENV_BFG_DATA 
   // 2- ENV_AGENT_CONFIG_FILE
-  // 3- ENV_MONITOR_INTERVAL
-  // 4- ENV_SHOW_LOGS
-  // 5- ENV_TOTAL_LINES
   if len(os.Args) == 2 {
 	// Configuration file path from environment variable
     bfgConfigFilePath = os.Args[1]
@@ -97,47 +41,17 @@ func main () {
     }
 	
     // BFG_DATA path
-    bfgDataPath = agentConfig.DataPath
+    bfgDataPath = gjson.Get(agentConfig, "dataPath").String()
 	// Agent liveliness monitoring interval
-	sleepTime = agentConfig.MonitorInterval
+	monitorWaitInterval = gjson.Get(agentConfig, "monitoringInterval").Int()
 	// To display agent logs or not.
-	showAgentLogs = agentConfig.DisplayAgentLogs
+	showAgentLogs = gjson.Get(agentConfig, "displayAgentLogs").Bool()
 	// Display n number of logs from agent log
-	displayLines = agentConfig.DisplayLines	
+	displayLines = gjson.Get(agentConfig, "displayLineCount").Int()
   } else {
-    // We don't have configuration file specified, instead we have environment
-	// variables specified.
-	// BFG_DATA path.
-    bfgDataPath = os.Args[1]
-    agentMonitorIntervalStr =  os.Args[2]
-    // Determine the sleep time.
-	sleepTimeInt, err := strconv.Atoi(agentMonitorIntervalStr)
-	if err != nil {
-	  // There was some error when getting the sleep time. Assume 300 seconds
-	  // as the default sleep time
-	  sleepTime = 300
-	} else {
-	  sleepTime = sleepTimeInt
-	}
-	// To display agent logs or not. 
-	if strings.EqualFold(os.Args[3],"YES") == true {
-      showAgentLogs = true
-	}
-	
-	displayLineCount, err := strconv.Atoi(os.Args[4])
-	if err != nil {
-	  // There was some error when getting the sleep time. Assume 300 seconds
-	  // as the default sleep time
-	  displayLines = 40
-	} else {
-	  displayLines = displayLineCount
-	}
-	
-    // Read rest of the environment variables and construct an instance 
-	// of AgentConfiguration structure.
-	agentConfig = ReadConfigurationDataFromEnvironment(os.Args)
+    fmt.Println("Invalid parameters were provided.\nUsage: docker run --mount type=volume,source=mftdata,target=/mftdata -e AGENT_CONFIG_FILE=\"/mftdata/agentconfigsrc.json\" -d --name=AGENTSRC mftagentredist\n")
   }
-
+  
   // Set BFG_DATA environment variable so that we can run MFT commands.
   os.Setenv("BFG_DATA", bfgDataPath)
 
@@ -191,11 +105,13 @@ func main () {
   }
 
   // Setup coordination configuration
-  fmt.Printf("Setting up coordination configuration %s for agent %s\n", agentConfig.CoordQMgr.Name, agentConfig.Agent.Name)
+  fmt.Printf("Setting up coordination configuration %s for agent %s\n", gjson.Get(agentConfig,"coordinationQMgr.name"), gjson.Get(agentConfig,"agent.name"))
   cmdSetupCoord := &exec.Cmd {
 	Path: cmdCoordPath,
-	Args: [] string {cmdCoordPath, "-coordinationQMgr", agentConfig.CoordQMgr.Name, "-coordinationQMgrHost", agentConfig.CoordQMgr.Host, 
-	                               "-coordinationQMgrPort",strconv.Itoa(agentConfig.CoordQMgr.Port), "-coordinationQMgrChannel", agentConfig.CoordQMgr.Channel, "-f"},
+	Args: [] string {cmdCoordPath, "-coordinationQMgr", gjson.Get(agentConfig,"coordinationQMgr.name").String(), 
+	                               "-coordinationQMgrHost", gjson.Get(agentConfig,"coordinationQMgr.host").String(), 
+	                               "-coordinationQMgrPort",gjson.Get(agentConfig,"coordinationQMgr.port").String(), 
+								   "-coordinationQMgrChannel", gjson.Get(agentConfig,"coordinationQMgr.channel").String(), "-f"},
   }
 
   // Execute the fteSetupCoordination command. Log an error an exit in case of any error.
@@ -207,11 +123,14 @@ func main () {
   }
 
   // Setup commands configuration
-  fmt.Printf("Setting up commands configuration %s for agent %s\n", agentConfig.CoordQMgr.Name, agentConfig.Agent.Name)
+  fmt.Printf("Setting up commands configuration %s for agent %s\n", gjson.Get(agentConfig,"coordinationQMgr.name"), gjson.Get(agentConfig,"agent.name"))
   cmdSetupCmds := &exec.Cmd {
 	Path: cmdCmdsPath,
-	Args: [] string {cmdCmdsPath, "-p", agentConfig.CoordQMgr.Name, "-connectionQMgr", agentConfig.CmdsQMgr.Name, "-connectionQMgrHost", agentConfig.CmdsQMgr.Host, 
-	                              "-connectionQMgrPort", strconv.Itoa(agentConfig.CmdsQMgr.Port), "-connectionQMgrChannel", agentConfig.CmdsQMgr.Channel,"-f"},
+	Args: [] string {cmdCmdsPath, "-p", gjson.Get(agentConfig,"coordinationQMgr.name").String(), 
+	                              "-connectionQMgr", gjson.Get(agentConfig,"commandsQMgr.name").String(), 
+								  "-connectionQMgrHost", gjson.Get(agentConfig,"commandsQMgr.host").String(), 
+	                              "-connectionQMgrPort", gjson.Get(agentConfig,"commandsQMgr.port").String(), 
+								  "-connectionQMgrChannel", gjson.Get(agentConfig,"commandsQMgr.channel").String(),"-f"},
   }
   
   // Reuse the same buffer
@@ -226,63 +145,82 @@ func main () {
   }
 
   // Create agent.
-  fmt.Printf("Creating %s agent with name %s \n", agentConfig.AgentType, agentConfig.Agent.Name)
+  fmt.Printf("Creating %s agent with name %s \n", gjson.Get(agentConfig, "agent.type"), gjson.Get(agentConfig, "agent.name"))
   var cmdCrtAgnt * exec.Cmd
-  if strings.EqualFold(agentConfig.AgentType, "STANDARD") == true {
+  if strings.EqualFold(gjson.Get(agentConfig, "agent.type").String(), "STANDARD") == true {
     cmdCrtAgnt = &exec.Cmd {
 	Path: cmdCrtAgntPath,
-	Args: [] string {cmdCrtAgntPath, "-p", agentConfig.CoordQMgr.Name, "-agentName", agentConfig.Agent.Name, "-agentQMgr", agentConfig.Agent.QMgr, 
-	                                 "-agentQMgrHost", agentConfig.Agent.QMgrHost, "-agentQMgrPort", strconv.Itoa(agentConfig.Agent.QMgrPort), "-agentQMgrChannel", agentConfig.Agent.QMgrChannel,
-									 "-credentialsFile",agentConfig.Agent.CredentialsFile, "-f"},
+	Args: [] string {cmdCrtAgntPath, "-p", gjson.Get(agentConfig,"coordinationQMgr.name").String(), 
+	                                 "-agentName", gjson.Get(agentConfig,"agent.name").String(), 
+									 "-agentQMgr", gjson.Get(agentConfig,"agent.qmgrName").String(), 
+	                                 "-agentQMgrHost", gjson.Get(agentConfig,"agent.qmgrHost").String(), 
+									 "-agentQMgrPort", gjson.Get(agentConfig,"agent.qmgrPort").String(), 
+									 "-agentQMgrChannel", gjson.Get(agentConfig,"agent.qmgrChannel").String(),
+									 "-credentialsFile",gjson.Get(agentConfig,"agent.credentialsFile").String(), "-f"},
     }
   } else {
     var  params [] string 
-    params = append(params,cmdCrtBridgeAgntPath,  "-p", agentConfig.CoordQMgr.Name, "-agentName", agentConfig.Agent.Name, "-agentQMgr", agentConfig.Agent.QMgr,
-                                         "-agentQMgrHost", agentConfig.Agent.QMgrHost, "-agentQMgrPort", strconv.Itoa(agentConfig.Agent.QMgrPort), "-agentQMgrChannel", agentConfig.Agent.QMgrChannel,
-                                         "-credentialsFile",agentConfig.Agent.CredentialsFile, "-f")
+    params = append(params,cmdCrtBridgeAgntPath,  
+	                                 "-p", gjson.Get(agentConfig,"coordinationQMgr.name").String(), 
+	                                 "-agentName", gjson.Get(agentConfig,"agent.name").String(), 
+									 "-agentQMgr", gjson.Get(agentConfig,"agent.qmgrName").String(), 
+	                                 "-agentQMgrHost", gjson.Get(agentConfig,"agent.qmgrHost").String(), 
+									 "-agentQMgrPort", gjson.Get(agentConfig,"agent.qmgrPort").String(), 
+									 "-agentQMgrChannel", gjson.Get(agentConfig,"agent.qmgrChannel").String(),
+									 "-credentialsFile",gjson.Get(agentConfig,"agent.credentialsFile").String(), "-f")
 
-    if agentConfig.ProtocolBridge.ServerType != "" {
-	  params = append(params,"-bt", agentConfig.ProtocolBridge.ServerType)
+	serverType := gjson.Get(agentConfig, "agent.protocolBridge.serverType")
+    if serverType.Exists() {
+	  params = append(params,"-bt", serverType.String())
     } else {
 	  params = append(params, "-bt", "FTP")
     }
 
-    if agentConfig.ProtocolBridge.ServerHost != "" {
-	  params = append(params,"-bh", agentConfig.ProtocolBridge.ServerHost)
+	serverHost := gjson.Get(agentConfig, "agent.protocolBridge.serverHost")
+    if serverHost.Exists(){
+	  params = append(params,"-bh", serverHost.String())
     } else {
 	  params = append(params,"-bh", "localhost")
     }
 
-    if agentConfig.ProtocolBridge.ServerTimezone != "" {
-	  params = append(params,"-btz", agentConfig.ProtocolBridge.ServerTimezone)
+	serverTimezone := gjson.Get(agentConfig, "agent.protocolBridge.serverTimezone")
+    if serverTimezone.Exists() {
+	  params = append(params,"-btz", serverTimezone.String())
     }
 
-    if agentConfig.ProtocolBridge.ServerPlatform != "" {
-	  params = append(params,"-bm", agentConfig.ProtocolBridge.ServerPlatform)
+	serverPlatform := gjson.Get(agentConfig, "agent.protocolBridge.serverPlatform")
+    if serverPlatform.Exists() {
+	  params = append(params,"-bm", serverPlatform.String())
     }
 
-    if agentConfig.ProtocolBridge.ServerType != "SFTP" &&  agentConfig.ProtocolBridge.ServerLocale != "" {
-	  params = append(params,"-bsl", agentConfig.ProtocolBridge.ServerLocale)
+	serverLocale := gjson.Get(agentConfig,"agent.protocolBridge.serverLocale")
+    if serverType.String() != "SFTP" &&  serverLocale.Exists() {
+	  params = append(params,"-bsl", serverLocale.String())
     }
 
-    if agentConfig.ProtocolBridge.ServerFileEncoding != "" {
-	  params = append(params,"-bfe", agentConfig.ProtocolBridge.ServerFileEncoding)
+	serverFileEncoding := gjson.Get(agentConfig,"agent.protocolBridge.serverFileEncoding")
+    if serverFileEncoding.Exists() {
+	  params = append(params,"-bfe", serverFileEncoding.String())
     }
 
-    if agentConfig.ProtocolBridge.ServerPort != 0 {
-	  params = append(params,"-bp", strconv.Itoa(agentConfig.ProtocolBridge.ServerPort))
+	serverPort := gjson.Get(agentConfig,"agent.protocolBridge.serverPort")
+    if serverPort.Exists() {
+	  params = append(params,"-bp", serverPort.String())
     }
 
-    if agentConfig.ProtocolBridge.ServerTrustStoreFile != "" {
-	  params = append(params,"-bts", agentConfig.ProtocolBridge.ServerTrustStoreFile )
+    serverTrustStoreFile := gjson.Get(agentConfig,"agent.protocolBridge.serverTrustStoreFile")
+    if serverTrustStoreFile.Exists () {
+	  params = append(params,"-bts", serverTrustStoreFile.String())
     }
 
-    if agentConfig.ProtocolBridge.ServerLimitedWrite != "" {
-	  params = append(params,"-blw", agentConfig.ProtocolBridge.ServerLimitedWrite)
+    serverLimitedWrite := gjson.Get(agentConfig,"agent.protocolBridge.serverLimitedWrite")
+    if serverLimitedWrite.Exists () {
+	  params = append(params,"-blw", serverLimitedWrite.String())
     }
 
-    if agentConfig.ProtocolBridge.ServerListFormat != "" {
-	  params = append(params,"-blf", agentConfig.ProtocolBridge.ServerListFormat)
+    serverListFormat := gjson.Get(agentConfig,"agent.protocolBridge.serverListFormat")
+    if serverListFormat.Exists () {
+	  params = append(params,"-blf", serverListFormat.String())
     }
 
     cmdCrtAgnt = &exec.Cmd {
@@ -298,14 +236,16 @@ func main () {
   cmdCrtAgnt.Stderr = &errb
   // Execute the fteCreateAgent command. Log an error an exit in case of any error.
   if err := cmdCrtAgnt.Run(); err != nil {
+	fmt.Println("Command: %s\n", outb.String())
+        fmt.Println("Error %s\n", errb.String())
 	fmt.Println("Create Agent command failed. The error is: ", err);
 	return
   }
 
-  fmt.Printf("Starting agent %s\n", agentConfig.Agent.Name)
+  fmt.Printf("Starting agent %s\n", gjson.Get(agentConfig, "agent.name"))
   cmdStrAgnt := &exec.Cmd {
 	Path: cmdStrAgntPath,
-	Args: [] string {cmdStrAgntPath,"-p", agentConfig.CoordQMgr.Name, agentConfig.Agent.Name},
+	Args: [] string {cmdStrAgntPath,"-p", gjson.Get(agentConfig,"coordinationQMgr.name").String(), gjson.Get(agentConfig,"agent.name").String()},
   }
   
   // Reuse the same buffer
@@ -319,7 +259,7 @@ func main () {
 	return
   }
 
-  fmt.Printf("Verifying status of agent %s\n", agentConfig.Agent.Name)
+  fmt.Printf("Verifying status of agent %s\n", gjson.Get(agentConfig, "agent.name"))
   cmdListAgentPath, lookErr := exec.LookPath("fteListAgents")
   if lookErr != nil {
     panic(lookErr)
@@ -329,7 +269,7 @@ func main () {
   // Prepare fteListAgents command for execution
   cmdListAgents := &exec.Cmd {
 	Path: cmdListAgentPath,
-	Args: [] string {cmdListAgentPath, "-p", agentConfig.CoordQMgr.Name, agentConfig.Agent.Name},
+	Args: [] string {cmdListAgentPath, "-p", gjson.Get(agentConfig, "coordinationQMgr.name").String(), gjson.Get(agentConfig,"agent.name").String()},
   }
 
   // Reuse the same buffer
@@ -350,19 +290,19 @@ func main () {
 
   // Create a go routine to read the agent output0.log file
   if showAgentLogs == true {
-    agentLogPath := bfgDataPath + "/mqft/logs/" + agentConfig.CoordQMgr.Name + "/agents/" + agentConfig.Agent.Name + "/logs/output0.log"
+    agentLogPath := bfgDataPath + "/mqft/logs/" + gjson.Get(agentConfig, "coordinationQMgr.name").String() + "/agents/" + gjson.Get(agentConfig,"agent.name").String() + "/logs/output0.log"
     DisplayAgentOutputLog(displayLines, agentLogPath)
   }
  
   if strings.Contains(agentStatus,"STOPPED") == true {
     //if agent status is still stopped, wait for some time and then reissue fteListAgents commad
-    fmt.Println("Agent status not started yet. Wait for 5 seconds and recheck status again")
-    time.Sleep(5 * time.Second)
+    fmt.Println("Agent status not started yet. Wait for 10 seconds and recheck status again")
+    time.Sleep(10 * time.Second)
 	
     // Prepare fteListAgents command for execution
     cmdListAgents := &exec.Cmd {
 	  Path: cmdListAgentPath,
-	  Args: [] string {cmdListAgentPath, "-p", agentConfig.CoordQMgr.Name, agentConfig.Agent.Name},
+	  Args: [] string {cmdListAgentPath, "-p", gjson.Get(agentConfig, "coordinationQMgr.name").String(), gjson.Get(agentConfig, "agent.name").String()},
     }
     
 	// Execute and get the output of the command into a byte buffer.
@@ -401,10 +341,10 @@ func main () {
 	// Loop for ever or till asked to stop
 	for {
 	  if stopAgent {
-        fmt.Printf("Stopping agent %s\n", agentConfig.Agent.Name)
+        fmt.Printf("Stopping agent %s\n", gjson.Get(agentConfig,"agent.name"))
 	    cmdStopAgnt := &exec.Cmd {
 	      Path: cmdStopAgntPath,
-	      Args: [] string {cmdStopAgntPath,"-p", agentConfig.CoordQMgr.Name, agentConfig.Agent.Name, "-i"},
+	      Args: [] string {cmdStopAgntPath,"-p", gjson.Get(agentConfig, "coordinationQMgr.name").String(), gjson.Get(agentConfig, "agent.name").String(), "-i"},
 	    }
         
 		outb.Reset()
@@ -421,7 +361,7 @@ func main () {
       // Keep running fteListAgents at specified interval.
 	  cmdListAgents := &exec.Cmd {
         Path: cmdListAgentPath,
-        Args: [] string {cmdListAgentPath, "-p", agentConfig.CoordQMgr.Name, agentConfig.Agent.Name},
+        Args: [] string {cmdListAgentPath, "-p", gjson.Get(agentConfig, "coordinationQMgr.name").String(), gjson.Get(agentConfig, "agent.name").String()},
       }
 
       outb.Reset()
@@ -442,7 +382,7 @@ func main () {
         fmt.Println("Agent status unknown. Pinging the agent")
         cmdPingAgent := &exec.Cmd {
 	      Path: cmdPingAgntPath,
-	      Args: [] string {cmdPingAgntPath, "-p", agentConfig.CmdsQMgr.Name, agentConfig.Agent.Name},
+	      Args: [] string {cmdPingAgntPath, "-p", gjson.Get(agentConfig, "commandsQMgr.name").String(), gjson.Get(agentConfig, "agent.name").String()},
         }
  
         outb.Reset()
@@ -458,12 +398,12 @@ func main () {
 		var pingStatus string
 	    pingStatus = outb.String()
 	    if strings.Contains(pingStatus, "BFGCL0214I") {
-	      fmt.Printf("Agent %s did not respond to ping. Monitor exiting\n", agentConfig.Agent.Name)
+	      fmt.Printf("Agent %s did not respond to ping. Monitor exiting\n", gjson.Get(agentConfig, "agent.name"))
 	      return
 	    }
       } else {
 	    // Agent is alive, Then sleep for specified time
-	    time.Sleep(time.Duration(sleepTime) * time.Millisecond)
+	    time.Sleep(time.Duration(monitorWaitInterval) * time.Millisecond)
       }
     } // For loop.
   } else {
@@ -473,7 +413,7 @@ func main () {
 }
 
 // Method to display agent logs from output0.log file
-func DisplayAgentOutputLog(displayLines int, agentLogPath string) {
+func DisplayAgentOutputLog(displayLines int64, agentLogPath string) {
   // A channel to display logs continuosly.
   go func() {
     f, err := os.Open(agentLogPath)
@@ -492,7 +432,7 @@ func DisplayAgentOutputLog(displayLines int, agentLogPath string) {
       s, e := Readln(r)
 	  if e == nil {
 		logFileLines.PushBack(s)
-	    if logFileLines.Len() == displayLines {
+	    if int64(logFileLines.Len()) == displayLines {
 		  element := logFileLines.Front()
 		  logFileLines.Remove(element)
 	    }
@@ -529,11 +469,9 @@ func Readln(r *bufio.Reader) (string, error) {
 }
 
 // Read configuration data from json file
-func ReadConfigurationDataFromFile(configFile string) (AgentConfiguration, error ) {
-  var agentConfig AgentConfiguration
+func ReadConfigurationDataFromFile(configFile string) (string, error ) {
+  var agentConfig string
   jsonFile, err := os.Open(configFile)
-  //agentConfig = nil
-
   // if we os.Open returns an error then handle it
   if err != nil {
     fmt.Println(err)
@@ -551,32 +489,7 @@ func ReadConfigurationDataFromFile(configFile string) (AgentConfiguration, error
      fmt.Print(err)
 	 return agentConfig, err
   }
-
-     // unmarshall it
-  err = json.Unmarshal(data, &agentConfig)
-  if err != nil {
-     fmt.Println("error:", err)
-	 return agentConfig, err
-  }
+  agentConfig = string(data)
   return agentConfig, err
-}
-
-func ReadConfigurationDataFromEnvironment(envs [] string) (AgentConfiguration){
-  var agentConfig AgentConfiguration
-  agentConfig.CoordQMgr.Name = envs[3]
-  agentConfig.CoordQMgr.Host  = envs[4]
-  //agentConfig.CoordQMgr.Port  = strconv.Atoi(envs[5])
-  agentConfig.CoordQMgr.Channel = envs[6]
-  agentConfig.CmdsQMgr.Name  = envs[7]
-  agentConfig.CmdsQMgr.Host  = envs[8]
-  //agentConfig.CmdsQMgr.Port  = strconv.Atoi(envs[9])
-  agentConfig.CmdsQMgr.Channel  = envs[10]
-  agentConfig.Agent.Name  = envs[11]
-  agentConfig.Agent.QMgr  = envs[12]
-  agentConfig.Agent.QMgrHost  = envs[13]
-  //agentConfig.Agent.QMgrPort  =strconv.Atoi(envs[14])
-  agentConfig.Agent.QMgrChannel  = envs[15]
-  agentConfig.Agent.CredentialsFile  = envs[16]
-  return agentConfig
 }
 

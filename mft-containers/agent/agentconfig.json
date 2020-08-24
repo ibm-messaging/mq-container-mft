@@ -1,43 +1,42 @@
 {
   "dataPath" : "/mftdata",
-  "monitoringInterval" : 150,
+  "agentMonitorInterval" : 150,
   "displayAgentLogs" : false,
-  "displayLineCount" : 50,
-  "waitTimeToStart":10,
-  "agentType" : "STANDARD",
+  "maximumDisplayLines" : 50,
   "coordinationQMgr" : {
-    "name":"MFTHAQM",
-    "host":"9.202.176.145",
+    "name":"MFTCORDQM",
+    "host":"cordhost.com",
     "port":1414,
-    "channel":"MFT_HA_CHN"
+    "channel":"MFT.CHN"
   },
   "commandsQMgr" : {
-    "name":"MFTHAQM",
-    "host":"9.202.176.145",
+    "name":"MFTQM",
+    "host":"cmdhost.com",
     "port":1414,
-    "channel":"MFT_HA_CHN"
+    "channel":"MFT.CHN"
   },
   "agent" : {
-    "name":"KXAGNT",
-    "qmgr":"MFTHAQM",
-    "qmgrHost":"9.202.176.145",
+    "name":"SRCAGNT",
+    "agentType" : "STANDARD",
+    "qmgr":"MFTAGNTQM",
+    "qmgrHost":"agentqmhost.com",
     "qmgrPort":1414,
-    "qmgrChannel":"MFT_HA_CHN",
-    "credentialsFile":"/usr/local/bin/MQMFTCredentials.xml"
-  },
-  "protocolBridge" : {
-    "credentialsFile":"/usr/local/bin/ProtocolBridgeCredentials.xml",
-    "serverType":"SFTP",
-    "serverHost":"9.199.144.110",
-    "serverTimezone":"",
-    "serverPlatform":"UNIX",
-    "serverLocale":"en-US",
-    "serverFileEncoding":"UTF-8",
-    "serverPort":22,
-    "serverTrustStoreFile" : "",
-    "serverLimitedWrite":"",
-    "serverListFormat" :"",
-    "serverUserId":"root",
-    "serverPassword":"Kitt@n0or"
-  }
+    "qmgrChannel":"MFT.CHN",
+    "credentialsFile":"/usr/local/bin/MQMFTCredentials.xml",
+	"protocolBridge" : {
+		"credentialsFile":"/usr/local/bin/ProtocolBridgeCredentials.xml",
+		"serverType":"SFTP",
+		"serverHost":"9.199.144.110",
+		"serverTimezone":"",
+		"serverPlatform":"UNIX",
+		"serverLocale":"en-US",
+		"serverFileEncoding":"UTF-8",
+		"serverPort":22,
+		"serverTrustStoreFile" : "",
+		"serverLimitedWrite":"",
+		"serverListFormat" :"",
+		"serverUserId":"root",
+		"serverPassword":"Kitt@n0or"
+	  }
+	}
 }
