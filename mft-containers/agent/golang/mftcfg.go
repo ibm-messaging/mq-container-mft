@@ -48,6 +48,7 @@ func main () {
 	showAgentLogs = gjson.Get(agentConfig, "displayAgentLogs").Bool()
 	// Display n number of logs from agent log
 	displayLines = gjson.Get(agentConfig, "displayLineCount").Int()
+	// Wait before start
   } else {
     fmt.Println("Invalid parameters were provided.\nUsage: docker run --mount type=volume,source=mftdata,target=/mftdata -e AGENT_CONFIG_FILE=\"/mftdata/agentconfigsrc.json\" -d --name=AGENTSRC mftagentredist\n")
   }
@@ -393,17 +394,18 @@ func main () {
           if err != nil {
             fmt.Println("An error occurred when running ftePingAgent command. The error is: ", err)
             return
-          }
-	    
-		var pingStatus string
+          } 
+
+	    var pingStatus string
 	    pingStatus = outb.String()
 	    if strings.Contains(pingStatus, "BFGCL0214I") {
 	      fmt.Printf("Agent %s did not respond to ping. Monitor exiting\n", gjson.Get(agentConfig, "agent.name"))
 	      return
 	    }
       } else {
+	    fmt.Printf("Agent %s is running\n",  gjson.Get(agentConfig, "agent.name"))
 	    // Agent is alive, Then sleep for specified time
-	    time.Sleep(time.Duration(monitorWaitInterval) * time.Millisecond)
+	    time.Sleep(time.Duration(monitorWaitInterval) * time.Second)
       }
     } // For loop.
   } else {
@@ -478,7 +480,7 @@ func ReadConfigurationDataFromFile(configFile string) (string, error ) {
 	return agentConfig, err
   }
   
-  fmt.Println("Successfully Opened file " + configFile)
+  fmt.Println("Setting up agent using configuration file " + configFile)
   // defer the closing of our jsonFile so that we can parse it later on
   defer jsonFile.Close()
   
