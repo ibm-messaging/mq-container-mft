@@ -325,40 +325,35 @@ func main () {
 	// Agent is READY, so start monitoring the status. If the status becomes unknown, 
 	// this monitoring program terminates thus container also ends.
 	fmt.Println("Agent has started. Starting to monitor status")
-    // Setup channel to handle signals to stop agent
+    
+	// Setup channel to handle signals to stop agent
 	sigs := make(chan os.Signal, 1)
-    done := make(chan bool, 1)
-    // Notify monitor program when SIGINT or SIGTERM is issued to container.
+    
+	// Notify monitor program when SIGINT or SIGTERM is issued to container.
     signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-    var stopAgent bool
+	
     // Handler for receiving singals 
     go func() {
       sig := <-sigs
-	  fmt.Printf("Received signal %s\n", sig)
-	  stopAgent = true
-      done <- true
+      fmt.Printf("Stopping agent %s\n", gjson.Get(agentConfig,"agent.name"), sig)
+	  cmdStopAgnt := &exec.Cmd {
+	    Path: cmdStopAgntPath,
+	    Args: [] string {cmdStopAgntPath,"-p", gjson.Get(agentConfig, "coordinationQMgr.name").String(), gjson.Get(agentConfig, "agent.name").String(), "-i"},
+	  }
+        
+      outb.Reset()
+      errb.Reset()
+      cmdStopAgnt.Stdout = &outb
+      cmdStopAgnt.Stderr = &errb
+      err := cmdStopAgnt.Run()
+      if err != nil {
+	    fmt.Println("An error occured when running fteStopAgent command. The error is: ", err)
+      }
+      fmt.Printf("Stopped agent %s\n", gjson.Get(agentConfig,"agent.name"))
     }()
 
 	// Loop for ever or till asked to stop
 	for {
-	  if stopAgent {
-        fmt.Printf("Stopping agent %s\n", gjson.Get(agentConfig,"agent.name"))
-	    cmdStopAgnt := &exec.Cmd {
-	      Path: cmdStopAgntPath,
-	      Args: [] string {cmdStopAgntPath,"-p", gjson.Get(agentConfig, "coordinationQMgr.name").String(), gjson.Get(agentConfig, "agent.name").String(), "-i"},
-	    }
-        
-		outb.Reset()
-        errb.Reset()
-        cmdStopAgnt.Stdout = &outb
-        cmdStopAgnt.Stderr = &errb
-	    err := cmdStopAgnt.Run()
-        if err != nil {
-	      fmt.Println("An error occured when running fteStopAgent command. The error is: ", err)
-        }
-	    return
-      } // End of stopAgent processing
-
       // Keep running fteListAgents at specified interval.
 	  cmdListAgents := &exec.Cmd {
         Path: cmdListAgentPath,
@@ -494,4 +489,3 @@ func ReadConfigurationDataFromFile(configFile string) (string, error ) {
   agentConfig = string(data)
   return agentConfig, err
 }
-
