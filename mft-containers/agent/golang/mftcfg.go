@@ -12,7 +12,8 @@ import (
 	"bufio"
     "io/ioutil"
 	"container/list"
-    "github.com/tidwall/gjson"	
+    "github.com/tidwall/gjson"
+	"strconv"
 )
 
 // Main entry point to program.
@@ -26,10 +27,11 @@ func main () {
   var monitorWaitInterval int64
   // Variables for Stdout and Stderr
   var outb, errb bytes.Buffer
-
-  // 1- ENV_BFG_DATA 
-  // 2- ENV_AGENT_CONFIG_FILE
-  if len(os.Args) == 2 {
+  var startOnly bool
+  
+  // 1- AGENT_CONFIG_FILE
+  // 2- START_ONLY
+  if len(os.Args) >= 2 {
 	// Configuration file path from environment variable
     bfgConfigFilePath = os.Args[1]
 	// Read agent configuration data from JSON file.
@@ -40,6 +42,14 @@ func main () {
       return
     }
 	
+    if (len(os.Args) == 3) {
+       b, e := strconv.ParseBool(os.Args[2])
+       if e != nil {
+	 startOnly = false
+       } else {
+	 startOnly = b
+       }
+    }
     // BFG_DATA path
     bfgDataPath = gjson.Get(agentConfig, "dataPath").String()
 	// Agent liveliness monitoring interval
@@ -50,7 +60,7 @@ func main () {
 	displayLines = gjson.Get(agentConfig, "displayLineCount").Int()
 	// Wait before start
   } else {
-    fmt.Println("Invalid parameters were provided.\nUsage: docker run --mount type=volume,source=mftdata,target=/mftdata -e AGENT_CONFIG_FILE=\"/mftdata/agentconfigsrc.json\" -d --name=AGENTSRC mftagentredist\n")
+    fmt.Println("Invalid parameters were provided.\nUsage: docker run --mount type=volume,source=mftdata,target=/mftdata -e AGENT_CONFIG_FILE=\"/mftdata/agentconfigsrc.json\" -e START_ONLY -d --name=AGENTSRC mftagentredist\n")
   }
   
   // Set BFG_DATA environment variable so that we can run MFT commands.
@@ -105,6 +115,7 @@ func main () {
     return
   }
 
+  if !startOnly {
   // Setup coordination configuration
   fmt.Printf("Setting up coordination configuration %s for agent %s\n", gjson.Get(agentConfig,"coordinationQMgr.name"), gjson.Get(agentConfig,"agent.name"))
   cmdSetupCoord := &exec.Cmd {
@@ -241,8 +252,9 @@ func main () {
         fmt.Println("Error %s\n", errb.String())
 	fmt.Println("Create Agent command failed. The error is: ", err);
 	return
-  }
-
+    }
+  } // Start Only
+  
   fmt.Printf("Starting agent %s\n", gjson.Get(agentConfig, "agent.name"))
   cmdStrAgnt := &exec.Cmd {
 	Path: cmdStrAgntPath,
@@ -334,8 +346,8 @@ func main () {
 	
     // Handler for receiving singals 
     go func() {
-      sig := <-sigs
-      fmt.Printf("Stopping agent %s\n", gjson.Get(agentConfig,"agent.name"), sig)
+      <-sigs
+      fmt.Printf("Stopping agent %s\n", gjson.Get(agentConfig,"agent.name"))
 	  cmdStopAgnt := &exec.Cmd {
 	    Path: cmdStopAgntPath,
 	    Args: [] string {cmdStopAgntPath,"-p", gjson.Get(agentConfig, "coordinationQMgr.name").String(), gjson.Get(agentConfig, "agent.name").String(), "-i"},
