@@ -1,42 +1,49 @@
 {
   "dataPath" : "/mftdata",
-  "agentMonitorInterval" : 150,
+  "monitoringInterval" : 300,
   "displayAgentLogs" : false,
-  "maximumDisplayLines" : 50,
+  "displayLineCount" : 50,
+  "waitTimeToStart":10,
   "coordinationQMgr" : {
-    "name":"MFTCORDQM",
-    "host":"cordhost.com",
+    "name":"MFTHAQM",
+    "host":"9.202.176.145",
     "port":1414,
-    "channel":"MFT.CHN"
+    "channel":"MFT_HA_CHN"
   },
   "commandsQMgr" : {
-    "name":"MFTQM",
-    "host":"cmdhost.com",
+    "name":"MFTHAQM",
+    "host":"9.202.176.145",
     "port":1414,
-    "channel":"MFT.CHN"
+    "channel":"MFT_HA_CHN"
   },
   "agent" : {
-    "name":"SRCAGNT",
-    "agentType" : "STANDARD",
-    "qmgr":"MFTAGNTQM",
-    "qmgrHost":"agentqmhost.com",
+    "name":"KXAGNT",
+    "type" : "STANDARD",
+    "qmgrName":"MFTHAQM",
+    "qmgrHost":"9.202.176.145",
     "qmgrPort":1414,
-    "qmgrChannel":"MFT.CHN",
+    "qmgrChannel":"MFT_HA_CHN",
     "credentialsFile":"/usr/local/bin/MQMFTCredentials.xml",
-	"protocolBridge" : {
-		"credentialsFile":"/usr/local/bin/ProtocolBridgeCredentials.xml",
-		"serverType":"SFTP",
-		"serverHost":"9.199.144.110",
-		"serverTimezone":"",
-		"serverPlatform":"UNIX",
-		"serverLocale":"en-US",
-		"serverFileEncoding":"UTF-8",
-		"serverPort":22,
-		"serverTrustStoreFile" : "",
-		"serverLimitedWrite":"",
-		"serverListFormat" :"",
-		"serverUserId":"root",
-		"serverPassword":"Kitt@n0or"
-	  }
-	}
+    "protocolBridge" : {
+      "credentialsFile":"/usr/local/bin/ProtocolBridgeCredentials.xml",
+      "serverType":"SFTP",
+      "serverHost":"9.199.144.110",
+      "serverTimezone":"",
+      "serverPlatform":"UNIX",
+      "serverLocale":"en-US",
+      "serverFileEncoding":"UTF-8",
+      "serverPort":22,
+      "serverTrustStoreFile" : "",
+      "serverLimitedWrite":"",
+      "serverListFormat" :"",
+      "serverUserId":"root",
+      "serverPassword":"Kitt@n0or"
+    }
+    "additionalProperties" : {
+      " enableQueueInputOutput" :"true"
+    },
+    "resourceMonitors" : {
+      "QMON" : "/mftdata/mntrs/qmon.xml",
+      "QMON2" :"/mftdata/mntrs/qmon2.xml"
+    }
 }

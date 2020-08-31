@@ -14,6 +14,7 @@ import (
 	"container/list"
     "github.com/tidwall/gjson"
 	"strconv"
+	"errors"
 )
 
 // Main entry point to program.
@@ -259,6 +260,10 @@ func main () {
     }
   } // Not Start Only
   
+  // Update agent properties file
+  agentPropertiesFile := bfgDataPath + "/mqft/config/" + gjson.Get(agentConfig, "coordinationQMgr.name").String() + "/agents/" + gjson.Get(agentConfig,"agent.name").String() + "/agent.properties"
+  updateAgentProperties(agentPropertiesFile, agentConfig);
+  
   fmt.Printf("Starting agent %s\n", gjson.Get(agentConfig, "agent.name"))
   cmdStrAgnt := &exec.Cmd {
 	Path: cmdStrAgntPath,
@@ -315,8 +320,8 @@ func main () {
   }
  
   if strings.Contains(agentStatus,"STOPPED") == true {
-    //if agent status is still stopped, wait for some time and then reissue fteListAgents commad
-    fmt.Println("Agent status not started yet. Wait for 10 seconds and recheck status again")
+    //if agent not started yet, wait for some time and then reissue fteListAgents commad
+    fmt.Println("Agent not started yet. Wait for 10 seconds and recheck status again")
     time.Sleep(10 * time.Second)
 	
     // Prepare fteListAgents command for execution
@@ -341,11 +346,26 @@ func main () {
 	agentStatus = outb.String()
   } // If agent stopped
 
-  // If agent status is READY, then we are good. 
-  if strings.Contains(agentStatus,"READY") == true  {
+  // If agent status is READY or ACTIVE, then we are good. 
+  if (strings.Contains(agentStatus,"READY") == true ||
+     strings.Contains(agentStatus,"ACTIVE") == true)  {
+	fmt.Println("Agent has started.")
+	 // Create resource monitor if asked for
+	 if gjson.Get(agentConfig, "agent.resourceMonitors").Exists() {
+	   result := gjson.Get(agentConfig, "agent.resourceMonitors")
+       result.ForEach(func(key, value gjson.Result) bool {
+	   createResourceMonitor(gjson.Get(agentConfig, "coordinationQMgr.name").String(), 
+	                        gjson.Get(agentConfig, "agent.name").String(),
+                            gjson.Get(agentConfig, "agent.qmgrName").String(), 							 
+							key.String(), 
+							value.String())
+	   return true // keep iterating
+      })
+     }
+  
 	// Agent is READY, so start monitoring the status. If the status becomes unknown, 
 	// this monitoring program terminates thus container also ends.
-	fmt.Println("Agent has started. Starting to monitor status")
+	fmt.Println("Starting to monitor agent status")
     
 	// Setup channel to handle signals to stop agent
 	sigs := make(chan os.Signal, 1)
@@ -512,5 +532,97 @@ func ReadConfigurationDataFromFile(configFile string) (string, error ) {
 	 return agentConfig, err
   }
   agentConfig = string(data)
+  
+  err = validateAttributes(agentConfig)
   return agentConfig, err
+}
+
+// Validate attributes in JSON file.
+func validateAttributes(jsonData string) (error){
+  // Datapath is a mandatory attribute.
+  if !gjson.Get(jsonData, "dataPath").Exists() {
+	err := errors.New("dataPath attribute missing. Can't setup agent configuration")
+	return err
+  }
+  
+  // Coordination queue manager is mandatory
+  if !gjson.Get(jsonData, "coordinationQMgr.name").Exists() {
+	err := errors.New("Coordination queue manager name missing. Can't setup agent configuration")
+	return err
+  }
+
+  // Commands queue manager is mandatory
+  if !gjson.Get(jsonData, "commandsQMgr.name").Exists() {
+	err := errors.New("Command queue manager name missing. Can't setup agent configuration")
+	return err
+  }
+
+  // Agent name is mandatory
+  if !gjson.Get(jsonData, "agent.name").Exists() {
+	err := errors.New("Agent name missing. Can't setup agent configuration")
+	return err
+  }
+
+  // Agent queue manager name is mandatory
+  if !gjson.Get(jsonData, "agent.qmgrName").Exists() {
+	err := errors.New("Agent queue manager name missing. Can't setup agent configuration")
+	return err
+  }
+
+  // Agent queue manager name is mandatory
+  if !gjson.Get(jsonData, "agent.credentialsFile").Exists() {
+	err := errors.New("Agent credentials file missing. Can't setup agent configuration")
+	return err
+  }
+  return nil
+}
+
+// Create resource monitor 
+func createResourceMonitor(coordinationQMgr string, agentName string, agentQMgr string, monitorName string, fileName string) (error) {
+  var outb, errb bytes.Buffer
+  fmt.Println("Creating resource monitor " + monitorName)
+  
+  // Get the path of MFT fteCreateAgent command. 
+  cmdCrtMonitorPath, lookErr:= exec.LookPath("fteCreateMonitor")
+  if lookErr != nil {
+	return lookErr
+  }
+  cmdCrtMonitorCmd := &exec.Cmd {
+	Path: cmdCrtMonitorPath,
+	Args: [] string {cmdCrtMonitorPath, "-p", coordinationQMgr, 
+	                              "-mm", agentQMgr, 
+								  "-ma", agentName, 
+	                              "-mn", monitorName, 
+								  "-ix", fileName,"-f"},
+  }
+
+  // Reuse the same buffer
+  cmdCrtMonitorCmd.Stdout = &outb
+  cmdCrtMonitorCmd.Stderr = &errb
+  // Execute the fteSetupCommands command. Log an error an exit in case of any error.
+  if err := cmdCrtMonitorCmd.Run(); err != nil {
+	fmt.Println("fteCreateMonitor command failed. The errror is: ", err);
+	fmt.Println("Command: %s\n", outb.String())
+    fmt.Println("Error %s\n", errb.String())
+	return err
+  }
+  return nil
+}
+
+func updateAgentProperties(propertiesFile string, agentConfig string) {
+  f, err := os.OpenFile(propertiesFile, os.O_APPEND|os.O_WRONLY, 0644)
+  if err != nil {
+	fmt.Println(err)
+  }
+  defer f.Close()
+  
+  if gjson.Get(agentConfig, "agent.additionalProperties").Exists() {
+	result := gjson.Get(agentConfig, "agent.additionalProperties")
+    result.ForEach(func(key, value gjson.Result) bool {
+       if _, err := f.WriteString(key.String() + "=" + value.String() + "\n"); err != nil {
+	     fmt.Println(err)
+       }
+	   return true // keep iterating
+      })
+  }
 }
