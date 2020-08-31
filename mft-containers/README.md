@@ -139,54 +139,69 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
 	While most the attributes of JSON file are self explanatory, here is a brief explanation of on some of them.
     ```
 	dataPath: Absolute path where agent configuration will be created.
+	
 	agentMonitorInterval: Frequency at which container will monitor the status of an agent. A monitor program 'mftcfg' is used to monitor the status of agent.
+	
 	displayAgentLogs: Read and display logs on console from output0.log file of an agent.
+	
 	maximumDisplayLines: The number of lines from the output0.log file to display. The latest lines from the log file will be displayed.
+	
+	The additionalProperties section allows additional properties to be set in the agent.properties file before an agent is starts. The names of the properties and their values must match the properties documented here 
+	https://www.ibm.com/support/knowledgecenter/SSFKSJ_9.2.0/com.ibm.mq.ref.con.doc/properties.htm.
+	
+	The resourceMonitors section allows you to specify name of the xml file containing resource monitor definition. The xml file must be located on a persistent volume.
     ```
 	
 	The following is an example of an agent configuration JSON file
     ```
-	{
-      "dataPath" : "/mftdata",
-      "agentMonitorInterval" : 150,
-      "displayAgentLogs" : false,
-      "maximumDisplayLines" : 50,
-      "coordinationQMgr" : {
-        "name":"MFTQM",
-        "host":"coordqmhost.com",
-        "port":1414,
-        "channel":"MFT.CHN"
+   {
+    "dataPath" : "/mftdata",
+    "monitoringInterval" : 300,
+    "displayAgentLogs" : false,
+    "displayLineCount" : 50,
+    "waitTimeToStart":10,
+    "coordinationQMgr" : {
+      "name":"MFTHAQM",
+      "host":"9.202.176.145",
+      "port":1414,
+      "channel":"MFT_HA_CHN"
+    },
+    "commandsQMgr" : {
+      "name":"MFTHAQM",
+      "host":"9.202.176.145",
+      "port":1414,
+      "channel":"MFT_HA_CHN"
+    },
+    "agent" : {
+      "name":"KXAGNT",
+      "type" : "STANDARD",
+      "qmgrName":"MFTHAQM",
+      "qmgrHost":"9.202.176.145",
+      "qmgrPort":1414,
+      "qmgrChannel":"MFT_HA_CHN",
+      "credentialsFile":"/usr/local/bin/MQMFTCredentials.xml",
+      "protocolBridge" : {
+        "credentialsFile":"/usr/local/bin/ProtocolBridgeCredentials.xml",
+        "serverType":"SFTP",
+        "serverHost":"9.199.144.110",
+        "serverTimezone":"",
+        "serverPlatform":"UNIX",
+        "serverLocale":"en-US",
+        "serverFileEncoding":"UTF-8",
+        "serverPort":22,
+        "serverTrustStoreFile" : "",
+        "serverLimitedWrite":"",
+        "serverListFormat" :"",
+        "serverUserId":"root",
+        "serverPassword":"Kitt@n0or"
       },
-      "commandsQMgr" : {
-        "name":"MFTQM",
-        "host":"cmdqmhost.com",
-        "port":1414,
-        "channel":"MFT.CHN"
+      "additionalProperties" : {
+        "enableQueueInputOutput" :"true"
       },
-      "agent" : {
-        "name":"AGNTSRC",
-        "agentType" : "STANDARD",
-        "qmgrName":"MFTQM",
-        "qmgrHost":"agentqmhost.com",
-        "qmgrPort":1414,
-        "qmgrChannel":"MFT.CHN",
-        "credentialsFile":"/usr/local/bin/MQMFTCredentials.xml",
-	    "protocolBridge" : {
-		  "credentialsFile":"/usr/local/bin/ProtocolBridgeCredentials.xml",
-		  "serverType":"SFTP",
-		  "serverHost":"mysftp.com",
-		  "serverTimezone":"",
-		  "serverPlatform":"UNIX",
-		  "serverLocale":"en-US",
-		  "serverFileEncoding":"UTF-8",
-		  "serverPort":22,
-		  "serverTrustStoreFile" : "",
-		  "serverLimitedWrite":"",
-		  "serverListFormat" :"",
-		  "serverUserId":"sftpuser",
-		  "serverPassword":"sftpPassw@rd"
-	    }
-	  }
+      "resourceMonitors" : {
+        "QMON" : "/mftdata/mntrs/qmon.xml",
+        "QMON2" :"/mftdata/mntrs/qmon2.xml"
+      }
    }
     ```
 
