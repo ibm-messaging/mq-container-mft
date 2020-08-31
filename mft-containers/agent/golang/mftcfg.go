@@ -131,6 +131,8 @@ func main () {
   cmdSetupCoord.Stderr = &errb
   if err := cmdSetupCoord.Run(); err != nil {
 	fmt.Println("fteSetupCoordination command failed. The error is: ", err);
+	fmt.Println("Command: %s\n", outb.String())
+    fmt.Println("Error %s\n", errb.String())
 	return
   }
 
@@ -153,6 +155,8 @@ func main () {
   // Execute the fteSetupCommands command. Log an error an exit in case of any error.
   if err := cmdSetupCmds.Run(); err != nil {
 	fmt.Println("fteSetupCommands command failed. The errror is: ", err);
+	fmt.Println("Command: %s\n", outb.String())
+    fmt.Println("Error %s\n", errb.String())
 	return
   }
 
@@ -249,11 +253,11 @@ func main () {
   // Execute the fteCreateAgent command. Log an error an exit in case of any error.
   if err := cmdCrtAgnt.Run(); err != nil {
 	fmt.Println("Command: %s\n", outb.String())
-        fmt.Println("Error %s\n", errb.String())
+    fmt.Println("Error %s\n", errb.String())
 	fmt.Println("Create Agent command failed. The error is: ", err);
 	return
     }
-  } // Start Only
+  } // Not Start Only
   
   fmt.Printf("Starting agent %s\n", gjson.Get(agentConfig, "agent.name"))
   cmdStrAgnt := &exec.Cmd {
@@ -268,7 +272,8 @@ func main () {
   cmdStrAgnt.Stderr = &errb
   // Run fteStartAgent command. Log an error and exit in case of any error.
   if err := cmdStrAgnt.Run(); err != nil {
-	fmt.Println("Error:", err);
+	fmt.Println("Command: %s\n", outb.String())
+    fmt.Println("Error %s\n", errb.String())
 	return
   }
 
@@ -294,6 +299,8 @@ func main () {
   err := cmdListAgents.Run()
   if err != nil {
 	fmt.Println("Error: ", err)
+	fmt.Println("Command: %s\n", outb.String())
+    fmt.Println("Error %s\n", errb.String())
 	return
   }
 
@@ -326,6 +333,8 @@ func main () {
     err := cmdListAgents.Run()
     if err != nil {
       fmt.Println("Error: ", err)
+	  fmt.Println("Command: %s\n", outb.String())
+      fmt.Println("Error %s\n", errb.String())
       return
     }
     // Copy the latest status again.	
@@ -379,6 +388,8 @@ func main () {
       err := cmdListAgents.Run()
       if err != nil {
         fmt.Printf("An error occurred when running fteListAgents command. The error is %s\n: ", err)
+	    fmt.Println("Command: %s\n", outb.String())
+        fmt.Println("Error %s\n", errb.String())
         return
       }
 
@@ -400,6 +411,8 @@ func main () {
 	    err := cmdPingAgent.Run()
           if err != nil {
             fmt.Println("An error occurred when running ftePingAgent command. The error is: ", err)
+	        fmt.Println("Command: %s\n", outb.String())
+            fmt.Println("Error %s\n", errb.String())
             return
           } 
 

@@ -205,6 +205,16 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
     docker logs <AGENTSRC-container-id>
     docker logs <AGENTDEST-container-id>
     ```
+9. To stop an agent use the following command 
+    ```
+    docker exec <AGENTSRC-container-id> bash -c 'export BFG_DATA=/mftdata ; export PATH=$PATH:/var/mqm/mft/bin ; fteStopAgent -i <agent name>'
+    ```
+10. To delete an agent, stop the agent first and then delete it. Use the following commands
+    ```
+    docker exec <AGENTSRC-container-id> bash -c 'export BFG_DATA=/mftdata ; export PATH=$PATH:/var/mqm/mft/bin ; fteStopAgent -i <agent name>'
+    docker exec <AGENTSRC-container-id> bash -c 'export BFG_DATA=/mftdata ; export PATH=$PATH:/var/mqm/mft/bin ; fteDeleteAgent <agent name> -f'
+    ```
+
 ---
 
 ### Create a File Transfer with MFT Agents in Containers
