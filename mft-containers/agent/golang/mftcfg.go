@@ -351,18 +351,20 @@ func main () {
      strings.Contains(agentStatus,"ACTIVE") == true)  {
 	fmt.Println("Agent has started.")
 	 // Create resource monitor if asked for
-	 if gjson.Get(agentConfig, "agent.resourceMonitors").Exists() {
-	   result := gjson.Get(agentConfig, "agent.resourceMonitors")
-       result.ForEach(func(key, value gjson.Result) bool {
-	   createResourceMonitor(gjson.Get(agentConfig, "coordinationQMgr.name").String(), 
+	 if !startOnly {
+	   if gjson.Get(agentConfig, "agent.resourceMonitors").Exists() {
+	     result := gjson.Get(agentConfig, "agent.resourceMonitors")
+         result.ForEach(func(key, value gjson.Result) bool {
+	     createResourceMonitor(gjson.Get(agentConfig, "coordinationQMgr.name").String(), 
 	                        gjson.Get(agentConfig, "agent.name").String(),
                             gjson.Get(agentConfig, "agent.qmgrName").String(), 							 
 							key.String(), 
 							value.String())
-	   return true // keep iterating
+	     return true // keep looping till end
       })
      }
-  
+    }
+	
 	// Agent is READY, so start monitoring the status. If the status becomes unknown, 
 	// this monitoring program terminates thus container also ends.
 	fmt.Println("Starting to monitor agent status")
@@ -619,7 +621,7 @@ func updateAgentProperties(propertiesFile string, agentConfig string) {
   if gjson.Get(agentConfig, "agent.additionalProperties").Exists() {
 	result := gjson.Get(agentConfig, "agent.additionalProperties")
     result.ForEach(func(key, value gjson.Result) bool {
-       if _, err := f.WriteString(key.String() + "=" + value.String() + "\n"); err != nil {
+       if _, err := f.WriteString("\n" + key.String() + "=" + value.String() + "\n"); err != nil {
 	     fmt.Println(err)
        }
 	   return true // keep iterating

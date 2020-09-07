@@ -149,7 +149,7 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
 	The additionalProperties section allows additional properties to be set in the agent.properties file before an agent is starts. The names of the properties and their values must match the properties documented here 
 	https://www.ibm.com/support/knowledgecenter/SSFKSJ_9.2.0/com.ibm.mq.ref.con.doc/properties.htm.
 	
-	The resourceMonitors section allows you to specify name of the xml file containing resource monitor definition. The xml file must be located on a persistent volume.
+	The resourceMonitors section allows you to specify name of the xml file containing resource monitor definition. The xml file must be located on a persistent volume. The xml file can be created using fteCreateMonitor command on your system and then copied to persistent volume. More details on fteCreateMonitor can be found here: https://www.ibm.com/support/knowledgecenter/SSFKSJ_9.2.0/com.ibm.mq.ref.adm.doc/create_monitor_cmd.htm
     ```
 	
 	The following is an example of an agent configuration JSON file
@@ -262,6 +262,16 @@ We will create a text file on **AGENTSRC** that will be transferred to **AGENTDE
     docker exec -ti <AGENTDEST-container-id> bash -c "cat /tmp/transfer.txt"
     ```
     **Note:** If the output of above command is *Hello World*, that confirms file transfer is complete and successful.
+
+---
+### CPU and Memory recommendations
+
+1. If you want limit the number of CPUs for your container running agent, then you must specify a minimum of 1 CPU. Using lesser CPU may cause problems when running transfers or running any MFT commands in the container.
+2. It is recommended to specify memory size of 1 giga bytes for agent container. Agent will use JVM heap size based on the memory specified for the container.
+   The following example specifies 1 cpu and 1g memory for the container.
+    ```
+	docker run --cpus 1 --memory="1g" --mount type=volume,source=mftdata,target=/mftdata -e AGENT_CONFIG_FILE="/mftdata/agentconfigsrc.json" -d --name=AGENTSRC mftagentredist
+    ```
 
 ---
 ### Conclusion  
