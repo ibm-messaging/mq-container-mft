@@ -5,29 +5,29 @@
   "displayLineCount" : 50,
   "waitTimeToStart":10,
   "coordinationQMgr" : {
-    "name":"MFTHAQM",
-    "host":"9.202.176.145",
+    "name":"MFTCORDQM",
+    "host":"mftcordqm.host.com",
     "port":1414,
-    "channel":"MFT_HA_CHN"
+    "channel":"MFT.CORD.CHN"
   },
   "commandsQMgr" : {
-    "name":"MFTHAQM",
-    "host":"9.202.176.145",
+    "name":"MFTCMDQM",
+    "host":"mftcmdqm.host.com",
     "port":1414,
-    "channel":"MFT_HA_CHN"
+    "channel":"MFT.CMD.CHN"
   },
   "agent" : {
     "name":"KXAGNT",
     "type" : "STANDARD",
-    "qmgrName":"MFTHAQM",
-    "qmgrHost":"9.202.176.145",
+    "qmgrName":"MFTAGNTQM",
+    "qmgrHost":"mftagntqm.host.com",
     "qmgrPort":1414,
-    "qmgrChannel":"MFT_HA_CHN",
+    "qmgrChannel":"MFT.AGNT.CHN",
     "credentialsFile":"/usr/local/bin/MQMFTCredentials.xml",
     "protocolBridge" : {
       "credentialsFile":"/usr/local/bin/ProtocolBridgeCredentials.xml",
       "serverType":"SFTP",
-      "serverHost":"9.199.144.110",
+      "serverHost":"sftp.server.com",
       "serverTimezone":"",
       "serverPlatform":"UNIX",
       "serverLocale":"en-US",
@@ -36,8 +36,8 @@
       "serverTrustStoreFile" : "",
       "serverLimitedWrite":"",
       "serverListFormat" :"",
-      "serverUserId":"root",
-      "serverPassword":"Kitt@n0or"
+      "serverUserId":"sftpuser",
+      "serverPassword":"sftppassworld"
     }
     "additionalProperties" : {
       " enableQueueInputOutput" :"true"
