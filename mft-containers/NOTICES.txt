@@ -142,8 +142,6 @@ C.1 Apache Software License ("ASL") Version 2
   Copyright (c) 2015-2018 Google  Inc.  Netflix  Inc.  Microsoft Corp. and contributors
 * Jetty - jetty-io, jminix, weld, hawtio, jolokia
 * OpenAjax.js
-* github.com/tidwall/gjson
-  Copyright (c) 2016 Josh Baker
 
 C.2 Eclipse Public License (EPL) -v 1.0
 * AspectJ (https://www.eclipse.org/aspectj/downloads.php)
@@ -286,6 +284,9 @@ C.13 MIT license
   Copyright (c) 2008-2009 Bjoern Hoehrmann
 * UTF8VALIDATOR.JAVA [Netty] 
   Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de>
+* github.com/tidwall/gjson
+  Copyright (c) 2016 Josh Baker
+
 
 C.14 NVD3
 * NVD3
