@@ -1,4 +1,7 @@
-# MFT on Cloud
+# MFT on Cloud Archived
+
+This folder contains the earlier implementation of IBM MQ Managed File Transfer container image
+
 This repository helps you onboard MFT on to cloudy platforms such as Docker and Kubernetes.
 
 **Recommended Getting Started approach would be:**
