@@ -1,13 +1,56 @@
-# MFT on Cloud Archived
+# IBM MQ Managed File Transfer in Container
+[![Build Status](https://travis.ibm.com/mq-cloudpak/mq-container-mft.svg?token=xZr8j7p3SLYrpzU9uf3c&branch=master)](https://travis.ibm.com/mq-cloudpak/mq-container-mft)
 
-This folder contains the earlier implementation of IBM MQ Managed File Transfer container image
+## Overview
+IBM MQ Managed File Transfer transfers files between systems in a managed and auditable way, regardless of file size or the operating systems used. You can use Managed File Transfer to build a customized, scalable, and automated solution that enables you to manage, trust, and secure file transfers. Managed File Transfer eliminates costly redundancies, lowers maintenance costs, and maximizes your existing IT investments.
 
-This repository helps you onboard MFT on to cloudy platforms such as Docker and Kubernetes.
+Run IBM MQ Managed File Transfer agents in a container .
 
-**Recommended Getting Started approach would be:**
-1. mft-containers
-2. mft-kubernetes
 
-You can get started in each of the folders in above mentioned order.
+## Build
 
-If you need further enhancements or find some problems with existing, please raise them as issues and we'll look after them.
+You can build a docker image containing IBM MQ Managed File Transfer Redistributable Package. After extracting the code from this repository, you can follow the [build documentation](docs/building.md) to build an image.
+
+## Usage
+
+See the [Run as Docker container](docs/usage-docker.md) for details on how to run the image docker container. 
+
+See the [Run in OCP](docs/usage-ocp.md) for details on how to run the image in OpenShift Container Platform.
+
+Note that in order to use the image, it is necessary to accept the terms of the [IBM MQ license](#license).
+
+### Environment variables supported by this image
+
+- **LICENSE** - Required. Set this to `accept` to agree to the MQ Advanced for Developers license. If you wish to see the license you can set this to `view`.
+- **MFT_AGENT_CONFIG_FILE** - Required. Path of the json file containing information required for setting up an agent. The path must be on a mount point. For example a configMap on OpenShift. See the [agent configuration doc](docs/agentconfig.md) for a detailed description of attributes.
+- **MFT_AGENT_NAME** - Required. Name of the agent to configure. 
+- **BFG_JVM_PROPERTIES** - Optional - Any JVM property that needs to be set when running agent JVM.
+- **MOUNT_PATH** - Optional - A file system directory from where an agent will `read` or `write` files. Agent will not have access to other parts of the mounted file system. The environment variable is valid only fot STANDARD type agent and not valid for BRIDGE agents. If this parameter is not specified, agent will read from or write to `/mountpath` directory of the container file system.
+- **MFT_AGENT_BRIDGE_CREDENTIAL_FILE** - Required for BRIDGE agent - Name of the environment variable that points to path of a file containing credential information for connecting to SFTP/FTP/FTPS file server. The file can reside either in a Kubernetes ConfigMap or a Secret
+- **LOG_LEVEL** - Optional - Level of information displayed. `info` and `verbose` are the supported values with `info` being default. Contents of agent's output0.log is displayed if LOG_LEVEL is set to `verbose`.
+
+### Location of agent configuration files
+
+Agent in the container will create agent configuration and log files under the fixed directory `/mnt/mftdata`. This folder can be on a persistent volume as well, in which case the volume must be mounted as `/mnt/mftdata` mount point in to the container
+
+
+## Issues and contributions
+
+For issues relating specifically to the container image or Helm chart, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mq-container/issues). If you do submit a Pull Request related to this Docker image, please indicate in the Pull Request that you accept and agree to be bound by the terms of the [IBM Contributor License Agreement](CLA.md).
+
+## License
+
+The Dockerfiles and associated code and scripts are licensed under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0.html).
+Licenses for the products installed within the images are as follows:
+
+- [IBM MQ Advanced for Developers](http://www14.software.ibm.com/cgi-bin/weblap/lap.pl?la_formnum=Z125-3301-14&li_formnum=L-APIG-BMKG5H) (International License Agreement for Non-Warranted Programs). This license may be viewed from an image using the `LICENSE=view` environment variable as described above or by following the link above.
+- [IBM MQ Advanced](http://www14.software.ibm.com/cgi-bin/weblap/lap.pl?la_formnum=Z125-3301-14&li_formnum=L-APIG-BMJJBM) (International Program License Agreement). This license may be viewed from an image using the `LICENSE=view` environment variable as described above or by following the link above.
+
+Note: The IBM MQ Advanced for Developers license does not permit further distribution and the terms restrict usage to a developer machine.
+
+## Copyright
+
+© Copyright IBM Corporation 2020, 2021
+
+(Archived)
+See [here](https://github.com/ibm-messaging/mft-cloud/tree/master) for earlier version of the MFT on clound implemetion.
