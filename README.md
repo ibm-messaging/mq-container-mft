@@ -1,4 +1,4 @@
-# IBM MQ Managed File Transfer in Container
+# IBM MQ Managed File Transfer Container
 [![Build Status](https://travis.ibm.com/mq-cloudpak/mq-container-mft.svg?token=xZr8j7p3SLYrpzU9uf3c&branch=master)](https://travis.ibm.com/mq-cloudpak/mq-container-mft)
 
 ## Overview
@@ -6,16 +6,14 @@ IBM MQ Managed File Transfer transfers files between systems in a managed and au
 
 Run IBM MQ Managed File Transfer agents in a container .
 
+See [here](READMEEarlierImp.md) for an earlier implementation of MFT on cloud.
 
-## Build
-
-You can build a docker image containing IBM MQ Managed File Transfer Redistributable Package. After extracting the code from this repository, you can follow the [build documentation](docs/building.md) to build an image.
 
 ## Usage
 
-See the [Run as Docker container](docs/usage-docker.md) for details on how to run the image docker container. 
+See the [Run as Docker container documentation](docs/usage-docker.md) for details on how to run the image docker container. 
 
-See the [Run in OCP](docs/usage-ocp.md) for details on how to run the image in OpenShift Container Platform.
+See the [Run in OCP documentation ](docs/usage-ocp.md) for details on how to run the image in OpenShift Container Platform.
 
 Note that in order to use the image, it is necessary to accept the terms of the [IBM MQ license](#license).
 
@@ -36,7 +34,7 @@ Agent in the container will create agent configuration and log files under the f
 
 ## Issues and contributions
 
-For issues relating specifically to the container image or Helm chart, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mq-container/issues). If you do submit a Pull Request related to this Docker image, please indicate in the Pull Request that you accept and agree to be bound by the terms of the [IBM Contributor License Agreement](CLA.md).
+For issues relating specifically to the container image or Helm chart, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mft-cloud/issues). If you do submit a Pull Request related to this Docker image, please indicate in the Pull Request that you accept and agree to be bound by the terms of the [IBM Contributor License Agreement](CLA.md).
 
 ## License
 
@@ -51,6 +49,3 @@ Note: The IBM MQ Advanced for Developers license does not permit further distrib
 ## Copyright
 
 © Copyright IBM Corporation 2020, 2021
-
-(Archived)
-See [here](https://github.com/ibm-messaging/mft-cloud/tree/master) for earlier version of the MFT on clound implemetion.
