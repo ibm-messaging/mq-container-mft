@@ -1,5 +1,4 @@
 # IBM MQ Managed File Transfer Container
-[![Build Status](https://travis.ibm.com/mq-cloudpak/mq-container-mft.svg?token=xZr8j7p3SLYrpzU9uf3c&branch=master)](https://travis.ibm.com/mq-cloudpak/mq-container-mft)
 
 ## Overview
 IBM MQ Managed File Transfer transfers files between systems in a managed and auditable way, regardless of file size or the operating systems used. You can use Managed File Transfer to build a customized, scalable, and automated solution that enables you to manage, trust, and secure file transfers. Managed File Transfer eliminates costly redundancies, lowers maintenance costs, and maximizes your existing IT investments.
@@ -32,7 +31,7 @@ Agent in the container will create agent configuration and log files under the f
 
 ## Issues and contributions
 
-For issues relating specifically to the container image or Helm chart, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mft-cloud/issues). If you do submit a Pull Request related to this Docker image, please indicate in the Pull Request that you accept and agree to be bound by the terms of the [IBM Contributor License Agreement](CLA.md).
+For issues relating specifically to the container image please use the [GitHub issue tracker](https://github.com/ibm-messaging/mft-cloud/issues).
 
 ## License
 
