@@ -32,6 +32,10 @@ spec:
         - name: mqmft-nfs-config 
           persistentVolumeClaim:
             claimName: nfs-mft-pvc - <- Persistent volume that will contain agent configuration and logs
+
+        - name: mqmft-nfs
+          persistentVolumeClaim:
+            claimName: nfs-customer-pvc <- Persistent volume for customer files
       
 	  containers:
         - resources: {}
@@ -83,9 +87,13 @@ spec:
 			- name: mqmft-nfs-config <-Optional: Mount path where configuration and log files of an agent would be created
               mountPath: /mnt/mftdata
               subPath: mftdata
+
           
+		    - name: mqmft-nfs <- Volume mount for customer files
+              mountPath: /mountpath
+
 		  terminationMessagePolicy: File
           
 		  image: >-
-             docker.io/ibmcom/mqmft::9.2.2.0-amd64 <- URI from where an agent container image will be pulled for deployment
+             docker.io/ibmcom/mqmft:latest <- URI from where an agent container image will be pulled for deployment
 ```

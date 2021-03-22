@@ -174,10 +174,13 @@ Confirm that queue manager is running. You may have to wait for few minutes for 
 
 Find the host name of the coordination queue manager.
 
-`oc get routes example-tls-route`
+`oc get routes`
 
-Note the host name in the output. The same will be used for connecting to queue manager. 
-
+IBM MQ create another route automatically. Hence there will be two routes for your queue manager. You will be using the host name provided by the automatically created route. In the example below the second route is automatically generated. 
+```
+example-tls-route           secureqmchl.chl.mq.ibm.com                                              secureqm-ibm-mq          1414   passthrough   None
+secureqm-ibm-mq-qm          secureqm-ibm-mq-qm-xxx.xxx.xxx.com                                      secureqm-ibm-mq          1414   passthrough   None
+```
 
 **Step #11**
 

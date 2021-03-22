@@ -1,0 +1,67 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: ibm-mq-managed-file-transfer-srcagent
+  namespace: ibmmqmft
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ibm-mq-managed-file-transfer-srcagent
+  template:
+    metadata:
+      labels:
+        app: ibm-mq-managed-file-transfer-srcagent
+        deploymentconfig: ibm-mq-managed-file-transfer-srcagent
+    spec:
+      volumes:
+        - name: mqmft-agent-config-map
+          configMap:
+            name: mqmft-agent-config
+            defaultMode: 420
+        - name: mqmft-nfs
+          persistentVolumeClaim:
+            claimName: nfs-pvc
+      containers:
+        - resources: {}
+          readinessProbe:
+            exec:
+              command:
+                - agentready
+            initialDelaySeconds: 15
+            timeoutSeconds: 3
+            periodSeconds: 30
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /mnt/termination-log
+          name: ibm-mq-managed-file-transfer-srcagent
+          livenessProbe:
+            exec:
+              command:
+                - agentalive
+            initialDelaySeconds: 90
+            timeoutSeconds: 5
+            periodSeconds: 90
+            successThreshold: 1
+            failureThreshold: 3
+          env:
+            - name: MFT_AGENT_NAME
+              value: SRCAGENT
+            - name: LICENSE
+              value: accept
+            - name: MFT_AGENT_CONFIG_FILE
+              value: /mqmftcfg/agentconfig/mqmftcfg.json
+            - name: MFT_MOUNT_PATH
+              value: /mountpath
+            - name: MFT_LOG_LEVEL
+              value: "verbose"
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: mqmft-agent-config-map
+              mountPath: /mqmftcfg/agentconfig
+            - name: mqmft-nfs
+              mountPath: /mountpath
+          terminationMessagePolicy: File
+          image: >-
+             docker.io/ibmcom/mqmft:latest
+      restartPolicy: Always

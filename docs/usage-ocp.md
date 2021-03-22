@@ -1,4 +1,6 @@
 
+
+
 # Deploying agent image in OpenShift Container Platform
 
 This document describes the steps for using IBM MQ Managed File Transfer (MFT) image in an OpenShift Container Platform. This document assumes that OpenShift Container Platform v4.6.6 is already setup and required CLI has been downloaded. The MFT container image will be pulled from DockerHub for deployment.
@@ -36,185 +38,185 @@ This document describes the steps for using IBM MQ Managed File Transfer (MFT) i
 #### Configuration of coordination queue manager
 Define following objects in a queue manager.
 ```
-	DEFINE TOPIC('SYSTEM.FTE') TOPICSTR('SYSTEM.FTE') REPLACE
-	ALTER TOPIC('SYSTEM.FTE') NPMSGDLV(ALLAVAIL) PMSGDLV(ALLAVAIL)
-	DEFINE QLOCAL(SYSTEM.FTE) LIKE(SYSTEM.BROKER.DEFAULT.STREAM) REPLACE
-	ALTER QLOCAL(SYSTEM.FTE) DESCR('Stream for MQMFT Pub/Sub interface')
-	DISPLAY NAMELIST(SYSTEM.QPUBSUB.QUEUE.NAMELIST)
-	ALTER NAMELIST(SYSTEM.QPUBSUB.QUEUE.NAMELIST) +
-	NAMES(SYSTEM.BROKER.DEFAULT.STREAM+
-	,SYSTEM.BROKER.ADMIN.STREAM,SYSTEM.FTE)
-	DISPLAY QMGR PSMODE
-	ALTER QMGR PSMODE(ENABLED)
+DEFINE TOPIC('SYSTEM.FTE') TOPICSTR('SYSTEM.FTE') REPLACE
+ALTER TOPIC('SYSTEM.FTE') NPMSGDLV(ALLAVAIL) PMSGDLV(ALLAVAIL)
+DEFINE QLOCAL(SYSTEM.FTE) LIKE(SYSTEM.BROKER.DEFAULT.STREAM) REPLACE
+ALTER QLOCAL(SYSTEM.FTE) DESCR('Stream for MQMFT Pub/Sub interface')
+DISPLAY NAMELIST(SYSTEM.QPUBSUB.QUEUE.NAMELIST)
+ALTER NAMELIST(SYSTEM.QPUBSUB.QUEUE.NAMELIST) +
+NAMES(SYSTEM.BROKER.DEFAULT.STREAM+
+ ,SYSTEM.BROKER.ADMIN.STREAM,SYSTEM.FTE)
+DISPLAY QMGR PSMODE
+ALTER QMGR PSMODE(ENABLED)
 ```
 
 #### Configuration of agent queue manager
 Define the following objects in a queue manager. Replace `<AGENTNAME>` with your agent name.
 
 ```
-	DEFINE QLOCAL(SYSTEM.FTE.COMMAND.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(5000) +
-		MAXMSGL(4194304) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
-	DEFINE QLOCAL(SYSTEM.FTE.DATA.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(5000) +
-		MAXMSGL(4194304) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
-    DEFINE QLOCAL(SYSTEM.FTE.REPLY.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(5000) +
-		MAXMSGL(4194304) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
-	DEFINE QLOCAL(SYSTEM.FTE.STATE.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(5000) +
-		MAXMSGL(4194304) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
-	DEFINE QLOCAL(SYSTEM.FTE.EVENT.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(5000) +
-		MAXMSGL(4194304) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
-	DEFINE QLOCAL(SYSTEM.FTE.AUTHAGT1.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(0) +
-		MAXMSGL(0) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
-	DEFINE QLOCAL(SYSTEM.FTE.AUTHTRN1.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(0) +
-		MAXMSGL(0) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
-	DEFINE QLOCAL(SYSTEM.FTE.AUTHOPS1.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(0) +
-		MAXMSGL(0) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
-	DEFINE QLOCAL(SYSTEM.FTE.AUTHSCH1.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(0) +
-		MAXMSGL(0) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
-	DEFINE QLOCAL(SYSTEM.FTE.AUTHMON1.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(0) +
-		MAXMSGL(0) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
-     DEFINE QLOCAL(SYSTEM.FTE.AUTHADM1.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(0) +
-		MAXMSGL(0) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
-	DEFINE QLOCAL(SYSTEM.FTE.HA.<AGENTNAME>) +
-		DEFPRTY(0) +
-		DEFSOPT(SHARED) +
-		GET(ENABLED) +
-		MAXDEPTH(0) +
-		MAXMSGL(0) +
-		MSGDLVSQ(PRIORITY) +
-		PUT(ENABLED) +
-		RETINTVL(999999999) +
-		SHARE +
-		NOTRIGGER +
-		USAGE(NORMAL) +
-		REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.COMMAND.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(5000) +
+    MAXMSGL(4194304) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.DATA.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(5000) +
+    MAXMSGL(4194304) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.REPLY.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(5000) +
+    MAXMSGL(4194304) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.STATE.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(5000) +
+    MAXMSGL(4194304) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.EVENT.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(5000) +
+    MAXMSGL(4194304) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.AUTHAGT1.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(0) +
+    MAXMSGL(0) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.AUTHTRN1.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(0) +
+    MAXMSGL(0) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.AUTHOPS1.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(0) +
+    MAXMSGL(0) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.AUTHSCH1.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(0) +
+    MAXMSGL(0) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.AUTHMON1.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(0) +
+    MAXMSGL(0) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.AUTHADM1.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(0) +
+    MAXMSGL(0) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
+DEFINE QLOCAL(SYSTEM.FTE.HA.<AGENTNAME>) +
+    DEFPRTY(0) +
+    DEFSOPT(SHARED) +
+    GET(ENABLED) +
+    MAXDEPTH(0) +
+    MAXMSGL(0) +
+    MSGDLVSQ(PRIORITY) +
+    PUT(ENABLED) +
+    RETINTVL(999999999) +
+    SHARE +
+    NOTRIGGER +
+    USAGE(NORMAL) +
+    REPLACE
 ```	
 	
 8) The next step is to configure an IBM MQ Managed File Transfer agent. 
 
    Required coordination, command and agent queue managers objects must be configured as described above.
 	
-   The information required to for the configuration must be provided as JSON data in a ConfigMap. The ConfigMap must be mounted in the agent container. The attributes of the JSON are described [here](https://github.com/ibm-messaging/mft-cloud/tree/9.2.2/docs/agentconfig.md).
+   The information required to for the configuration must be provided as JSON data in a ConfigMap. The ConfigMap must be mounted in the agent container. The attributes of the JSON are described [here](https://github.com/ibm-messaging/mft-cloud/blob/mftubi/docs/agentconfig.md).
 	
 	Create a yaml file with required attributes. Here is sample. Replace queue manager attributes with your queue manager attributes.
 	
@@ -233,16 +235,16 @@ data:
       "port":1414,
       "channel":"MFTCORDSVRCONN",
       "additionalProperties" : {
-         "coordinationQMgrAuthenticationCredentialsFile":"/mftagentcfg/agentcfg/MQMFTCredentials.xml"
+         "coordinationQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
       }
    },
-   "commandsQMgr":{
+   "commandQMgr":{
       "name":"MFTCMDQM",
       "host":"cmdqm.ibm.com",
       "port":1414,
       "channel":"MFTCMDSVRCONN",
       "additionalProperties" : {
-         "connectionQMgrAuthenticationCredentialsFile":"/mftagentcfg/agentcfg/MQMFTCredentials.xml"
+         "connectionQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
       }
    },
    "agents":[{
@@ -254,7 +256,7 @@ data:
       "qmgrChannel":"MFTSVRCONN",
       "additionalProperties":{
          "enableQueueInputOutput":"true",
-         "agentQMgrAuthenticationCredentialsFile":"/mftagentcfg/agentcfg/MQMFTCredentials.xml"
+         "agentQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
       }
    },
    {
@@ -276,8 +278,8 @@ data:
          "serverPassiveMode"="true", 
 	  },
 	  "additionalProperties": {
-         "agentQMgrAuthenticationCredentialsFile" : "/mftagentcfg/agentcfg/MQMFTCredentials.xml",
-		 "protocolBridgeCredentialConfiguration" : "/mqmftbridgecred/agentcreds/ProtocolBridgeCredentials.prop"
+         "agentQMgrAuthenticationCredentialsFile" : "/mnt/credentials/MQMFTCredentials.xml",
+         "protocolBridgeCredentialConfiguration" : "/mnt/credentials/ProtocolBridgeCredentials.prop"
       }
    }]
 }
@@ -289,7 +291,7 @@ Run the following command to create the ConfigMap. Replace `configMap.yaml` with
 
    If you plan to deploy protocol bridge agent, then add required attributes to the configMap or create a separate configMap. Protocol bridge agent requires additional credentials to connect to FTP/FTPS/SFTP server. Those credentials can be provided as a key-value pair either through a Kubernetes ConfigMap or a Secret.
 	
-Description credential file attributes are provided [here](https://github.com/ibm-messaging/mft-cloud/tree/9.2.2/config/ibm-mqmft-pba-creds-config.yaml). 
+Description of credential file attributes are provided [here](https://github.com/ibm-messaging/mft-cloud/blob/mftubi/docs/custompbacred.md). 
 
 Sample configMap with plaintext password is here. 
 ```
@@ -329,7 +331,7 @@ Run the following command to create the ConfigMap. Replace `pba.yaml` with your 
 
 9. Next step is to deply the container image from docker hub.
 
-	Create deployment yaml for IBM MQ Managed File Transfer image. Refer the documentation [here](https://github.com/ibm-messaging/mft-cloud/tree/9.2.2/config/ibm-mqmft-deployment.yaml) for more details.
+	Create deployment yaml for IBM MQ Managed File Transfer image. Refer the documentation [here](https://github.com/ibm-messaging/mft-cloud/blob/mftubi/docs/agentdeployment.md) for more details.
 	
 	Sample deployment yaml is described here.
 
@@ -355,6 +357,9 @@ spec:
           configMap:
             name: mqmft-agent-config
             defaultMode: 420
+        - name: mqmft-nfs  # Volume for customer files
+          persistentVolumeClaim:
+            claimName: nfs-pvc			
       containers:
         - resources: {}
           readinessProbe:
@@ -384,12 +389,14 @@ spec:
               value: accept
             - name: MFT_AGENT_CONFIG_FILE
               value: /mqmftcfg/agentconfig/mqmftcfg.json
-            - name: LOG_LEVEL
+            - name: MFT_LOG_LEVEL
               value: "info"
           imagePullPolicy: Always
           volumeMounts:
             - name: mqmft-agent-config-map
               mountPath: /mqmftcfg/agentconfig
+		    - name: mqmft-nfs # Volume mount for customer files
+              mountPath: /mountpath
           terminationMessagePolicy: File
           image: >-
              docker.io/ibmcom/mqmft:latest
@@ -431,7 +438,7 @@ Then run the following command to deploy the image. Replace `deployment.yaml` wi
 
       containers:
           env:
-            - name: MOUNT_PATH
+            - name: MFT_MOUNT_PATH
               value: /mountpath
 
 	      volumeMounts:
@@ -443,9 +450,19 @@ You can use fteCreateTransfer command to initiate a transfer.
 
 You can also setup resource monitors using fteCreateMonitor command to trigger transfers.
 
+### IMPORTANT NOTE: 
+1) You may need to manually escape `$` characters before issuing the fteCreateTransfer command otherwise Linux shell can incorrectly interpret the `$`. See example below
+2) Since the user will have access only to `/mountpath`, any MFT command that creates a file, must use `/mountpath` as the target directory. 
+
+For example the following command creates a task.xml under `/mountpath/mntr` directory. 
+`fteCreateTransfer -gt /mountpath/mntr/task.xml -sa ATCFG -sm QUICKSTART -da BRIDGE -dm QUICKSTART -de overwrite -df "sftp://10.17.68.52/\${FileName}" "\${FilePath}"`
+
+`fteCreateMonitor -ma ATCFG -mn F2B -md "/mountpath" -tr "match,*.txt" -f -mt task.xml`
+
+
 ### Viewing status of transfers.
 
-You can configure MQExplorer MFT Plugin on-premise to monitor status of transfers and other MFT resources. Follow the steps here to [here](https://github.com/ibm-messaging/mft-cloud/tree/9.2.2/config/connectmqexplorer.md) to configure MQExplorer on premise to connect to queue manager on OpenShift cluster.
+You can configure MQExplorer MFT Plugin on-premise to monitor status of transfers and other MFT resources. Follow the steps here to [here](https://github.com/ibm-messaging/mft-cloud/blob/mftubi/docs/connectmqexplorer.md) to configure MQExplorer on premise to connect to queue manager on OpenShift cluster.
 
 You can also view the status of transfers by running `mqfts` command on the terminal of your pod. The `mqfts` command lists the status of transfer by parsing capture0.log file of the agent running in the pod. This means you can view the status of transfers where the agent in the current pod is a source agent.
 

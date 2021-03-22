@@ -23,9 +23,7 @@ Note that in order to use the image, it is necessary to accept the terms of the 
 - **MFT_AGENT_CONFIG_FILE** - Required. Path of the json file containing information required for setting up an agent. The path must be on a mount point. For example a configMap on OpenShift. See the [agent configuration doc](docs/agentconfig.md) for a detailed description of attributes.
 - **MFT_AGENT_NAME** - Required. Name of the agent to configure. 
 - **BFG_JVM_PROPERTIES** - Optional - Any JVM property that needs to be set when running agent JVM.
-- **MOUNT_PATH** - Optional - A file system directory from where an agent will `read` or `write` files. Agent will not have access to other parts of the mounted file system. The environment variable is valid only fot STANDARD type agent and not valid for BRIDGE agents. If this parameter is not specified, agent will read from or write to `/mountpath` directory of the container file system.
-- **MFT_AGENT_BRIDGE_CREDENTIAL_FILE** - Required for BRIDGE agent - Name of the environment variable that points to path of a file containing credential information for connecting to SFTP/FTP/FTPS file server. The file can reside either in a Kubernetes ConfigMap or a Secret
-- **LOG_LEVEL** - Optional - Level of information displayed. `info` and `verbose` are the supported values with `info` being default. Contents of agent's output0.log is displayed if LOG_LEVEL is set to `verbose`.
+- **MFT_LOG_LEVEL** - Optional - Level of information displayed. `info` and `verbose` are the supported values with `info` being default. Contents of agent's output0.log is displayed if MFT_LOG_LEVEL is set to `verbose`.
 
 ### Location of agent configuration files
 

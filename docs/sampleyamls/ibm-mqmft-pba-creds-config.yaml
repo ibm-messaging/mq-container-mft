@@ -1,0 +1,7 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: pba-custom-cred-map
+  namespace: ibmmqmft
+data:
+  ProtocolBridgeCredentials.prop: 10.17.68.52=root!1!S2l0dEBuMG9y

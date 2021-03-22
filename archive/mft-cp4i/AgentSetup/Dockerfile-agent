@@ -1,0 +1,75 @@
+# © Copyright IBM Corporation 2015, 2018
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+FROM ubuntu:16.04
+
+COPY *-IBM-MQFA-Redist-LinuxX64.tar.gz *.sh /tmp/
+RUN export DEBIAN_FRONTEND=noninteractive \
+  # Install additional packages required by MQ, this install process and the runtime scripts
+  && apt-get update -y \
+  && apt-get install -y --no-install-recommends \
+    bash \
+    bc \
+    ca-certificates \
+    coreutils \
+    curl \
+    debianutils \
+    file \
+    findutils \
+    gawk \
+    grep \
+    libc-bin \
+    lsb-release \
+    mount \
+    passwd \
+    procps \
+    sed \
+    vim \
+    tar \
+    util-linux \
+    inotify-tools \
+    locales \
+    s3fs \
+  # Download and extract the MQ installation files
+  && mkdir -p /var/mqm/mft \
+  && useradd -m -d /home/mftadmin  mftadmin \
+  && echo mftadmin:passw0rd | chpasswd \
+  && chown -R mftadmin:root /var/mqm/* \
+  && chown -R mftadmin:root /tmp/* \
+  && chmod -R g+w /var/mqm/* \
+  && chmod -R g+w /tmp/* \
+  && mv /tmp/*.sh /usr/local/bin/  \
+  && chmod +x /usr/local/bin/*.sh \
+  && cd /var/mqm/mft \
+  && mv /tmp/*-IBM-MQFA-Redist-LinuxX64.tar.gz /var/mqm/mft/ \
+  && tar -zxvf ./*.tar.gz \
+  && apt-get update \
+  # Remove tar.gz files unpacked by RPM postinst scripts
+  && find /var/mqm/mft -name '*.tar.gz' -delete \
+  # Apply any bug fixes not included in base Ubuntu or MQ image.
+  # Don't upgrade everything based on Docker best practices https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/#run
+  && apt-get upgrade -y libkrb5-26-heimdal \
+  && apt-get upgrade -y libexpat1 \
+  # End of bug fixes
+  && rm -rf /var/lib/apt/lists/* \
+  && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
+  && locale-gen
+ENV BFG_DATA=/var/mqm/mft/mftdata
+ENV HOME=/home/mftadmin
+ENV MFT_WAIT_FOR_AGENT=30
+COPY *.xml /home/mftadmin/
+RUN chown -R mftadmin:root /home/mftadmin/* \
+  && chmod go-rw /home/mftadmin//MQMFTCredentials.xml \
+  && chmod go-rw /home/mftadmin/ProtocolBridgeCredentials.xml
+USER mftadmin
+ENTRYPOINT ["mqft.sh"]
