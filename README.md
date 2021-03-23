@@ -3,9 +3,7 @@
 ## Overview
 IBM MQ Managed File Transfer transfers files between systems in a managed and auditable way, regardless of file size or the operating systems used. You can use Managed File Transfer to build a customized, scalable, and automated solution that enables you to manage, trust, and secure file transfers. Managed File Transfer eliminates costly redundancies, lowers maintenance costs, and maximizes your existing IT investments.
 
-Run IBM MQ Managed File Transfer agents in a container .
-
-See [here](READMEEarlierImp.md) for an earlier implementation of MFT on cloud.
+See [here](READMEEarlierImp.md) for an earlier implementation of IBM MQ Managed File Transfer on in container.
 
 
 ## Usage
@@ -29,7 +27,7 @@ Note that in order to use the image, it is necessary to accept the terms of the 
 Agent in the container will create agent configuration and log files under the fixed directory `/mnt/mftdata`. This folder can be on a persistent volume as well, in which case the volume must be mounted as `/mnt/mftdata` mount point in to the container
 
 
-## Issues and contributions
+## Issues
 
 For issues relating specifically to the container image please use the [GitHub issue tracker](https://github.com/ibm-messaging/mft-cloud/issues).
 

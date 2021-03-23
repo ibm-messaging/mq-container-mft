@@ -3,8 +3,6 @@ Agent is created and started during container creation time. The information req
 
 This document describes attributes of the json file.
 
-- **waitTimeToStart** - Type: int. Amount of time, in seconds, the `runagent` command waits for agent to start. Container ends if agent does not start in the specified time. Default is `10` seconds.
-
 - **coordinationQMgr** - Type: Group. Defines the configuration information coordination queue manager.
 - **name** - Type: String. Name of the coordination queue manager.
 - **host** - Type: String. Host name to be used for connecting to coordination queue manager.
@@ -30,8 +28,6 @@ This document describes attributes of the json file.
 - **qmgrChannel** - Type: String. Channel name to be used for connecting to agent queue manager.
 - **additionalProperties** - Type: Group. Any additional parameters to be set in agent.properties file of the container. Name of the attribute in this group must match the name of properties in agent.properties file. If the property value, for example `agentQMgrAuthenticationCredentialsFile` points to a file, then that file must be on a mount point.
 - **protocolBridgeCredentialConfiguration** Type: String. Path of the custom protocol bridge credential file. This property must be set if the agent is of type BRIDGE. This file must contain "key=value" pair(s) containing credential information.
-- **resourceMonitors** - Optional. Ignored if specified for `BRIDGE` agent. Type: Group. Defines a group containing name(s) resource monitor and path of xml file containing resource monitor configuration. Agent will create the resource monitors, if they don't exist, during startup. The XML files specified must be located on a mount point.
-- **name** - Type: String. User defined name of a resource monitor.
 - **protocolBridge** - Required for BRIDGE agent. Type: String. Group element that defines additional properties if the agent type is `BRIDGE`.
 - **serverType** - Type: String. Defines the protocol bridge type. `FTP`, `FTPS` and `SFTP` are the supported types.
 - **serverHost** Type: String. Host name of the protocol server the agent will connect to. 
@@ -46,7 +42,6 @@ An example json is here:
 
 ```
 {
-   "waitTimeToStart":20,
    "coordinationQMgr":{
       "name":"MFTCORDQM",
       "host":"coordqm.ibm.com",
@@ -75,10 +70,6 @@ An example json is here:
       "additionalProperties":{
          "enableQueueInputOutput":"true",
          "agentQMgrAuthenticationCredentialsFile":"/mftagentcfg/agentcfg/MQMFTCredentials.xml"
-      },
-      "resourceMonitors": {
-         "dirMonitor":"/mftagentcfg/agentcfg/dirMon.xml",
-         "queueMonitor":"/mftagentcfg/agentcfg/queueMon.xml"
       }
    },
    {
