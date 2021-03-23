@@ -280,7 +280,7 @@ DEFINE QLOCAL(SYSTEM.FTE.HA.<AGENTNAME>) +
 8) Run the container using docker run command.
   Environment variables to be passed the docker run command
 - **LICENSE** - Required. Set this to `accept` to agree to the MQ Advanced for Developers license. If you wish to see the license you can set this to `view`.
-- **MFT_AGENT_CONFIG_FILE** - Required. Path of the json file containing information required for setting up an agent. The path must be on a mount point. See the [agent configuration](https://github.com/ibm-messaging/mft-cloud/blob/mftubi/docs//agentconfig.md) for a detailed description of attributes.
+- **MFT_AGENT_CONFIG_FILE** - Required. Path of the json file containing information required for setting up an agent. The path must be on a mount point. See the [agent configuration attributes](https://github.com/ibm-messaging/mft-cloud/blob/mftubi/docs/agentconfig.md) for a detailed description of attributes.
 - **MFT_AGENT_NAME** - Required. Name of the agent to configure. 
 - **BFG_JVM_PROPERTIES** - Optional - Any JVM property that needs to be set when running agent JVM.
 - **MFT_LOG_LEVEL** - Optional - Defines the level of logging. `info` is default level of logging. `verbose` level displays more detailed logs.
