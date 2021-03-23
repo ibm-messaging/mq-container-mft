@@ -17,19 +17,14 @@ Note that in order to use the image, it is necessary to accept the terms of the 
 ### Environment variables supported by this image
 
 - **LICENSE** - Required. Set this to `accept` to agree to the MQ Advanced for Developers license. If you wish to see the license you can set this to `view`.
-- **MFT_AGENT_CONFIG_FILE** - Required. Path of the json file containing information required for setting up an agent. The path must be on a mount point. For example a configMap on OpenShift. See the [agent configuration doc](docs/agentconfig.md) for a detailed description of attributes.
+- **MFT_AGENT_CONFIG_FILE** - Required. Path of the json file containing information required for setting up an agent. The path must be on a mount point. For example a configMap on OpenShift. See the [agent configuration attributes](docs/agentconfig.md) for a detailed description of attributes.
 - **MFT_AGENT_NAME** - Required. Name of the agent to configure. 
 - **BFG_JVM_PROPERTIES** - Optional - Any JVM property that needs to be set when running agent JVM.
 - **MFT_LOG_LEVEL** - Optional - Level of information displayed. `info` and `verbose` are the supported values with `info` being default. Contents of agent's output0.log is displayed if MFT_LOG_LEVEL is set to `verbose`.
 
-### Location of agent configuration files
-
-Agent in the container will create agent configuration and log files under the fixed directory `/mnt/mftdata`. This folder can be on a persistent volume as well, in which case the volume must be mounted as `/mnt/mftdata` mount point in to the container
-
-
 ## Issues
 
-For issues relating specifically to the container image please use the [GitHub issue tracker](https://github.com/ibm-messaging/mft-cloud/issues).
+This version of the image is unsupported. However, questions/queries/issues can be raised via [GitHub](https://github.com/ibm-messaging/mft-cloud/issues) case.
 
 ## License
 
