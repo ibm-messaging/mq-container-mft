@@ -17,8 +17,9 @@ This procedure works for building the MQ Managed File Transfer Redistributable p
 1. Clone the GitHub repository to local directory.
 2. Login to the Red Hat Registry: `docker login registry.redhat.io` using your Customer Portal credentials.
 3. Navigate to directory where `Dockerfile-agent` is located.
-4. Download **9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz** from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into the current directory
-   **Note: 9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz** has to be in same path as **Dockerfile**.
+4. Download **9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz** or higher from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into the current directory.
+
+   **Note:** The redistributable MFT package has to be present in same path as **Dockerfile**.
 4. Run the following command to build image
    `podman build -f Dockerfile-agent -t mqmft:9.2.2 --build-arg ARG_MQMFT_REDIST_FILE=9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz
    Replace the `9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz` with the version of the redistributable package of your choice.
