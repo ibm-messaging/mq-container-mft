@@ -5,7 +5,7 @@
 1) Download the image from DockerHub repository
 `docker pull docker.io/ibmcom/mqmft:latest`
 
-2) Create a json file, like agentcfg.json containig the information required for creating an agent.  The attributes of the JSON file are described [here](https://github.com/ibm-messaging/mft-cloud/blob/mftubi/docs/agentconfig.md). 
+2) Create a json file, like agentcfg.json containig the information required for creating an agent.  The attributes of the JSON file are described [here](https://github.com/ibm-messaging/mft-cloud/tree/9.2.2/docs/agentconfig.md). 
 Sample agent configuration JSON is here:
 ```
 {
@@ -97,204 +97,25 @@ Sample agent configuration JSON is here:
     <tns:qmgr name="MFTQM" mqUserId="mftqmuserid" mqPassword="mftqmpassw0rd"/>
 </tns:mqmftCredentials>
 ```
+	
 7) Run chmod on MQMFTCredentials.xml file:
 `cp MQMFTCredentials.xml /var/lib/docker/volumes/mfagentcfg/_data/agentcfg`
-
-#### Configuration of coordination queue manager
-Define following objects in a queue manager.
-```
-DEFINE TOPIC('SYSTEM.FTE') TOPICSTR('SYSTEM.FTE') REPLACE
-ALTER TOPIC('SYSTEM.FTE') NPMSGDLV(ALLAVAIL) PMSGDLV(ALLAVAIL)
-DEFINE QLOCAL(SYSTEM.FTE) LIKE(SYSTEM.BROKER.DEFAULT.STREAM) REPLACE
-ALTER QLOCAL(SYSTEM.FTE) DESCR('Stream for MQMFT Pub/Sub interface')
-DISPLAY NAMELIST(SYSTEM.QPUBSUB.QUEUE.NAMELIST)
-ALTER NAMELIST(SYSTEM.QPUBSUB.QUEUE.NAMELIST) +
-NAMES(SYSTEM.BROKER.DEFAULT.STREAM+
- ,SYSTEM.BROKER.ADMIN.STREAM,SYSTEM.FTE)
-DISPLAY QMGR PSMODE
-ALTER QMGR PSMODE(ENABLED)
-```
-
-#### Configuration of agent queue manager
-Define the following objects in a queue manager. Replace `<AGENTNAME>` with your agent name.
-
-```
-DEFINE QLOCAL(SYSTEM.FTE.COMMAND.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(5000) +
-    MAXMSGL(4194304) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-DEFINE QLOCAL(SYSTEM.FTE.DATA.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(5000) +
-    MAXMSGL(4194304) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-DEFINE QLOCAL(SYSTEM.FTE.REPLY.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(5000) +
-    MAXMSGL(4194304) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-DEFINE QLOCAL(SYSTEM.FTE.STATE.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(5000) +
-    MAXMSGL(4194304) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-DEFINE QLOCAL(SYSTEM.FTE.EVENT.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(5000) +
-    MAXMSGL(4194304) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-DEFINE QLOCAL(SYSTEM.FTE.AUTHAGT1.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(0) +
-    MAXMSGL(0) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-DEFINE QLOCAL(SYSTEM.FTE.AUTHTRN1.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(0) +
-    MAXMSGL(0) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-DEFINE QLOCAL(SYSTEM.FTE.AUTHOPS1.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(0) +
-    MAXMSGL(0) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-DEFINE QLOCAL(SYSTEM.FTE.AUTHSCH1.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(0) +
-    MAXMSGL(0) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-DEFINE QLOCAL(SYSTEM.FTE.AUTHMON1.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(0) +
-    MAXMSGL(0) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-DEFINE QLOCAL(SYSTEM.FTE.AUTHADM1.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(0) +
-    MAXMSGL(0) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-DEFINE QLOCAL(SYSTEM.FTE.HA.<AGENTNAME>) +
-    DEFPRTY(0) +
-    DEFSOPT(SHARED) +
-    GET(ENABLED) +
-    MAXDEPTH(0) +
-    MAXMSGL(0) +
-    MSGDLVSQ(PRIORITY) +
-    PUT(ENABLED) +
-    RETINTVL(999999999) +
-    SHARE +
-    NOTRIGGER +
-    USAGE(NORMAL) +
-    REPLACE
-```	
 
 8) Run the container using docker run command.
   Environment variables to be passed the docker run command
 - **LICENSE** - Required. Set this to `accept` to agree to the MQ Advanced for Developers license. If you wish to see the license you can set this to `view`.
-- **MFT_AGENT_CONFIG_FILE** - Required. Path of the json file containing information required for setting up an agent. The path must be on a mount point. See the [agent configuration attributes](https://github.com/ibm-messaging/mft-cloud/blob/mftubi/docs/agentconfig.md) for a detailed description of attributes.
+- **MFT_AGENT_CONFIG_FILE** - Required. Path of the json file containing information required for setting up an agent. The path must be on a mount point. For example a configMap on OpenShift. See the [agent configuration doc](docs/agentconfig.md) for a detailed description of attributes.
 - **MFT_AGENT_NAME** - Required. Name of the agent to configure. 
 - **BFG_JVM_PROPERTIES** - Optional - Any JVM property that needs to be set when running agent JVM.
 - **MFT_LOG_LEVEL** - Optional - Defines the level of logging. `info` is default level of logging. `verbose` level displays more detailed logs.
 
 The following command creates agent configuration and logs on the container file system. Configuration and logs will be deleted once the container ends.
-
 `docker run --mount type=volume,source=mftagentcfg,target=/mftagentcfg --env LICENSE=accept --env MFT_AGENT_CONFIG_FILE=/mftagentcfg/agentcfg/agentcfg.json  docker.io/ibmcom/mqmft:latest`
 
 The following command creates agent configuration and logs on a mounted file system at `/mnt/mftadata` path. Hence configuration and logs will be available even after the container ends.
-
 `docker volume create mftdata`   
 
 `docker run --mount type=volume,source=mftagentcfg,target=/mftagentcfg --mount type=volume,source=mftdata,target=/mnt/mftdata -e MFT_AGENT_NAME=SRCAGENT --env LICENSE=accept --env MFT_AGENT_CONFIG_FILE=/mftagentcfg/agentcfg/agentcfg.json  docker.io/ibmcom/mqmft:latest`
-
 Note: The mounted path provided for agent configuration and logs must have read/write permissions for other users.
 
 The following command uses a mounted file system for transferring files. 
@@ -302,15 +123,12 @@ The following command uses a mounted file system for transferring files.
 `docker volume create customerdata`   
 
 The `customerdata` is mounted into the container as `/mountpath` path. A mount point is not required for BRIDGE agents as they send/recive files to FTP/SFTP/FTPS server.
-
 `docker run --mount type=volume,source=mftagentcfg,target=/mftagentcfg --mount type=volume,source=customerdata,target=/mountpath -e MFT_AGENT_NAME=SRCAGENT --env LICENSE=accept --env MFT_AGENT_CONFIG_FILE=/mftagentcfg/agentcfg/agentcfg.json  docker.io/ibmcom/mqmft:latest`
-
 Note: The mounted path provided must have read/write permissions for other users.
 
 Use `docker ps` command view the status of container.
 
 MFT commands now be executed using container shell. For example:
-
 `docker exec <image id> bash -c 'fteListAgents'`
 
 To login into terminal of container and execute MFT commands

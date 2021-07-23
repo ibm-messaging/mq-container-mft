@@ -32,10 +32,6 @@ spec:
         - name: mqmft-nfs-config 
           persistentVolumeClaim:
             claimName: nfs-mft-pvc - <- Persistent volume that will contain agent configuration and logs
-
-        - name: mqmft-nfs
-          persistentVolumeClaim:
-            claimName: nfs-customer-pvc <- Persistent volume for customer files
       
 	  containers:
         - resources: {}
@@ -71,6 +67,11 @@ spec:
             
 			- name: MFT_AGENT_CONFIG_FILE <- Name of environment variable containing the name of the JSON file containing information required to cofingure an agent. The JSON file must reside in a ConfigMap 
               value: /mqmftcfg/agentconfig/mqmftcfg.json <- Path of the JSON file containing agent definitions 
+            
+			- name: MFT_AGENT_BRIDGE_CREDENTIAL_FILE <- Required for BRIDGE agent only. Name of the environment variable that points to path of a file containing credential information for connecting to SFTP/FTP/FTPS file server. The file can reside either in a configMap or secret.
+              value: /mqmftbridgecred/agentcreds/ProtocolBridgeCredentials.prop <- Path of the file containing bridge credential information
+          
+		  imagePullPolicy: Always
           
 		  volumeMounts:
             - name: mqmft-agent-config-map <- Mount path where JSON file containing information required to confiure an agent resides
@@ -82,13 +83,9 @@ spec:
 			- name: mqmft-nfs-config <-Optional: Mount path where configuration and log files of an agent would be created
               mountPath: /mnt/mftdata
               subPath: mftdata
-
           
-		    - name: mqmft-nfs <- Volume mount for customer files
-              mountPath: /mountpath
-
 		  terminationMessagePolicy: File
           
 		  image: >-
-             docker.io/ibmcom/mqmft:latest <- URI from where an agent container image will be pulled for deployment
+             docker.io/ibmcom/mqmft::9.2.2.0-amd64 <- URI from where an agent container image will be pulled for deployment
 ```

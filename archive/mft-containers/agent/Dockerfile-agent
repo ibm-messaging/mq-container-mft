@@ -1,75 +1,64 @@
+# © Copyright IBM Corporation 2015, 2018
 #
-#© Copyright IBM Corporation 2017, 2020
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
-#http://www.apache.org/licenses/LICENSE-2.0
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+FROM ubuntu:16.04
 
-# This docker file builds an IBM MQ Managed File Transfer Agent based on RHEL UBI 
-FROM registry.access.redhat.com/ubi8/ubi:8.1
-
-# Add the Agent redistributable package
-COPY 9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz /mftdkr/9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz
-#COPY *.sh /mftdkr/
-
-# copy Golang app to monitor agent
-COPY /golang/mftcfg /mftdkr
-
-# Add the required XML files
+COPY *-IBM-MQFA-Redist-LinuxX64.tar.gz *.sh /tmp/
 COPY *.xml /usr/local/bin/
-
-# Update current packages 
-RUN yum -y update
-
-# Install additional packages
-RUN yum --assumeyes --allowerasing install bash \
-  bc \
-  ca-certificates \
-  coreutils \
-  curl \
-  file \
-  findutils \
-  gawk \
-  grep \
-# Get C Runtime
-  glibc \
-# check Redhat's system version
-  redhat-lsb-core \
-# mount drive
-  util-linux-ng \  
-  passwd \
-  procps \
-  sed \
-  tar \
-  util-linux \
-  glibc-all-langpacks \
-# Download and extract the MQ installation files
+RUN export DEBIAN_FRONTEND=noninteractive \
+  # Install additional packages required by MQ, this install process and the runtime scripts
+  && apt-get update -y \
+  && apt-get install -y --no-install-recommends \
+    bash \
+    bc \
+    ca-certificates \
+    coreutils \
+    curl \
+    debianutils \
+    file \
+    findutils \
+    gawk \
+    grep \
+    libc-bin \
+    lsb-release \
+    mount \
+    passwd \
+    procps \
+    sed \
+    tar \
+    util-linux \
+    inotify-tools \
+    locales \
+    s3fs \
+  # Download and extract the MQ installation files
   && mkdir -p /var/mqm/mft \
-  && useradd samantha \
-  && echo samantha:H0neycomb | chpasswd \
-  && mv /mftdkr/*.gz /var/mqm/mft/ \
+  && useradd mftadmin \
+  && echo mftadmin:passw0rd | chpasswd \
+  && mv /tmp/*.sh /usr/local/bin/  \
+  && chmod +x /usr/local/bin/*.sh \
   && cd /var/mqm/mft \
-  && tar -zxvf ./9.*.tar.gz \
-  && yum update \
+  && mv /tmp/*-IBM-MQFA-Redist-LinuxX64.tar.gz /var/mqm/mft/ \
+  && tar -zxvf ./*.tar.gz \
+  && apt-get update \
   # Remove tar.gz files unpacked by RPM postinst scripts
   && find /var/mqm/mft -name '*.tar.gz' -delete \
   # Apply any bug fixes not included in base Ubuntu or MQ image.
   # Don't upgrade everything based on Docker best practices https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/#run
+  && apt-get upgrade -y libkrb5-26-heimdal \
+  && apt-get upgrade -y libexpat1 \
   # End of bug fixes
-  && rm -rf /var/lib/apt/lists/* 
-# Call our entry point
-ENV PATH=$PATH:/var/mqm/mft/bin:/var/mqm/mft/java/jre64/jre/bin
-#RUN /usr/local/bin/setpath.sh
-RUN cp -f /usr/local/bin/MQMFTCredentials.xml  $HOME
-RUN cp -f /usr/local/bin/ProtocolBridgeCredentials.xml $HOME
-RUN chmod go-rw $HOME/MQMFTCredentials.xml
-RUN chmod go-rw $HOME/ProtocolBridgeCredentials.xml
-RUN chmod go-rwx /usr/local/bin/MQMFTCredentials.xml
+  && rm -rf /var/lib/apt/lists/* \
+  && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
+  && locale-gen
 
-ENTRYPOINT exec "/mftdkr/mftcfg" ${AGENT_CONFIG_FILE} ${START_ONLY}
+ENTRYPOINT ["mqft.sh"]

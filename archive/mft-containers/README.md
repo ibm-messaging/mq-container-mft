@@ -1,7 +1,7 @@
 ---
 copyright:
   years: 2017, 2020
-lastupdated: "2020-08-24"
+lastupdated: "2020-05-19"
 ---
 
 # MQ Managed File Transfer for Containers
@@ -13,7 +13,7 @@ Although the exchange of files is conceptually simple, doing so in the enterpris
 
 IBM® MQ File Transfer Edition provides an enterprise-grade managed file transfer capability that is both robust and easy to use. MQ File Transfer Edition exploits the proven reliability and connectivity of MQ to transfer files across a wide range of platforms and networks. MQ File Transfer Edition takes advantage of existing MQ networks, and you can integrate it easily with existing file transfer systems.
 
-You can find more information at [IBM Knowledge Centre](https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_9.2.0/com.ibm.mq.pro.doc/wmqfte_intro.htm)
+You can find more information at [IBM Knowledge Centre](https://www.ibm.com/support/knowledgecenter/en/SSFKSJ_9.1.0/com.ibm.mq.pro.doc/wmqfte_intro.htm)
 
 ---
 
@@ -31,11 +31,11 @@ MQ Advanced supports running MFT Agents in docker containers and this guide will
         ```
     2. Clone the current repository into **mft-containers** directory
         ```
-        HTTPS: git clone https://github.com/ibm-messaging/mft-cloud.git
-        SSH: git clone git@github.com:ibm-messaging/mft-cloud.git
+        HTTPS: git clone https://github.com/darbhakiran/mft-containers.git
+        SSH: git clone git@github.com:darbhakiran/mft-containers.git
         ```
-* Download **9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into mft-containers/agent/
-**Note: 9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** has to be in same path as **Dockerfile**.
+* Download **9.1.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into mft-containers/agent/
+**Note: 9.1.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** has to be in same path as **Dockerfile-agent**.
 
 ---
 ### MFT Container Customisations  
@@ -45,7 +45,6 @@ We will add few customizations that would simplify the configuration of MFT for 
 
 #### Understanding Customizations  
 1. Configuring MFT Coordination Queue manager:
-
     1.1 Coordination manager requires set of system queues and topics to be created, this is one time activity.  
     1.2 Agents will need a SVRCONN channel using which they can communication with MQ queue manager. This SVRCONN channel has to be setup with appropriate CHLAUTH/CONNAUTH rules. This guide creates a new channel **MFT_SVRCONN** and setup CHLAUTH/CONNAUTH rules such that any user with a valid password can connect to queue manager.  
     1.3 **mft_setupCoordination.sh** available in **mft-containers/server** directory is aimed at simplifying this configuration.  
@@ -97,17 +96,16 @@ All the cutomizations (.sh and .mqsc) files are copied into **/etc/mqm/mft/** pa
 Agent package contains a Dockerfile-agent to build the MFT agent docker image. MFT Agent is setup and started as part of the **mqft.sh** script. This package assumes a single queue manager(**QM1**) as coordination queue manager, command queue manager and agent queue manager.
 **Note:** As per your application architecture, you can consider to have separate queue managers for coordination, command and agents.
 
-1. Copy the MFT redistributable package: **9.2.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** to the Agent directory. For example 
+1. Copy the MFT redistributable package: **9.1.0.0-IBM-MQFA-Redist-LinuxX64.tar.gz** to the Agent directory. For example 
     ```
     On Linux: /home/mft-containers/agent 
     On Windows: %HOMEDRIVE$\mft-containers/agent 
     ```
 2. Open a command shell and navigate to path of **mft-containers/agent** repository. For example */home/mft-containers/server*(on Linux) or *C:\\mft-containers\\server*(on Windows).  
 
-3. Build IBM MQ Managed File Transfer agent docker image.
-   This MQ MFT docker image uses a golang application to create an agent and monitor status of agent. The agent configuration is specified using a JSON file. The JSON file must be located on a persistent volume. 
+3. Build mft agent image.
     ```
-    docker build -t mftagentredist -f Dockerfile-agent .
+    docker build -t mftagentredist -f Dockerfile-agent
     ```
 4. We will create two agents as part of this document to demonstrate mft agents in container. These agents are **AGENTSRC** and **AGENTDEST**. As a first step of agent configuration, we have to create their congfiguration on coordination queue manager.
     ```
@@ -117,99 +115,24 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
     **Note:** 
     1. QM1-Container-id is the id of the queue manager container created in above section.
     2. **mqft_setupAgent.sh** script requires MFT agent name as input parameter
+    3. To configure a IBM MQ Managed file transfer protocol Bridge Agent(PBA agent) [click here](./README_pbagent.md) for the steps.
 
-5. We will create a volume on the host system. This volume will be mounted to container and used as persistent storage for agent configuration and logs. The JSON file for setting up an agent can be specified in this volume itself.
+5. Once the docker-agent build is successful, run a new container of it, which is agent in container. 
     ```
-    docker volume create mftdata 
-    ```
-   Verify the volume creation by
-    ```
-    docker volume inspect mftdata 
-    ```
-   
-6. Once the docker-agent build is successful, run a new container of it, which is agent in container. 
-    ```
-    docker run --mount type=volume,source=mftdata,target=/mftdata -e AGENT_CONFIG_FILE="/mftdata/agentconfigsrc.json" -d --name=AGENTSRC mftagentredist
-    docker run --mount type=volume,source=mftdata,target=/mftdata -e AGENT_CONFIG_FILE="/mftdata/agentconfigdest.json" -d --name=AGENTDEST mftagentredist   
+    docker run --env MQ_QMGR_NAME=QM1  --env MQ_QMGR_HOST=<docker-host-ip> --env MQ_QMGR_PORT=1414 --env MQ_QMGR_CHL=MFT.SVRCONN --env MFT_AGENT_NAME=AGENTSRC -d --name=AGENTSRC mftagentredist
+    
+    docker run --env MQ_QMGR_NAME=QM1  --env MQ_QMGR_HOST=<docker-host-ip> --env MQ_QMGR_PORT=1414 --env MQ_QMGR_CHL=MFT.SVRCONN --env MFT_AGENT_NAME=AGENTDEST -d --name=AGENTDEST mftagentredist
     ```
     **Note:** 
-    1. AGENT_CONFIG_FILE is the environment variable that points to a JSON file containing required information for creating an agent. The path will be on persistent volume mounted on a container.
-    2. mftagentredist: Is the docker image of mft redistributable agents.
+    1. <docker-host-ip>: Is the IP Address of the docker host. This could be found out by running `docker inspect` command and look for ipv4address field.
+    2. MQ_QMGR_NAME=QM1: Is the queue manager we created and configured as coordination queue manager in above section.
+    3. mftagentredist: Is the docker image of mft redistributable agents.
     
-	While most the attributes of JSON file are self explanatory, here is a brief explanation of on some of them.
-    ```
-	dataPath: Absolute path where agent configuration will be created.
-	
-	agentMonitorInterval: Frequency at which container will monitor the status of an agent. A monitor program 'mftcfg' is used to monitor the status of agent.
-	
-	displayAgentLogs: Read and display logs on console from output0.log file of an agent.
-	
-	maximumDisplayLines: The number of lines from the output0.log file to display. The latest lines from the log file will be displayed.
-	
-	The additionalProperties section allows additional properties to be set in the agent.properties file before an agent is starts. The names of the properties and their values must match the properties documented here 
-	https://www.ibm.com/support/knowledgecenter/SSFKSJ_9.2.0/com.ibm.mq.ref.con.doc/properties.htm.
-	
-	The resourceMonitors section allows you to specify name of the xml file containing resource monitor definition. The xml file must be located on a persistent volume. The xml file can be created using fteCreateMonitor command on your system and then copied to persistent volume. More details on fteCreateMonitor can be found here: https://www.ibm.com/support/knowledgecenter/SSFKSJ_9.2.0/com.ibm.mq.ref.adm.doc/create_monitor_cmd.htm
-    ```
-	
-	The following is an example of an agent configuration JSON file
-    ```
-   {
-    "dataPath" : "/mftdata",
-    "monitoringInterval" : 300,
-    "displayAgentLogs" : false,
-    "displayLineCount" : 50,
-    "waitTimeToStart":10,
-    "coordinationQMgr" : {
-      "name":"MFTHAQM",
-      "host":"9.202.176.145",
-      "port":1414,
-      "channel":"MFT_HA_CHN"
-    },
-    "commandsQMgr" : {
-      "name":"MFTHAQM",
-      "host":"9.202.176.145",
-      "port":1414,
-      "channel":"MFT_HA_CHN"
-    },
-    "agent" : {
-      "name":"KXAGNT",
-      "type" : "STANDARD",
-      "qmgrName":"MFTHAQM",
-      "qmgrHost":"9.202.176.145",
-      "qmgrPort":1414,
-      "qmgrChannel":"MFT_HA_CHN",
-      "credentialsFile":"/usr/local/bin/MQMFTCredentials.xml",
-      "protocolBridge" : {
-        "credentialsFile":"/usr/local/bin/ProtocolBridgeCredentials.xml",
-        "serverType":"SFTP",
-        "serverHost":"9.199.144.110",
-        "serverTimezone":"",
-        "serverPlatform":"UNIX",
-        "serverLocale":"en-US",
-        "serverFileEncoding":"UTF-8",
-        "serverPort":22,
-        "serverTrustStoreFile" : "",
-        "serverLimitedWrite":"",
-        "serverListFormat" :"",
-        "serverUserId":"root",
-        "serverPassword":"Kitt@n0or"
-      },
-      "additionalProperties" : {
-        "enableQueueInputOutput" :"true"
-      },
-      "resourceMonitors" : {
-        "QMON" : "/mftdata/mntrs/qmon.xml",
-        "QMON2" :"/mftdata/mntrs/qmon2.xml"
-      }
-   }
-    ```
-
-7. Run the below command to list the docker containers, find newly created containers **AGENTSRC**, **AGENTDEST** and make a note of their container-ids.
+6. Run the below command to list the docker containers, find newly created containers **AGENTSRC**, **AGENTDEST** and make a note of their container-ids.
     ```
     docker ps
     ```
-8. Check if the mft agents accept commands and show output. For example, run following command on Agent containers
+7. Check if the mft agents accept commands and show output. For example, run following command on Agent containers
     ```
     docker exec -ti <AGENTSRC-container-id> fteListAgents
     docker exec -ti <AGENTDEST-container-id> fteListAgents
@@ -220,16 +143,6 @@ Agent package contains a Dockerfile-agent to build the MFT agent docker image. M
     docker logs <AGENTSRC-container-id>
     docker logs <AGENTDEST-container-id>
     ```
-9. To stop an agent use the following command 
-    ```
-    docker exec <AGENTSRC-container-id> bash -c 'export BFG_DATA=/mftdata ; export PATH=$PATH:/var/mqm/mft/bin ; fteStopAgent -i <agent name>'
-    ```
-10. To delete an agent, stop the agent first and then delete it. Use the following commands
-    ```
-    docker exec <AGENTSRC-container-id> bash -c 'export BFG_DATA=/mftdata ; export PATH=$PATH:/var/mqm/mft/bin ; fteStopAgent -i <agent name>'
-    docker exec <AGENTSRC-container-id> bash -c 'export BFG_DATA=/mftdata ; export PATH=$PATH:/var/mqm/mft/bin ; fteDeleteAgent <agent name> -f'
-    ```
-
 ---
 
 ### Create a File Transfer with MFT Agents in Containers
@@ -262,16 +175,6 @@ We will create a text file on **AGENTSRC** that will be transferred to **AGENTDE
     docker exec -ti <AGENTDEST-container-id> bash -c "cat /tmp/transfer.txt"
     ```
     **Note:** If the output of above command is *Hello World*, that confirms file transfer is complete and successful.
-
----
-### CPU and Memory recommendations
-
-1. If you want limit the number of CPUs for your container running agent, then you must specify a minimum of 1 CPU. Using lesser CPU may cause problems when running transfers or running any MFT commands in the container.
-2. It is recommended to specify memory size of 1 giga bytes for agent container. Agent will use JVM heap size based on the memory specified for the container.
-   The following example specifies 1 cpu and 1g memory for the container.
-    ```
-	docker run --cpus 1 --memory="1g" --mount type=volume,source=mftdata,target=/mftdata -e AGENT_CONFIG_FILE="/mftdata/agentconfigsrc.json" -d --name=AGENTSRC mftagentredist
-    ```
 
 ---
 ### Conclusion  

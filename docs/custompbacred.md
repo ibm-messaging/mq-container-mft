@@ -28,5 +28,6 @@ metadata:
 data:
   ProtocolBridgeCredentials.prop: sftp.server.com=sftpuid!0!SftpPassw0rd
 ```
+
 ### Limitations
 1) Private key and trust stores are not yet supported for Protocol Bridge Agents. Hence only a userid and password combination must be used for connecting to FTP/SFTP/FTPS servers.

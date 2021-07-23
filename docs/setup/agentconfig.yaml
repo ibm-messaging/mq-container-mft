@@ -1,0 +1,9 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: mqmft-agent-config
+  namespace: ibmmqmft
+
+data:
+  mqmftcfg.json: >
+    {"waitTimeToStart":20,"coordinationQMgr":{"name":"SECUREQM","host":"10.254.16.17","port":1414,"channel":"QS_SVRCONN","additionalProperties":{}},"commandQMgr":{"name":"SECUREQM","host":"10.254.16.17","port":1414,"channel":"QS_SVRCONN","additionalProperties": {}},"agents":[{"name":"SRCSTD","deleteOnTermination":"true","type":"STANDARD","qmgrName":"QUICKSTART","qmgrHost":"10.254.16.19","qmgrPort":1414,"qmgrChannel":"QS_SVRCONN","additionalProperties":{"enableQueueInputOutput":"true",     "trace":"all","logCapture":"true"}}    ,{"name":"BRIDGE","type":"BRIDGE",    "deleteOnTermination":"true","cleanOnStart":"all",    "qmgrName":"QUICKSTART","qmgrHost":"10.254.16.19","qmgrPort":1414,"qmgrChannel":"QS_SVRCONN","protocolBridge":    {"serverType":"SFTP","serverHost":"10.17.68.52","serverPlatform":"UNIX","serverLocale":"en-GB","listFormat"="UNIX",    "limitedWrite"="false", "serverFileEncoding"="UTF8", "passiveMode"="true",    "protocolBridgeProperties" : {}},    "additionalProperties":{"logCapture":"true","enableQueueInputOutput":"false",    "protocolBridgeCredentialConfiguration":"/mnt/credentials/ProtocolBridgeCredentials.prop"}}]}
