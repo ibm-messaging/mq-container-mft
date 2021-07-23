@@ -22,7 +22,8 @@ This procedure works for building the MQ Managed File Transfer Redistributable p
    **Note:** The redistributable MFT package has to be present in same path as **Dockerfile**.
 4. Run the following command to build image
    `podman build -f Dockerfile-agent -t mqmft:9.2.2 --build-arg ARG_MQMFT_REDIST_FILE=9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz
-   Replace the `9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz` with the version of the redistributable package of your choice.
+   
+   You can replace the `9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz` with the version of the redistributable package of your choice.
 
 ## Installed components
 
