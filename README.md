@@ -30,7 +30,7 @@ Note that in order to use the image, it is necessary to accept the terms of the 
 Agent in the container will create agent configuration and log files under the fixed directory `/mnt/mftdata`. This folder can be on a persistent volume as well, in which case the volume must be mounted as `/mnt/mftdata` mount point in to the container
 
 ### Building your own container image
-See the build instructions [here](mq-container-mft/docs/build.md) to build your own agent container image.
+See the instructions [here](docs/build.md) to build your own agent container image.
 
 ### Limitations
 1) Private key and trust stores are not yet supported for Protocol Bridge Agents. Hence only a userid and password combination must be used for connecting to FTP/SFTP/FTPS servers.
