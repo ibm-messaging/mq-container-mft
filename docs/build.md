@@ -10,7 +10,7 @@ If you are working in the Windows Subsystem for Linux, follow [this guide by Mic
 
 You will also need a [Red Hat Account](https://access.redhat.com) to be able to access the Red Hat Registry. 
 
-## Building an MFT container image
+## Building your MFT container image
 
 This procedure works for building the MQ Managed File Transfer Redistributable package on `amd64` architectures.
 
@@ -25,6 +25,16 @@ This procedure works for building the MQ Managed File Transfer Redistributable p
    `podman build -f Dockerfile-agent -t mqmft:9.2.2 --build-arg ARG_MQMFT_REDIST_FILE=9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz`
    
    You can replace the `9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz` with the version of the redistributable package of your choice.
+
+### Building the Bridge Credential Exit - bridgecredexit
+The container image also ships a MFT Bridge Agent Credential Exit. This exit is used by a Bridge agent to determine credentials required to connect to a SFTP/FTP server.
+
+To build the exit, you require `com.ibm.wmqfte.com.ibm.wmqfte.exitroutines.api.jar` library. The library is shipped as part of IBM MQ Standard Installation image or MFT Redistributable package. 
+You can build the exit using Eclipse IDE with at least Java JDK or with `javac` using
+   `javac -cp .:/<path>/com.ibm.wmqfte.com.ibm.wmqfte.exitroutines.api.jar:/<path>/json-20210307 ProtocolBridgeCustomCredentialExit.java`
+
+ and jar the class file
+   `jar cmf MANIFEST.MF bridgecredexit ProtocolBridgeCustomCredentialExit.class`
 
 ## Installed components
 

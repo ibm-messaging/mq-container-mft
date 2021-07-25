@@ -3,16 +3,16 @@ package main
 ************************************************************************
 * This file contains the source code for IBM MQ Managed File Transfer
 * Log Capture parse utility
-* 
+*
 ************************************************************************
 * © Copyright IBM Corporation 2021, 2021
 
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
-* 
+*
 * http://www.apache.org/licenses/LICENSE-2.0
-* 
+*
 * Unless required by applicable law or agreed to in writing, software
 * distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,13 +35,13 @@ import (
     "time"
 
     "github.com/tidwall/gjson"
-    "github.com/ibm-messaging/mq-container-mft/cmd/utils"	
+    "github.com/ibm-messaging/mq-container-mft/cmd/utils"
 )
 
 // Map to cache transfer ids already processed
 var transferIdMap map[string]string
 
-var displayCount int 
+var displayCount int
 var displayTransferType int
 var counter int
 const transferSUCCESSFUL = 1
@@ -84,15 +84,7 @@ func main() {
     flag.Lookup("ip").NoOptDefVal = "-1"
 
     flag.Usage = func() {
-        fmt.Printf("Usage:\n")
-        fmt.Println("    mqfts       Display status of transfers present in log file")
-        fmt.Println("    mqfts <--lf>=<capture log file>")
-        fmt.Println("    mqfts <--id>=<Transfer ID> Display details of single transfer. Specify * for all transfers")
-        fmt.Println("    mqfts <--fl>=<n> Display recent <n> failed transfers")
-        fmt.Println("    mqfts <--sf>=<n> Display recent <n> successful transfers")
-        fmt.Println("    mqfts <--ps>=<n> Display recent <n> partially successful transfers")
-        fmt.Println("    mqfts <--st>=<n> Display recent <n> transfers in 'started' state")
-        fmt.Println("    mqfts <--ip>=<n> Display recent <n> 'In Progress' transfers")
+        displayHelp()
         return
     }
 
@@ -154,59 +146,113 @@ func isFlagPassed(name string) bool {
     return found
 }
 
+func displayHelpSample() {
+    dispUsage := "\nUsage:\n\n"
+    dispUsage += "  Specify either:\n"
+    dispUsage += "      --lf <capture log file>\n\n"
+    dispUsage += "	  OR\n\n"
+    dispUsage += "      Set the following environment variables\n"
+    dispUsage += "         MFT_CAPTURE_LOG_PATH=<path of MFT log capture file>\n\n"
+    dispUsage += "	  OR\n\n"
+    dispUsage += "      Set the following environment variables\n"
+    dispUsage += "         MFT_AGENT_NAME=<name of your agent>\n"
+    dispUsage += "         MFT_COORDINATION_QM=<coordination queue manager name>\n"
+    dispUsage += "         BFG_DATA=<MFT data directory>\n\n"
+    dispUsage += "    Example:\n\n"
+    dispUsage += "      mqfts --lf=/var/mqm/mqft/logs/QM/agents/SRC/logs/capture0.log\n\n"
+    dispUsage += "         OR \n\n"
+    dispUsage += "      export MFT_CAPTURE_LOG_PATH=/var/mqm/mqft/logs/QM/agents/SRC/logs/capture0.log\n\n"
+    dispUsage += "         OR \n\n"
+    dispUsage += "      export MFT_AGENT_NAME=SRC\n"
+    dispUsage += "      export MFT_COORDINATION_QM=QM1\n"
+    dispUsage += "      export BFG_DATA=/var/mqm\n\n"
+    dispUsage += "  Examples:\n"
+    dispUsage += "  Display list of transfers a capture log file\n"
+    dispUsage += "    mqfts --lf=/var/mqm/mqft/capture0.log\n\n"
+    dispUsage += "  Display details of a transfer from a capture log file\n"
+    dispUsage += "    mqfts --lf=/var/mqm/mqft/capture0.log --id=414d51204d46544841514d20202020205947c35e2105470f\n"
+    fmt.Println(dispUsage)
+}
+func displayHelp() {
+    dispUsage := "\nOptions:\n"
+    dispUsage += "\t mqfts       Display status of transfers present in log file\n"
+    dispUsage += "\t mqfts <--lf>=<absolute path of capture log file>\n"
+    dispUsage += "\t mqfts <--id>=<Transfer ID> Display details of single transfer. Specify * for all transfers\n"
+    dispUsage += "\t mqfts <--fl>=<n> Display recent <n> failed transfers\n"
+    dispUsage += "\t mqfts <--sf>=<n> Display recent <n> successful transfers\n"
+    dispUsage += "\t mqfts <--ps>=<n> Display recent <n> partially successful transfers\n"
+    dispUsage += "\t mqfts <--st>=<n> Display recent <n> transfers in 'started' state\n"
+    dispUsage += "\t mqfts <--ip>=<n> Display recent <n> 'In Progress' transfers\n"
+    fmt.Println(dispUsage)
+    displayHelpSample()
+}
+
 // Get absolute captureX log file path
 func getLogPath(logFilePath string) string {
     var outputLogFilePath string
 
-    if isFlagPassed ("lf") {
+    logCapturePath, logCapturePathSet := os.LookupEnv("MFT_CAPTURE_LOG_PATH")
+    if logCapturePathSet {
+        outputLogFilePath = logCapturePath
+    } else if isFlagPassed ("lf") {
         outputLogFilePath = logFilePath
     } else {
         var bfgDataPath string
-        var bfgConfigFilePath string
         var agentConfig string
         var agentNameEnv string
         var e error
-
         var coordinationQMgr string
-        bfgConfigFilePath = os.Getenv("MFT_AGENT_CONFIG_FILE")
-        if strings.Trim(bfgConfigFilePath, "") != "" {
-            // Read agent configuration data from JSON file.
-            agentConfig, e = utils.ReadConfigurationDataFromFile(bfgConfigFilePath)
-            // Exit if we had any error when reading configuration file
-            if e != nil {
-                fmt.Print(e)
-                os.Exit(1)
-            }
-            coordinationQMgr = gjson.Get(agentConfig, "coordinationQMgr.name").String()
+
+        logCapturePath, logCapturePathSet := os.LookupEnv("MFT_CAPTURE_LOG_PATH")
+        if logCapturePathSet {
+            outputLogFilePath = logCapturePath
         } else {
-            fmt.Println("Environment variables:")
-            coordinationQMgr = os.Getenv("MFT_COORDINATION_QM")
-            if strings.Trim(coordinationQMgr, "") == "" {
-                fmt.Println("Failed to determine coordination queue manager name. Set 'MFT_COORDINATION_QM' environment variable with coordination queue manager")
+            bfgConfigFilePath, bfgConfigFilePathSet := os.LookupEnv("MFT_AGENT_CONFIG_FILE")
+            if bfgConfigFilePathSet {
+                // Read agent configuration data from JSON file.
+                agentConfig, e = utils.ReadConfigurationDataFromFile(bfgConfigFilePath)
+                // Exit if we had any error when reading configuration file
+                if e != nil {
+                    fmt.Print(e)
+                    os.Exit(1)
+                }
+                coordinationQMgr = gjson.Get(agentConfig, "coordinationQMgr.name").String()
+            } else {
+                coordinationQMgrLocal, coordinationQMgrSet := os.LookupEnv("MFT_COORDINATION_QM")
+                if !coordinationQMgrSet {
+                    fmt.Println("Failed to determine coordination queue manager name. Set 'MFT_COORDINATION_QM' environment variable with coordination queue manager")
+                    displayHelpSample()
+                    os.Exit(1)
+                } else {
+                    coordinationQMgr = coordinationQMgrLocal
+                }
+            }
+
+            // Read agent name from environment variable
+            agentNameEnvLocal, agentNameEnvSet := os.LookupEnv("MFT_AGENT_NAME")
+            if !agentNameEnvSet {
+                fmt.Println("Failed to determine agent name from environment. Ensure 'MFT_AGENT_NAME' environment variable set to agent name")
+                displayHelpSample()
                 os.Exit(1)
             } else {
-                fmt.Printf("\tMFT_COORDINATION_QM=%s\n", coordinationQMgr)
+                agentNameEnv = agentNameEnvLocal
             }
-		}
-		
-		agentNameEnv = os.Getenv("MFT_AGENT_NAME")
-		if strings.Trim(agentNameEnv, "") == "" {
-			fmt.Println("Failed to determine agent name from environment. Ensure 'MFT_AGENT_NAME' environment variable set to agent name")
-			os.Exit(1)
-		} 
 
-		// Get path from environment variable
-		bfgConfigMountPath := os.Getenv("BFG_DATA")
-		if strings.Trim(bfgConfigMountPath, "") == "" {
-			fmt.Println("Failed to determine agent configuration directory name from environment. Ensure BFG_DATA environment variable set to IBM MQ Managed File Transfer data directory")
-			os.Exit(1)
-		}
-		if len(bfgConfigMountPath) > 0 {
-			bfgDataPath = bfgConfigMountPath
-		}
+            // Get path from environment variable
+            bfgConfigMountPath, bfgConfigMountPathSet := os.LookupEnv("BFG_DATA")
+            if !bfgConfigMountPathSet {
+                fmt.Println("Failed to determine agent configuration directory name from environment. Ensure BFG_DATA environment variable set to IBM MQ Managed File Transfer data directory")
+                displayHelpSample()
+                os.Exit(1)
+            } else {
+                if len(bfgConfigMountPath) > 0 {
+                    bfgDataPath = bfgConfigMountPath
+                }
+            }
 
-        // Read the agentPid file from the agent logs directory
-        outputLogFilePath = bfgDataPath + "/mqft/logs/" + coordinationQMgr + "/agents/" + agentNameEnv + "/logs/capture0.log"
+            // Build capture log file path
+            outputLogFilePath = bfgDataPath + "/mqft/logs/" + coordinationQMgr + "/agents/" + agentNameEnv + "/logs/capture0.log"
+        }
     }
 
     return outputLogFilePath
