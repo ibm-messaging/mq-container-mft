@@ -30,10 +30,13 @@ This procedure works for building the MQ Managed File Transfer Redistributable p
 The container image also ships a MFT Bridge Agent Credential Exit. This exit is used by a Bridge agent to determine credentials required to connect to a SFTP/FTP server.
 
 To build the exit, you require `com.ibm.wmqfte.com.ibm.wmqfte.exitroutines.api.jar` library. The library is shipped as part of IBM MQ Standard Installation image or MFT Redistributable package. 
+
 You can build the exit using Eclipse IDE with at least Java JDK or with `javac` using
+
    `javac -cp .:/<path>/com.ibm.wmqfte.com.ibm.wmqfte.exitroutines.api.jar:/<path>/json-20210307 ProtocolBridgeCustomCredentialExit.java`
 
- and jar the class file
+ and jar the class file using
+ 
    `jar cmf MANIFEST.MF bridgecredexit ProtocolBridgeCustomCredentialExit.class`
 
 ## Installed components
