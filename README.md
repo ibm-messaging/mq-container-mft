@@ -6,7 +6,7 @@ IBM MQ Managed File Transfer transfers files between systems in a managed and au
 
 Run IBM MQ Managed File Transfer agents in a container .
 
-See [here](archive/READMEEarlierImp.md) for an earlier implementation of MFT on cloud.
+See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 
 
 ## Usage
