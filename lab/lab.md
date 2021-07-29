@@ -158,47 +158,47 @@ Run the following command to remove the container name.
 	
 	2. Run the following command to login into the queue manager container
 	
-	```
+```
 		podman exec -it mqmftqm /bin/bash
-	```
+```
 
 	3. Run dspmq comand and verify queue manager is running
 
-	```
+```
 		dspmq
-	```
+```
 
 	6. Create coordination queue manager objects. Run the following command
 
-	```
+```
 		runmqsc MQMFT < coordsetup.mqsc
-	```
+```
 
 	7. We will have two agents in this lab. So create the required queue manager objects for the two agents. SRCAGNT and DESTAGNT will be the name of agents.
 
 	Run the following to create objects for source agent `SRCAGENT`
 	
-	```
+```
 		runmqsc MQMFT < srcagent.mqsc
-	```
+```
 	
 	Run the following to create objects for source agent DESTAGENT
 `	
-	```
+```
 		runmqsc MQMFT \&lt; destagent.mqsc
-	```
+```
 	
 	9. As the agents and queue manager runs in different containers, you will need to setup authorities on the objects created above so that agents can connect. Run the following Shell script to setup the required authorities.
 	
-	```
+```
 		./setqmaut.sh
-	```
+```
 	
 	10. Run the following command to exit out of queue manager container.
 	
-	```
+```
 		exit
-	```
+```
 
 This completes the queue manager configuration.
 
