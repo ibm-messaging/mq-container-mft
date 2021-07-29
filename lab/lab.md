@@ -1,3 +1,4 @@
+
 # LAB: MQMFT Agent in Container
 ## Introduction
 
@@ -59,9 +60,9 @@ In this lab, you will come across some quite long commands to enter. You will be
 - The host file system will be used as source and destination file system for agent. For this purpose, you will be creating tow directories on the host file system. The directory will be mounted into a container as a file system.
 
 - This document accompanies mftlab.tar file containing scripts, config JSON file, samples etc. Unpack the tar file into your home directory using the following command:
-
-	`tar xvf mftlab.tar`
-
+```
+	tar xvf mftlab.tar
+```
 The directory will contain the following:
 
 ```./mftlab/qm
@@ -74,7 +75,7 @@ The directory will contain the following:
 
 `./mftlab/agent`
 
-- `agentconfig.json` - A JSON file containing the configuration information required for creating agent containers. [Here](https://github.com/ibm-messaging/mft-cloud/tree/master/docs/agentconfig.md) are details of each attribute in the JSON file. 
+- `agentconfig.json` - A JSON file containing the configuration information required for creating agent containers. [Here](https://github.com/ibm-messaging/mft-cloud/tree/master/docs/agentconfig.md) are the details of each attribute in the JSON file. 
 -**You will need to replace the value of host name attribute with the host name or IP address of the machine where you are running this lab. Run**  **ifconfig**  **command to get this information. Use the IP address/host name from eth0.**
 
 `./mftlab/srcdir`
@@ -84,19 +85,19 @@ The directory will contain the following:
 ### Initial steps for setting up lab
 1) Upload the mftlab.tar file using scp or WinScp to home directory. 
 2) Open a Linux command prompt session. You will be in your home directory /home/student. If not, change to this directory.
-Unpack the mftlab.tar in the current directory using 
-
-`tar xvf mftlab.tar`
-
+Unpack the `mftlab.tar` in the current directory using 
+```
+	tar xvf mftlab.tar
+```
 ### Run queue manager in a container
 We shall now create the queue manager and required queue manager object for Managed File Transfer.
 1. Now create a docker volume, **mqmftdata** to be as persistent volume for the queue manager
 
-`podman volume create mqmftdata`
+	`podman volume create mqmftdata`
 
 Name of the volume created will be displayed after successful completion of the command. Verify by running the following command
 
-`podman volume ls`
+	`podman volume ls`
  
  2) Now create the queue manager, MQMFT. Docker image for creating the queue manager will be downloaded from DockerHub. Note:
 	1. Name of the queue manager, MQMFT is passed via environment variable MQ\_QMGR\_NAME
@@ -105,7 +106,8 @@ Name of the volume created will be displayed after successful completion of the 
 	4. Volume mqmftdata will be mounted as /mnt/mqm
 	5. As -d option is used, the container will running in the background. Container will be named as `mqmftqm`
 
-```podman run \
+```
+podman run \
    --env LICENSE=accept \
    --env MQ\_QMGR\_NAME=MQMFT \
    --publish 1414:1414 \
@@ -120,16 +122,16 @@ The command will download MQ container image from DockerHub, if it&#39;s not alr
 
 Verify queue manager is running with the following command 
 
-`podman ps`
+	`podman ps`
 
 **Important Note:** 
 	Run the following command if you want to stop the container:
 
-	`podman stop mqmftqm`
+```podman stop mqmftqm```
 
-	Run the following command to remove the container name.
+Run the following command to remove the container name.
 
-	`podman rm mqmftqm`
+```podman rm mqmftqm```
  
  3) Next step is to configure the queue manager for using with Managed File Transfer. As the same queue manager is being used as Coordination, Command and Agent, all objects will be created in the same qeue manager.
 
@@ -137,22 +139,23 @@ Verify queue manager is running with the following command
 
 	1. Copy the MQSC scripts to queue manager container.
 	
-`podman cp mftlab/qm/coordsetup.mqsc mqmftqm:/coordsetup.mqsc`
-`podman cp mftlab/qm/destagent.mqsc mqmftqm:/destagent.mqsc`
-`podman cp mftlab/qm/srcagent.mqsc mqmftqm:/srcagent.mqsc`
-`podman cp mftlab/qm/setqmaut.sh mqmftqm:/setqmaut.sh``
-
+```
+	podman cp mftlab/qm/coordsetup.mqsc mqmftqm:/coordsetup.mqsc
+	podman cp mftlab/qm/destagent.mqsc mqmftqm:/destagent.mqsc
+	podman cp mftlab/qm/srcagent.mqsc mqmftqm:/srcagent.mqsc
+	podman cp mftlab/qm/setqmaut.sh mqmftqm:/setqmaut.sh```
+	
 	2. Run the following command to login into the queue manager container
 	
-	`podman exec -it mqmftqm /bin/bash`
+	```podman exec -it mqmftqm /bin/bash```
 
 	3. Run dspmq comand and verify queue manager is running
 
-`dspmq`
+	`dspmq`
 
 	6. Create coordination queue manager objects. Run the following command
 
- `runmqsc MQMFT < coordsetup.mqsc`
+	`runmqsc MQMFT < coordsetup.mqsc`
 
 	7. We will have two agents in this lab. So create the required queue manager objects for the two agents. SRCAGNT and DESTAGNT will be the name of agents.
 
