@@ -62,11 +62,12 @@ In this lab, you will come across some quite long commands to enter. You will be
 
 - This document accompanies mftlab.tar file containing scripts, config JSON file, samples etc. Unpack the tar file into your home directory using the following command:
 ```
-	tar xvf mftlab.tar
+tar xvf mftlab.tar
 ```
 The directory will contain the following:
 
-```./mftlab/qm
+```
+./mftlab/qm
 
 - coordsetup.mqsc
 - destagent.mqsc
@@ -88,20 +89,20 @@ The directory will contain the following:
 2) Open a Linux command prompt session. You will be in your home directory /home/student. If not, change to this directory.
 Unpack the `mftlab.tar` in the current directory using 
 ```
-	tar xvf mftlab.tar
+tar xvf mftlab.tar
 ```
 ### Run queue manager in a container
 We shall now create the queue manager and required queue manager object for Managed File Transfer.
 1. Now create a docker volume, **mqmftdata** to be as persistent volume for the queue manager
 
 ```
-	podman volume create mqmftdata
+podman volume create mqmftdata
 ```
 
 Name of the volume created will be displayed after successful completion of the command. Verify by running the following command
 
 ```
-	podman volume ls
+podman volume ls
 ```
  
  2) Now create the queue manager, MQMFT. Docker image for creating the queue manager will be downloaded from DockerHub. Note:
@@ -128,20 +129,20 @@ The command will download MQ container image from DockerHub, if it&#39;s not alr
 Verify queue manager is running with the following command 
 
 ```
-	podman ps
+podman ps
 ```
 
 **Important Note:** 
 	Run the following command if you want to stop the container:
 
 ```
-	podman stop mqmftqm
+podman stop mqmftqm
 ```
 
 Run the following command to remove the container name.
 
 ```
-	podman rm mqmftqm
+podman rm mqmftqm
 ```
  
  3) Next step is to configure the queue manager for using with Managed File Transfer. As the same queue manager is being used as Coordination, Command and Agent, all objects will be created in the same qeue manager.
@@ -151,29 +152,28 @@ Run the following command to remove the container name.
 	1) Copy the MQSC scripts to queue manager container.
 	
 ```
-	podman cp mftlab/qm/coordsetup.mqsc mqmftqm:/coordsetup.mqsc
-	podman cp mftlab/qm/destagent.mqsc mqmftqm:/destagent.mqsc
-	podman cp mftlab/qm/srcagent.mqsc mqmftqm:/srcagent.mqsc
-	podman cp mftlab/qm/setqmaut.sh mqmftqm:/setqmaut.sh
-
+podman cp mftlab/qm/coordsetup.mqsc mqmftqm:/coordsetup.mqsc
+podman cp mftlab/qm/destagent.mqsc mqmftqm:/destagent.mqsc
+podman cp mftlab/qm/srcagent.mqsc mqmftqm:/srcagent.mqsc
+podman cp mftlab/qm/setqmaut.sh mqmftqm:/setqmaut.sh
 ```
 	
 2) Run the following command to login into the queue manager container
 	
 ```
-	podman exec -it mqmftqm /bin/bash
+podman exec -it mqmftqm /bin/bash
 ```
 
 3) Run dspmq comand and verify queue manager is running
 
 ```
-	dspmq
+dspmq
 ```
 
 4) Create coordination queue manager objects. Run the following command
 
 ```
-	runmqsc MQMFT < coordsetup.mqsc
+runmqsc MQMFT < coordsetup.mqsc
 ```
 
 5) We will have two agents in this lab. So create the required queue manager objects for the two agents. SRCAGNT and DESTAGNT will be the name of agents.
@@ -181,24 +181,24 @@ Run the following command to remove the container name.
 	Run the following to create objects for source agent `SRCAGENT`
 	
 ```
-	runmqsc MQMFT < srcagent.mqsc
+runmqsc MQMFT < srcagent.mqsc
 ```
 	
 6) Run the following to create objects for source agent `DESTAGENT`
 ```
-	runmqsc MQMFT \&lt; destagent.mqsc
+runmqsc MQMFT \&lt; destagent.mqsc
 ```
 	
 7) As the agents and queue manager runs in different containers, you will need to setup authorities on the objects created above so that agents can connect. Run the following Shell script to setup the required authorities.
 	
 ```
-	./setqmaut.sh
+./setqmaut.sh
 ```
 	
 8) Run the following command to exit out of queue manager container.
 	
 ```
-	exit
+exit
 ```
 
 This completes the queue manager configuration.
@@ -213,21 +213,21 @@ A sample agent configuration JSON file is made available with this lab. The cont
 Create the following two directories in current directory on the host file system
 
 ```
-	mkdir srcdir
-	mkdir destdir
+mkdir srcdir
+mkdir destdir
 ```
 
 Provide permissions so that agent containers can read/write from/to the mounted directory.
 
 ```
-	chmod 777 srcdir
-`	chmod 777 destdir
+chmod 777 srcdir
+chmod 777 destdir
 ```
 
 Copy a sample file to srcdir for running tests later in the lab
 
 ```
-	cp ./mftlab/samplecsv/airtravel.csv ./srcdir
+cp ./mftlab/samplecsv/airtravel.csv ./srcdir
 ```
 
 Run source agent, SRC AGENT in container in the background. 
@@ -313,7 +313,7 @@ fteCreateTransfer -rt -1 -sa SRCAGENT -sm MQMFT -da DESTAGENT -de overwrite -dm 
 
 View the status of transfer by running the _mqfts_ utility. This utility displays transfer status by parsing _capture0.log_ file located in source agent&#39;s log directory. 
 
-To view more details of the transfer, run _mqfts –id=\&lt;transfer id\&gt;_. For example:
+To view more details of the transfer, run _mqfts –id=<transfer id>. For example:
 
 ```
 mqfts --id=414d51204d514d46542020202020202044bfbd60019b0040
@@ -350,7 +350,7 @@ fteListMonitors -v -mn FILEMON -ma SRCAGENT
 
 ```
 mkdir -p /home/student/srcdir/input
-cp /home/student/mftlab/samplecsv/input/\*.\* /home/student/srcdir/input
+cp /home/student/mftlab/samplecsv/input/*.* /home/student/srcdir/input
 ```
 
 After few seconds, verify that transfer has completed, and files are indeed available in `/home/student/destdir/`output directory
