@@ -93,11 +93,15 @@ Unpack the `mftlab.tar` in the current directory using
 We shall now create the queue manager and required queue manager object for Managed File Transfer.
 1. Now create a docker volume, **mqmftdata** to be as persistent volume for the queue manager
 
-	```podman volume create mqmftdata```
+```
+	podman volume create mqmftdata
+```
 
 Name of the volume created will be displayed after successful completion of the command. Verify by running the following command
 
-	```podman volume ls```
+```
+	podman volume ls
+```
  
  2) Now create the queue manager, MQMFT. Docker image for creating the queue manager will be downloaded from DockerHub. Note:
 	1. Name of the queue manager, MQMFT is passed via environment variable MQ\_QMGR\_NAME
@@ -122,16 +126,22 @@ The command will download MQ container image from DockerHub, if it&#39;s not alr
 
 Verify queue manager is running with the following command 
 
-	```podman ps```
+```
+	podman ps
+```
 
 **Important Note:** 
 	Run the following command if you want to stop the container:
 
-```podman stop mqmftqm```
+```
+	podman stop mqmftqm
+```
 
 Run the following command to remove the container name.
 
-```podman rm mqmftqm```
+```
+	podman rm mqmftqm
+```
  
  3) Next step is to configure the queue manager for using with Managed File Transfer. As the same queue manager is being used as Coordination, Command and Agent, all objects will be created in the same qeue manager.
 
@@ -148,35 +158,47 @@ Run the following command to remove the container name.
 	
 	2. Run the following command to login into the queue manager container
 	
-	```podman exec -it mqmftqm /bin/bash```
+	```
+		podman exec -it mqmftqm /bin/bash
+	```
 
 	3. Run dspmq comand and verify queue manager is running
 
 	```
-	dspmq
+		dspmq
 	```
 
 	6. Create coordination queue manager objects. Run the following command
 
-	```runmqsc MQMFT < coordsetup.mqsc```
+	```
+		runmqsc MQMFT < coordsetup.mqsc
+	```
 
 	7. We will have two agents in this lab. So create the required queue manager objects for the two agents. SRCAGNT and DESTAGNT will be the name of agents.
 
 	Run the following to create objects for source agent `SRCAGENT`
 	
-	```runmqsc MQMFT < srcagent.mqsc```
+	```
+		runmqsc MQMFT < srcagent.mqsc
+	```
 	
 	Run the following to create objects for source agent DESTAGENT
 `	
-	```runmqsc MQMFT \&lt; destagent.mqsc```
+	```
+		runmqsc MQMFT \&lt; destagent.mqsc
+	```
 	
 	9. As the agents and queue manager runs in different containers, you will need to setup authorities on the objects created above so that agents can connect. Run the following Shell script to setup the required authorities.
 	
-	```./setqmaut.sh```
+	```
+		./setqmaut.sh
+	```
 	
 	10. Run the following command to exit out of queue manager container.
 	
-	```exit```
+	```
+		exit
+	```
 
 This completes the queue manager configuration.
 
@@ -305,7 +327,7 @@ The `fteCreateTransfer -gt` option creates a file in the current directory. You 
 Now run the following commands to create transfer definition for the monitor FILEMON. **Important note: The &#39;$&#39; must be prefixed with escape character &#39;\&#39; on bash shell, otherwise it will be ignored when the command is run.**
 
 ```
-fteCreateTransfer -gt /mountpath/task.xml -sa SRCAGENT -sm MQMFT -da DESTAGENT -dm MQMFT -sd delete -de overwrite -dd &quot;/mountpath/output&quot; &quot; **\$** {FilePath}&quot;
+	fteCreateTransfer -gt /mountpath/task.xml -sa SRCAGENT -sm MQMFT -da DESTAGENT -dm MQMFT -sd delete -de overwrite -dd &quot;/mountpath/output&quot; &quot; **\$** {FilePath}&quot;
 ```
 
 Then run the following command to create resource monitor
