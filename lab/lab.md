@@ -241,7 +241,7 @@ Description of the parameters:
 
 **MFT\_AGENT\_NAME=SRCAGENT** – Name of the agent
 
-**MFT\_LOG\_LEVEL=&quot;info&quot;** – Level of logging._info_ displays high level log informationof container creation on the console. _verbose –_ displays low level logs including contents of agent&#39;s output0.log file.
+**MFT\_LOG\_LEVEL="info"** – Level of logging._info_ displays high level log informationof container creation on the console. _verbose –_ displays low level logs including contents of agent&#39;s output0.log file.
 
 **LICENSE=accept** – Accept product license
 
@@ -253,7 +253,7 @@ podman run \
   -v /home/student/mftlab/agent:/mftagentcfg \
   -v /home/student/srcdir:/mountpath \
   --env MFT\_AGENT\_NAME=SRCAGENT \
-  --env MFT\_LOG\_LEVEL=&quot;verbose&quot; \
+  --env MFT\_LOG\_LEVEL="verbose" \
   --env LICENSE=accept \
   --env MFT\_AGENT\_CONFIG\_FILE=/mftagentcfg/agentconfig.json\
   --name srcagent \
@@ -273,7 +273,7 @@ podman run \
   -v /home/student/mftlab/agent:/mftagentcfg \
   -v /home/student/destdir:/mountpath \
   --env MFT\_AGENT\_NAME=DESTAGENT \
-  --env MFT\_LOG\_LEVEL=&quot;verbose&quot; \
+  --env MFT\_LOG\_LEVEL="verbose" \
   --env LICENSE=accept \
   --env MFT\_AGENT\_CONFIG\_FILE=/mftagentcfg/agentconfig.json\
   -d \
@@ -321,7 +321,7 @@ mqfts --id=414d51204d514d46542020202020202044bfbd60019b0040
 
 Now it&#39;s time to automate transfers using a resource monitor. You will create a Directory type resource monitor that monitors a directory for certain pattern of files. It will transfer file from that directory when files of matching pattern are placed in the directory.
 
-In the below example you will create a resource monitor that monitors &quot;/mountpath/srcdir/input&quot; directory every 5 seconds for &quot;.csv&quot; files and transfers them to &quot;/mountpath/destdir/output&quot; folder on the destination agent.
+In the below example you will create a resource monitor that monitors `/mountpath/srcdir/input` directory every 5 seconds for ".csv" files and transfers them to `/mountpath/destdir/output` folder on the destination agent.
 
 The `fteCreateTransfer -gt` option creates a file in the current directory. You may not have access to current directory. Hence task.xml file will be created in /mountpath directory.
 
@@ -329,13 +329,13 @@ Now run the following commands to create transfer definition for the monitor FIL
 **Important note: The &#39;$&#39; must be prefixed with escape character &#39;\&#39; on bash shell, otherwise it will be ignored when the command is run.**
 
 ```
-fteCreateTransfer -gt /mountpath/task.xml -sa SRCAGENT -sm MQMFT -da DESTAGENT -dm MQMFT -sd delete -de overwrite -dd "/mountpath/output&quot" "\${FilePath}"
+fteCreateTransfer -gt /mountpath/task.xml -sa SRCAGENT -sm MQMFT -da DESTAGENT -dm MQMFT -sd delete -de overwrite -dd "/mountpath/output" "\${FilePath}"
 ```
 
 Then run the following command to create resource monitor
 
 ```
-fteCreateMonitor -ma SRCAGENT -mn FILEMON -md &quot;/mountpath/input&quot; -pi 5 -pu SECONDS -c -tr "match,*.csv" -f -mt /mountpath/task.xml
+fteCreateMonitor -ma SRCAGENT -mn FILEMON -md "/mountpath/input" -pi 5 -pu SECONDS -c -tr "match,*.csv" -f -mt /mountpath/task.xml
 ```
 
 Verify the resource monitor creation by running the following command
