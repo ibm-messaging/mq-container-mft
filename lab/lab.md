@@ -93,11 +93,11 @@ Unpack the `mftlab.tar` in the current directory using
 We shall now create the queue manager and required queue manager object for Managed File Transfer.
 1. Now create a docker volume, **mqmftdata** to be as persistent volume for the queue manager
 
-	`podman volume create mqmftdata`
+	```podman volume create mqmftdata```
 
 Name of the volume created will be displayed after successful completion of the command. Verify by running the following command
 
-	`podman volume ls`
+	```podman volume ls```
  
  2) Now create the queue manager, MQMFT. Docker image for creating the queue manager will be downloaded from DockerHub. Note:
 	1. Name of the queue manager, MQMFT is passed via environment variable MQ\_QMGR\_NAME
@@ -122,7 +122,7 @@ The command will download MQ container image from DockerHub, if it&#39;s not alr
 
 Verify queue manager is running with the following command 
 
-	`podman ps`
+	```podman ps```
 
 **Important Note:** 
 	Run the following command if you want to stop the container:
@@ -143,7 +143,8 @@ Run the following command to remove the container name.
 	podman cp mftlab/qm/coordsetup.mqsc mqmftqm:/coordsetup.mqsc
 	podman cp mftlab/qm/destagent.mqsc mqmftqm:/destagent.mqsc
 	podman cp mftlab/qm/srcagent.mqsc mqmftqm:/srcagent.mqsc
-	podman cp mftlab/qm/setqmaut.sh mqmftqm:/setqmaut.sh```
+	podman cp mftlab/qm/setqmaut.sh mqmftqm:/setqmaut.sh
+```
 	
 	2. Run the following command to login into the queue manager container
 	
@@ -151,29 +152,31 @@ Run the following command to remove the container name.
 
 	3. Run dspmq comand and verify queue manager is running
 
-	`dspmq`
+	```
+	dspmq
+	```
 
 	6. Create coordination queue manager objects. Run the following command
 
-	`runmqsc MQMFT < coordsetup.mqsc`
+	```runmqsc MQMFT < coordsetup.mqsc```
 
 	7. We will have two agents in this lab. So create the required queue manager objects for the two agents. SRCAGNT and DESTAGNT will be the name of agents.
 
 	Run the following to create objects for source agent `SRCAGENT`
 	
-	`runmqsc MQMFT < srcagent.mqsc`
+	```runmqsc MQMFT < srcagent.mqsc```
 	
 	Run the following to create objects for source agent DESTAGENT
 `	
-	`runmqsc MQMFT \&lt; destagent.mqsc`
+	```runmqsc MQMFT \&lt; destagent.mqsc```
 	
 	9. As the agents and queue manager runs in different containers, you will need to setup authorities on the objects created above so that agents can connect. Run the following Shell script to setup the required authorities.
 	
-	`./setqmaut.sh`
+	```./setqmaut.sh```
 	
 	10. Run the following command to exit out of queue manager container.
 	
-	`exit`
+	```exit```
 
 This completes the queue manager configuration.
 
@@ -186,17 +189,23 @@ A sample agent configuration JSON file is made available with this lab. The cont
 
 Create the following two directories in current directory on the host file system
 
-`mkdir srcdir`
-`mkdir destdir`
+```
+	mkdir srcdir
+	mkdir destdir
+```
 
 Provide permissions so that agent containers can read/write from/to the mounted directory.
 
-`chmod 777 srcdir`
-`chmod 777 destdir`
+```
+	chmod 777 srcdir
+`	chmod 777 destdir
+```
 
 Copy a sample file to srcdir for running tests later in the lab
 
-`cp ./mftlab/samplecsv/airtravel.csv ./srcdir`
+```
+	cp ./mftlab/samplecsv/airtravel.csv ./srcdir
+```
 
 Run source agent, SRC AGENT in container in the background. 
 
@@ -230,20 +239,24 @@ podman run \
 
 Once the command completes, run the following command verify if the container is running
 
-`podman ps`
+```
+	podman ps
+```
 
 Similarly run destination agent container now.
 
-```podman run \
- -v /home/student/mftlab/agent:/mftagentcfg \
- -v /home/student/destdir:/mountpath \
- --env MFT\_AGENT\_NAME=DESTAGENT \
- --env MFT\_LOG\_LEVEL=&quot;verbose&quot; \
- --env LICENSE=accept \
- --env MFT\_AGENT\_CONFIG\_FILE=/mftagentcfg/agentconfig.json\
- -d \
- --name destagent \
- docker.io/ibmcom/mqmft```
+```
+podman run \
+  -v /home/student/mftlab/agent:/mftagentcfg \
+  -v /home/student/destdir:/mountpath \
+  --env MFT\_AGENT\_NAME=DESTAGENT \
+  --env MFT\_LOG\_LEVEL=&quot;verbose&quot; \
+  --env LICENSE=accept \
+  --env MFT\_AGENT\_CONFIG\_FILE=/mftagentcfg/agentconfig.json\
+  -d \
+  --name destagent \
+  docker.io/ibmcom/mqmft
+```
 
 After the command is complete, verify the container status by running `podman ps`
  
@@ -257,54 +270,72 @@ Remember you mounted `/srcdir` of the host file system into `srcagent` container
 
 Run the following command login to source agent container
 
-`podman exec -it srcagent /bin/bash`
+```
+	podman exec -it srcagent /bin/bash
+```
 
 Run the following command to status of available agents
 
-`fteListAgents`
+```
+	fteListAgents
+```
 
 The output would list the agents and their status.
 
 Before setting up resource monitor, let&#39;s verify transfer works. Submit a transfer request using `fteCreateTransfer` command.
 
-`fteCreateTransfer -rt -1 -sa SRCAGENT -sm MQMFT -da DESTAGENT -de overwrite -dm MQMFT -df &quot;/mountpath/airtravel.csv&quot; &quot;/mountpath/airtravel.csv&quot;`
+```
+	fteCreateTransfer -rt -1 -sa SRCAGENT -sm MQMFT -da DESTAGENT -de overwrite -dm MQMFT -df &quot;/mountpath/airtravel.csv&quot; &quot;/mountpath/airtravel.csv&quot;
+```
 
 View the status of transfer by running the _mqfts_ utility. This utility displays transfer status by parsing _capture0.log_ file located in source agent&#39;s log directory. 
 
 To view more details of the transfer, run _mqfts –id=\&lt;transfer id\&gt;_. For example:
 
-`mqfts --id=414d51204d514d46542020202020202044bfbd60019b0040`
+```
+	mqfts --id=414d51204d514d46542020202020202044bfbd60019b0040
+```
 
 Now it&#39;s time to automate transfers using a resource monitor. You will create a Directory type resource monitor that monitors a directory for certain pattern of files. It will transfer file from that directory when files of matching pattern are placed in the directory.
 
 In the below example you will create a resource monitor that monitors &quot;/mountpath/srcdir/input&quot; directory every 5 seconds for &quot;.csv&quot; files and transfers them to &quot;/mountpath/destdir/output&quot; folder on the destination agent.
 
-The fteCreateTransfer -gt option creates a file in the current directory. You may not have access to current directory. Hence task.xml file will be created in /mountpath directory.
+The `fteCreateTransfer -gt` option creates a file in the current directory. You may not have access to current directory. Hence task.xml file will be created in /mountpath directory.
 
 Now run the following commands to create transfer definition for the monitor FILEMON. **Important note: The &#39;$&#39; must be prefixed with escape character &#39;\&#39; on bash shell, otherwise it will be ignored when the command is run.**
 
-`fteCreateTransfer -gt /mountpath/task.xml -sa SRCAGENT -sm MQMFT -da DESTAGENT -dm MQMFT -sd delete -de overwrite -dd &quot;/mountpath/output&quot; &quot; **\$** {FilePath}&quot;`
+```
+fteCreateTransfer -gt /mountpath/task.xml -sa SRCAGENT -sm MQMFT -da DESTAGENT -dm MQMFT -sd delete -de overwrite -dd &quot;/mountpath/output&quot; &quot; **\$** {FilePath}&quot;
+```
 
 Then run the following command to create resource monitor
 
-`fteCreateMonitor -ma SRCAGENT -mn FILEMON -md &quot;/mountpath/input&quot; -pi 5 -pu SECONDS -c -tr &quot;match,\*.csv&quot; -f -mt /mountpath/task.xml`
+```
+	fteCreateMonitor -ma SRCAGENT -mn FILEMON -md &quot;/mountpath/input&quot; -pi 5 -pu SECONDS -c -tr &quot;match,\*.csv&quot; -f -mt /mountpath/task.xml
+```
 
 Verify the resource monitor creation by running the following command
 
-`fteListMonitors -v -mn FILEMON -ma SRCAGENT`
+```
+	fteListMonitors -v -mn FILEMON -ma SRCAGENT
+```
  
  Now that resource monitor has been created and started, exit the shell of `srcagent` container to come back to host systems shell.
 
 1. For your convenience the `/mountpath/samplecsv` directory already has some .csv files. So copy the csv files to srcdir directory.
 
-`mkdir -p /home/student/srcdir/input`
-`cp /home/student/mftlab/samplecsv/input/\*.\* /home/student/srcdir/input`
+```
+	mkdir -p /home/student/srcdir/input
+	cp /home/student/mftlab/samplecsv/input/\*.\* /home/student/srcdir/input
+```
 
 After few seconds, verify that transfer has completed, and files are indeed available in `/home/student/destdir/`output directory
 
 You can also verify the transfer status by logging into `srcagent` container and running mqfts command
 
-`podman exec -it srcagent /bin/bash`
+```
+	podman exec -it srcagent /bin/bash
+```
  
  This completes the setting up of automated transfers using resource monitors.
 
@@ -312,30 +343,37 @@ Logout of `srcagent` container shell, if you had logged in.
 
 Resource monitor triggers a transfer only if any new files arrive in the monitored directory or any existing files are modified. To verify this, create a new .csv file by running the following command:
 
-`touch ./srcdir/input/newsalary.csv`
+```
+	touch ./srcdir/input/newsalary.csv
+```
 
 A transfer will be trigged when resource monitor starts the next poll. The polling interval of resource monitor is set to 5 seconds, a transfer will be triggered within 5 seconds. Verify the contents of `/destdir/output` after 5 seconds.
 
 You can also verify the resource monitor transfer triggers transfers only when files of a matching pattern arrive in the monitored folder. Create a file by running the following command
 
-`touch ./srcdir/input/oldperks.xls`
+```
+	touch ./srcdir/input/oldperks.xls
+```
 
 Verify the contents of `/destdir/output` after 5 seconds, `oldperks.xls` file should not be present.
 
 It's now time to explore other commands of Managed File Transfer
-1. Stop resource monitor usingfteStopMonitor -ma SRCAGENT -mn FILEMON command. Place new files with .csv extension in ./srcdir on the host file system and see if the new files are transferred.
-2. Start monitor using fteStartMonitor -ma SRCAGENT -mn FILEMON command and verify new csv files you placed are transferred.
+1. Stop resource monitor using `fteStopMonitor -ma SRCAGENT -mn FILEMON` command. Place new files with .csv extension in ./srcdir on the host file system and see if the new files are transferred.
+2. Start monitor using `fteStartMonitor -ma SRCAGENT -mn FILEMON` command and verify new csv files you placed are transferred.
 3. Stop agent using fteStopAgent SRCAGENT command and verify the container is still running.
 4. Restart the agent using fteStartAgent SRCAGENT command.
  
 Once you have explored other commands of Manged File Transfer, stop all containers with the commands below
-
- `podman stop srcagent`
- `podman stop destagent`
- `podman stop mqmftqm`
+```
+	podman stop srcagent
+	podman stop destagent
+	podman stop mqmftqm
+```
 
 Verify that containers have stopped by running command
 
-`podman ps`
+```
+	podman ps
+```
 
 The command output should not list any containers.
