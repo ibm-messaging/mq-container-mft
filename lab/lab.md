@@ -60,23 +60,24 @@ In this lab, you will come across some quite long commands to enter. You will be
 
 - This document accompanies mftlab.tar file containing scripts, config JSON file, samples etc. Unpack the tar file into your home directory using the following command:
 
-`tar xvf mftlab.tar`
+	`tar xvf mftlab.tar`
 
 The directory will contain the following:
 
-./mftlab/qm
+```./mftlab/qm
 
 - coordsetup.mqsc
 - destagent.mqsc
 - srcagent.mqsc
 - setqmaut.sh
+```
 
-./mftlab/agent
+`./mftlab/agent`
 
-- agentconfig.json - A JSON file containing the configuration information required for creating agent containers. [Here](https://github.com/ibm-messaging/mft-cloud/tree/master/docs/agentconfig.md) are details of each attribute in the JSON file. 
+- `agentconfig.json` - A JSON file containing the configuration information required for creating agent containers. [Here](https://github.com/ibm-messaging/mft-cloud/tree/master/docs/agentconfig.md) are details of each attribute in the JSON file. 
 -**You will need to replace the value of host name attribute with the host name or IP address of the machine where you are running this lab. Run**  **ifconfig**  **command to get this information. Use the IP address/host name from eth0.**
 
-./mftlab/srcdir
+`./mftlab/srcdir`
 
 - \*.csv sample files used for testing resource monitor
 
@@ -84,13 +85,17 @@ The directory will contain the following:
 1) Upload the mftlab.tar file using scp or WinScp to home directory. 
 2) Open a Linux command prompt session. You will be in your home directory /home/student. If not, change to this directory.
 Unpack the mftlab.tar in the current directory using 
+
 `tar xvf mftlab.tar`
 
 ### Run queue manager in a container
 We shall now create the queue manager and required queue manager object for Managed File Transfer.
 1. Now create a docker volume, **mqmftdata** to be as persistent volume for the queue manager
+
 `podman volume create mqmftdata`
+
 Name of the volume created will be displayed after successful completion of the command. Verify by running the following command
+
 `podman volume ls`
  
  2) Now create the queue manager, MQMFT. Docker image for creating the queue manager will be downloaded from DockerHub. Note:
@@ -100,24 +105,30 @@ Name of the volume created will be displayed after successful completion of the 
 	4. Volume mqmftdata will be mounted as /mnt/mqm
 	5. As -d option is used, the container will running in the background. Container will be named as `mqmftqm`
 
-`podman run 
-  \--env LICENSE=accept 
-  \--env MQ\_QMGR\_NAME=MQMFT 
-  \--publish 1414:1414 
-  \--publish 9443:9443 
-  \--detach 
-  \--volume mqmftdata:/mnt/mqm 
-  \-d 
-  \--name=mqmftqm \docker.io/ibmcom/mq `
+```podman run \
+   --env LICENSE=accept \
+   --env MQ\_QMGR\_NAME=MQMFT \
+   --publish 1414:1414 \
+   --publish 9443:9443 \
+   --detach \
+   --volume mqmftdata:/mnt/mqm \
+   -d \
+   --name=mqmftqm \docker.io/ibmcom/mq `
+```
+   
 The command will download MQ container image from DockerHub, if it&#39;s not already available on the local registry and runs the container.
 
 Verify queue manager is running with the following command 
+
 `podman ps`
 
 **Important Note:** 
 	Run the following command if you want to stop the container:
+
 	`podman stop mqmftqm`
+
 	Run the following command to remove the container name.
+
 	`podman rm mqmftqm`
  
  3) Next step is to configure the queue manager for using with Managed File Transfer. As the same queue manager is being used as Coordination, Command and Agent, all objects will be created in the same qeue manager.
@@ -125,27 +136,41 @@ Verify queue manager is running with the following command
 	You will be logging into the queue manager for creating the queue manager. You can manually create the objects required for Managed File Transfer. However MQSC scripts have been provided with lab. You can just copy the script files to queue manager container and simply pipe them to _runmqsc_ command.
 
 	1. Copy the MQSC scripts to queue manager container.
+	
 `podman cp mftlab/qm/coordsetup.mqsc mqmftqm:/coordsetup.mqsc`
 `podman cp mftlab/qm/destagent.mqsc mqmftqm:/destagent.mqsc`
 `podman cp mftlab/qm/srcagent.mqsc mqmftqm:/srcagent.mqsc`
 `podman cp mftlab/qm/setqmaut.sh mqmftqm:/setqmaut.sh``
 
 	2. Run the following command to login into the queue manager container
+	
 	`podman exec -it mqmftqm /bin/bash`
 
 	3. Run dspmq comand and verify queue manager is running
+
 `dspmq`
 
 	6. Create coordination queue manager objects. Run the following command
+
  `runmqsc MQMFT < coordsetup.mqsc`
+
 	7. We will have two agents in this lab. So create the required queue manager objects for the two agents. SRCAGNT and DESTAGNT will be the name of agents.
-	Run the following to create objects for source agent `SRCAGENTrunmqsc MQMFT < srcagent.mqsc`
+
+	Run the following to create objects for source agent `SRCAGENT`
+	
+	`runmqsc MQMFT < srcagent.mqsc`
+	
 	Run the following to create objects for source agent DESTAGENT
-`runmqsc MQMFT \&lt; destagent.mqsc`
+`	
+	`runmqsc MQMFT \&lt; destagent.mqsc`
+	
 	9. As the agents and queue manager runs in different containers, you will need to setup authorities on the objects created above so that agents can connect. Run the following Shell script to setup the required authorities.
-`./setqmaut.sh`
+	
+	`./setqmaut.sh`
+	
 	10. Run the following command to exit out of queue manager container.
-`exit`
+	
+	`exit`
 
 This completes the queue manager configuration.
 
@@ -157,15 +182,21 @@ To create a Managed File Transfer Agent, name of the agent, agent queue manager 
 A sample agent configuration JSON file is made available with this lab. The contents of the JSON file are self-explanatory. The file is in the `$HOME_/mftlab/agent` directory 
 
 Create the following two directories in current directory on the host file system
+
 `mkdir srcdir`
 `mkdir destdir`
 
 Provide permissions so that agent containers can read/write from/to the mounted directory.
+
 `chmod 777 srcdir`
 `chmod 777 destdir`
+
 Copy a sample file to srcdir for running tests later in the lab
+
 `cp ./mftlab/samplecsv/airtravel.csv ./srcdir`
+
 Run source agent, SRC AGENT in container in the background. 
+
 Remove the -d parameter if you would like to run in the foreground in which case you will need to start on the command shell. When running in the foreground, logs will be displayed on the console and this helps to debug any issue with running of the container.
 Description of the parameters: 
 
@@ -178,34 +209,38 @@ Description of the parameters:
 **MFT\_LOG\_LEVEL=&quot;info&quot;** – Level of logging._info_ displays high level log informationof container creation on the console. _verbose –_ displays low level logs including contents of agent&#39;s output0.log file.
 
 **LICENSE=accept** – Accept product license
+
 **MFT\_AGENT\_CONFIG\_FILE=/mftagentcfg/agentconfig.json** – Name of JSON file containing agent configuration information.
 
 Execute the following command to run SRCAGENT in a container.
-```podman run \
--v /home/student/mftlab/agent:/mftagentcfg \
--v /home/student/srcdir:/mountpath \
---env MFT\_AGENT\_NAME=SRCAGENT \
---env MFT\_LOG\_LEVEL=&quot;verbose&quot; \
---env LICENSE=accept \
---env MFT\_AGENT\_CONFIG\_FILE=/mftagentcfg/agentconfig.json\
---name srcagent \
--d \
-docker.io/ibmcom/mqmft```
+```
+podman run \
+  -v /home/student/mftlab/agent:/mftagentcfg \
+  -v /home/student/srcdir:/mountpath \
+  --env MFT\_AGENT\_NAME=SRCAGENT \
+  --env MFT\_LOG\_LEVEL=&quot;verbose&quot; \
+  --env LICENSE=accept \
+  --env MFT\_AGENT\_CONFIG\_FILE=/mftagentcfg/agentconfig.json\
+  --name srcagent \
+  -d \
+  docker.io/ibmcom/mqmft```
 
 Once the command completes, run the following command verify if the container is running
+
 `podman ps`
 
 Similarly run destination agent container now.
+
 ```podman run \
--v /home/student/mftlab/agent:/mftagentcfg \
--v /home/student/destdir:/mountpath \
---env MFT\_AGENT\_NAME=DESTAGENT \
---env MFT\_LOG\_LEVEL=&quot;verbose&quot; \
---env LICENSE=accept \
---env MFT\_AGENT\_CONFIG\_FILE=/mftagentcfg/agentconfig.json\
--d \
---name destagent \
-docker.io/ibmcom/mqmft```
+ -v /home/student/mftlab/agent:/mftagentcfg \
+ -v /home/student/destdir:/mountpath \
+ --env MFT\_AGENT\_NAME=DESTAGENT \
+ --env MFT\_LOG\_LEVEL=&quot;verbose&quot; \
+ --env LICENSE=accept \
+ --env MFT\_AGENT\_CONFIG\_FILE=/mftagentcfg/agentconfig.json\
+ -d \
+ --name destagent \
+ docker.io/ibmcom/mqmft```
 
 After the command is complete, verify the container status by running `podman ps`
  
@@ -218,10 +253,13 @@ Now that you have configured queue manager and agents, it&#39;s time to automate
 Remember you mounted `/srcdir` of the host file system into `srcagent` container as `/mountpath` directory. Similarly, `/destdir` was mounted as `/mountpath` of `destagent` container.
 
 Run the following command login to source agent container
+
 `podman exec -it srcagent /bin/bash`
 
 Run the following command to status of available agents
+
 `fteListAgents`
+
 The output would list the agents and their status.
 
 Before setting up resource monitor, let&#39;s verify transfer works. Submit a transfer request using `fteCreateTransfer` command.
@@ -231,6 +269,7 @@ Before setting up resource monitor, let&#39;s verify transfer works. Submit a tr
 View the status of transfer by running the _mqfts_ utility. This utility displays transfer status by parsing _capture0.log_ file located in source agent&#39;s log directory. 
 
 To view more details of the transfer, run _mqfts –id=\&lt;transfer id\&gt;_. For example:
+
 `mqfts --id=414d51204d514d46542020202020202044bfbd60019b0040`
 
 Now it&#39;s time to automate transfers using a resource monitor. You will create a Directory type resource monitor that monitors a directory for certain pattern of files. It will transfer file from that directory when files of matching pattern are placed in the directory.
@@ -244,9 +283,11 @@ Now run the following commands to create transfer definition for the monitor FIL
 `fteCreateTransfer -gt /mountpath/task.xml -sa SRCAGENT -sm MQMFT -da DESTAGENT -dm MQMFT -sd delete -de overwrite -dd &quot;/mountpath/output&quot; &quot; **\$** {FilePath}&quot;`
 
 Then run the following command to create resource monitor
+
 `fteCreateMonitor -ma SRCAGENT -mn FILEMON -md &quot;/mountpath/input&quot; -pi 5 -pu SECONDS -c -tr &quot;match,\*.csv&quot; -f -mt /mountpath/task.xml`
 
 Verify the resource monitor creation by running the following command
+
 `fteListMonitors -v -mn FILEMON -ma SRCAGENT`
  
  Now that resource monitor has been created and started, exit the shell of `srcagent` container to come back to host systems shell.
@@ -259,6 +300,7 @@ Verify the resource monitor creation by running the following command
 After few seconds, verify that transfer has completed, and files are indeed available in `/home/student/destdir/`output directory
 
 You can also verify the transfer status by logging into `srcagent` container and running mqfts command
+
 `podman exec -it srcagent /bin/bash`
  
  This completes the setting up of automated transfers using resource monitors.
@@ -284,11 +326,13 @@ It's now time to explore other commands of Managed File Transfer
 4. Restart the agent using fteStartAgent SRCAGENT command.
  
 Once you have explored other commands of Manged File Transfer, stop all containers with the commands below
+
  `podman stop srcagent`
  `podman stop destagent`
  `podman stop mqmftqm`
 
 Verify that containers have stopped by running command
+
 `podman ps`
 
 The command output should not list any containers.
