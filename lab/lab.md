@@ -308,7 +308,7 @@ The output would list the agents and their status.
 Before setting up resource monitor, let&#39;s verify transfer works. Submit a transfer request using `fteCreateTransfer` command.
 
 ```
-fteCreateTransfer -rt -1 -sa SRCAGENT -sm MQMFT -da DESTAGENT -de overwrite -dm MQMFT -df &quot;/mountpath/airtravel.csv&quot; &quot;/mountpath/airtravel.csv&quot;
+fteCreateTransfer -rt -1 -sa SRCAGENT -sm MQMFT -da DESTAGENT -de overwrite -dm MQMFT -df "/mountpath/airtravel.csv" "/mountpath/airtravel.csv"
 ```
 
 View the status of transfer by running the _mqfts_ utility. This utility displays transfer status by parsing _capture0.log_ file located in source agent&#39;s log directory. 
@@ -329,13 +329,13 @@ Now run the following commands to create transfer definition for the monitor FIL
 **Important note: The &#39;$&#39; must be prefixed with escape character &#39;\&#39; on bash shell, otherwise it will be ignored when the command is run.**
 
 ```
-fteCreateTransfer -gt /mountpath/task.xml -sa SRCAGENT -sm MQMFT -da DESTAGENT -dm MQMFT -sd delete -de overwrite -dd &quot;/mountpath/output&quot; &quot; **\$** {FilePath}&quot;
+fteCreateTransfer -gt /mountpath/task.xml -sa SRCAGENT -sm MQMFT -da DESTAGENT -dm MQMFT -sd delete -de overwrite -dd "/mountpath/output&quot" "\${FilePath}"
 ```
 
 Then run the following command to create resource monitor
 
 ```
-fteCreateMonitor -ma SRCAGENT -mn FILEMON -md &quot;/mountpath/input&quot; -pi 5 -pu SECONDS -c -tr &quot;match,\*.csv&quot; -f -mt /mountpath/task.xml
+fteCreateMonitor -ma SRCAGENT -mn FILEMON -md &quot;/mountpath/input&quot; -pi 5 -pu SECONDS -c -tr "match,*.csv" -f -mt /mountpath/task.xml
 ```
 
 Verify the resource monitor creation by running the following command
