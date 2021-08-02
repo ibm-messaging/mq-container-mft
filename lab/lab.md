@@ -3,7 +3,7 @@
 # LAB: MQMFT Agent in Container
 ## Introduction
 
-This lab introduces how to use MQ Managed File Transfer Agent in a Docker image. The Docker imager image is available in the DockerHub ([https://hub.docker.com/r/ibmcom/mqmft](https://hub.docker.com/r/ibmcom/mqmft)). 
+This lab introduces how to use MQ Managed File Transfer Agent container. The Docker imager image is available in the DockerHub ([https://hub.docker.com/r/ibmcom/mqmft](https://hub.docker.com/r/ibmcom/mqmft)). 
 
 IBM MQ Managed File Transfer transfers files between systems in a managed and auditable way, regardless of file size or the operating systems used. You can use Managed File Transfer to build a customized, scalable, and automated solution that enables you to manage, trust, and secure file transfers. Managed File Transfer eliminates costly redundancies, lowers maintenance costs, and maximizes your existing IT investments.
 
