@@ -226,39 +226,38 @@ metadata:
   name: mqmft-agent-config
   namespace: ibmmqmft
 data:
-  mqmftcfg.json: >
+  mqmftcfg.json: |
     {
-   "coordinationQMgr":{
-      "name":"MFTCORDQM",
-      "host":"coordqm.ibm.com",
-      "port":1414,
-      "channel":"MFTCORDSVRCONN",
-      "additionalProperties" : {
-         "coordinationQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
-      }
-   },
-   "commandQMgr":{
-      "name":"MFTCMDQM",
-      "host":"cmdqm.ibm.com",
-      "port":1414,
-      "channel":"MFTCMDSVRCONN",
-      "additionalProperties" : {
-         "connectionQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
-      }
-   },
-   "agents":[{
-      "name":"SRCAGENT",
-      "type":"STANDARD",
-      "qmgrName":"MFTAGENTQM",
-      "qmgrHost":"agentqm.ibm.com",
-      "qmgrPort":1414,
-      "qmgrChannel":"MFTSVRCONN",
-      "additionalProperties":{
-         "enableQueueInputOutput":"true",
-         "agentQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
-      }
-   },
-   {
+      "coordinationQMgr":{
+        "name":"MFTCORDQM",
+        "host":"coordqm.ibm.com",
+        "port":1414,
+        "channel":"MFTCORDSVRCONN",
+        "additionalProperties" : {
+          "coordinationQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
+        }
+      },
+      "commandQMgr":{
+        "name":"MFTCMDQM",
+        "host":"cmdqm.ibm.com",
+        "port":1414,
+        "channel":"MFTCMDSVRCONN",
+        "additionalProperties" : {
+          "connectionQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
+        }
+      },
+      "agents":[{
+        "name":"SRCAGENT",
+        "type":"STANDARD",
+        "qmgrName":"MFTAGENTQM",
+        "qmgrHost":"agentqm.ibm.com",
+        "qmgrPort":1414,
+        "qmgrChannel":"MFTSVRCONN",
+        "additionalProperties":{
+          "enableQueueInputOutput":"true",
+          "agentQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
+        }
+    }, {
       "name":"AGENTDEST",
       "type":"BRIDGE",
       "qmgrName":"MFTAGENTQM",
@@ -266,22 +265,22 @@ data:
       "qmgrPort":1818,
       "qmgrChannel":"MFTSVRCONN",
       "protocolBridge" : {
-         "serverType":"FTP",
-         "serverHost":"ftp.ibm.com",
-         "serverTimezone":"Europe/London",
-         "serverPlatform":"UNIX",
-         "serverLocale":"en-GB",
-         "serverListFormat"="UNIX", 
-         "serverLimitedWrite"="false", 
-         "serverFileEncoding"="UTF8", 
-         "serverPassiveMode"="true", 
-	  },
-	  "additionalProperties": {
-         "agentQMgrAuthenticationCredentialsFile" : "/mnt/credentials/MQMFTCredentials.xml",
-         "protocolBridgeCredentialConfiguration" : "/mnt/credentials/ProtocolBridgeCredentials.prop"
+        "serverType":"FTP",
+        "serverHost":"ftp.ibm.com",
+        "serverTimezone":"Europe/London",
+        "serverPlatform":"UNIX",
+        "serverLocale":"en-GB",
+        "serverListFormat"="UNIX", 
+        "serverLimitedWrite"="false", 
+        "serverFileEncoding"="UTF8", 
+        "serverPassiveMode"="true", 
+      },
+      "additionalProperties": {
+        "agentQMgrAuthenticationCredentialsFile" : "/mnt/credentials/MQMFTCredentials.xml",
+        "protocolBridgeCredentialConfiguration" : "/mnt/credentials/ProtocolBridgeCredentials.prop"
       }
-   }]
-}
+    }] }
+
 ```
 
 Run the following command to create the ConfigMap. Replace `configMap.yaml` with your file name.
