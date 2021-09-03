@@ -15,6 +15,8 @@ See the [Run as Docker container documentation](docs/usage-docker.md) for detail
 
 See the [Run in OCP documentation ](docs/usage-ocp.md) for details on how to run the image in OpenShift Container Platform.
 
+See the [Run agent with a NFS mount](docs/nfssetup.md) for details on how to run agent with a NFS mount.
+
 Note that in order to use the image, it is necessary to accept the terms of the [IBM MQ license](#license).
 
 ### Environment variables supported by this image
