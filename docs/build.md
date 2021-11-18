@@ -17,28 +17,21 @@ This procedure works for building the MQ Managed File Transfer Redistributable p
 1. Clone the GitHub repository to local directory.
 2. Login to the Red Hat Registry: `docker login registry.redhat.io` using your Customer Portal credentials.
 3. Navigate to directory where `Dockerfile-agent` is located.
-4. Download **9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz** or higher from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into the current directory.
+4. Download **9.2.4.0-IBM-MQFA-Redist-LinuxX64.tar.gz** or higher from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into the current directory.
+5. Unpack the **9.2.4.0-IBM-MQFA-Redist-LinuxX64.tar.gz** to a temporay directory. Copy com.ibm.wmqfte.com.ibm.wmqfte.exitroutines.api.jar to credentialsexit/BridgeCredentialExit/thirdparty directory.
+6. Download json-20210307.jar file from [Maven Repository](https://mvnrepository.com/artifact/org.json/json/20210307) and copy to credentialsexit/BridgeCredentialExit/thirdparty directory.
+   **Note:** The redistributable MFT package must be present in same path as the **Dockerfile-agent** file.
+7. Run the following command to build container image
 
-   **Note:** The redistributable MFT package has to be present in same path as **Dockerfile**.
-4. Run the following command to build image
-
-   `podman build -f Dockerfile-agent -t mqmft:9.2.2 --build-arg ARG_MQMFT_REDIST_FILE=9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz`
+   `podman build -f Dockerfile-agent -t mqmft:9.2.4 --build-arg ARG_MQMFT_REDIST_FILE=9.2.4.0-IBM-MQFA-Redist-LinuxX64.tar.gz`
    
-   You can replace the `9.2.2.0-IBM-MQFA-Redist-LinuxX64.tar.gz` with the version of the redistributable package of your choice.
-
-### Building the Bridge Credential Exit - bridgecredexit
-The container image also ships a MFT Bridge Agent Credential Exit. This exit is used by a Bridge agent to determine credentials required to connect to a SFTP/FTP server.
-
-To build the exit, you require `com.ibm.wmqfte.com.ibm.wmqfte.exitroutines.api.jar` library. The library is shipped as part of IBM MQ Standard Installation image or MFT Redistributable package. 
-
-You can build the exit using Eclipse IDE with at least Java JDK or with `javac` using
-
-   `javac -cp .:/<path>/com.ibm.wmqfte.com.ibm.wmqfte.exitroutines.api.jar:/<path>/json-20210307 ProtocolBridgeCustomCredentialExit.java`
-
- and jar the class file using
- 
-   `jar cmf MANIFEST.MF bridgecredexit ProtocolBridgeCustomCredentialExit.class`
+   You can replace the `9.2.4.0-IBM-MQFA-Redist-LinuxX64.tar.gz` with the version of the redistributable package of your choice.
 
 ## Installed components
 
-This image includes the core MQ Managed File Transfer Agent, IBM Java Runtime.
+This image includes the following components
+1. MQ Managed File Transfer Agent - Core MFT product.
+2. IBM Java Runtime Environment - IBM JRE.
+3. json-20210307.jar - Third party JSON parse.
+4. Custom Protocol Bridge Credential Exit bridgecredentialexit.jar
+5. mqfts - A command line utility to parse and display contents of capture0.log file.

@@ -59,18 +59,24 @@ spec:
             failureThreshold: 3
 			
           env:
-            - name: MFT_AGENT_NAME <- Environment variable containing the name of the agent to deploy
+            - name: MFT_AGENT_NAME <- Required. Environment variable containing the name of the agent to deploy
               value: BRIDGE
-            
-			- name: LICENSE <- Environment variable for accepting license to use an agent
+			- name: LICENSE <- Required. Environment variable for accepting license to use an agent
               value: accept
-            
+            - name: BFG_DATA <- Optional. Path where configuration and log files are created. 
+              value=/mnt/mftdata
 			- name: MFT_AGENT_CONFIG_FILE <- Name of environment variable containing the name of the JSON file containing information required to cofingure an agent. The JSON file must reside in a ConfigMap 
               value: /mqmftcfg/agentconfig/mqmftcfg.json <- Path of the JSON file containing agent definitions 
-            
-			- name: MFT_AGENT_BRIDGE_CREDENTIAL_FILE <- Required for BRIDGE agent only. Name of the environment variable that points to path of a file containing credential information for connecting to SFTP/FTP/FTPS file server. The file can reside either in a configMap or secret.
+			- name: MFT_BRIDGE_CREDENTIAL_FILE <- Required for BRIDGE agent only. Name of the environment variable that points to path of a file containing credential information for connecting to SFTP/FTP/FTPS file server. The file can reside either in a configMap or secret.
               value: /mqmftbridgecred/agentcreds/ProtocolBridgeCredentials.prop <- Path of the file containing bridge credential information
-          
+          - name: MFT_LOG_LEVEL Optional. Controls the amount of debug information displayed while deploying the container. Default is "info"
+            value="verbose"
+          - name: MFT_TRACE_COMMAND Optional. Enable tracing of MFT commands. Default is "no".
+             value="yes"
+          - name: MFT_TRACE_COMMAND_PATH Required if MFT_TRACE_COMMAND is set to yes. The path where trace files will be created.
+            value: /mnt/mftdata 
+          - name: MFT_AGENT_START_WAIT_TIME Optional. Time in seconds to for container to wait for agent to start. Default is 10 seconds. If the agent does not start in the specified time, the container ends.
+            value=15
 		  imagePullPolicy: Always
           
 		  volumeMounts:

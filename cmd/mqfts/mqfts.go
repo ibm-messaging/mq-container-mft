@@ -25,6 +25,7 @@ import (
     "bufio"
     "bytes"
     "fmt"
+    "github.com/Jeffail/gabs"
     "github.com/antchfx/xmlquery"
     "github.com/icza/backscanner"
     flag "github.com/spf13/pflag"
@@ -33,7 +34,6 @@ import (
     "os"
     "strings"
     "time"
-
     "github.com/tidwall/gjson"
     "github.com/ibm-messaging/mq-container-mft/cmd/utils"
 )
@@ -385,7 +385,7 @@ func parseAndDisplayTransfer(captureLogFileName string, transferId string) {
                     if transferId != "" {
                         if strings.EqualFold(transferIdXml, transferId) {
                             // Display details of specific transfer
-                            displayTransferDetails(tokens[len(tokens)-1])
+                            displayTransferDetailsJSON(tokens[len(tokens)-1])
                         }
                     }
                 }
@@ -553,6 +553,160 @@ func displayTransferDetails(xmlMessage string){
     }
 }
 
+/**
+ * Parse the transfer XML and display details of the given transfer in JSON format
+ * @param xmlMessage - transfer xml
+ */
+func displayTransferDetailsJSON(xmlMessage string){
+    // Replace all &quot; with single quote
+    strings.ReplaceAll(xmlMessage, "&quot;", "'")
+    // Create an parsed XML document
+    doc, err := xmlquery.Parse(strings.NewReader(xmlMessage))
+    if err != nil {
+        panic(err)
+    }
+
+    // Get required 'transaction' element from Xml message
+    transaction := xmlquery.FindOne(doc, "//transaction")
+    if transaction != nil {
+        transferId := transaction.SelectAttr("ID")
+		completedJSON := gabs.New()
+        completedJSON.SetP(strings.ToUpper(transferId),"transfer.id")
+        if action := transaction.SelectElement("action"); action != nil {
+            if strings.EqualFold(action.InnerText(),"completed") {
+                completedJSON.SetP (action.InnerText(),"transfer.status")
+                // Process transfer complete Xml message
+                status := transaction.SelectElement("status")
+                if status != nil {
+                    completedJSON.SetP (status.SelectAttr("resultCode"),"transfer.resultCode")
+                    completedJSON.SetP (status.SelectElement("supplement").InnerText(),"transfer.supplement")
+                    completedJSON.SetP (action.SelectAttr("time"),"transfer.time")
+                }
+
+                sourceAgent := transaction.SelectElement("sourceAgent")
+                destAgent := transaction.SelectElement("destinationAgent")
+                statistics := transaction.SelectElement("statistics")
+                // Retrieve statistics
+                var actualStartTimeText = ""
+                var retryCount string
+                var numFileFailures string
+                var numFileWarnings string
+                if statistics != nil {
+                    actualStartTime := statistics.SelectElement("actualStartTime")
+                    if actualStartTime != nil {
+                        actualStartTimeText = actualStartTime.InnerText()
+                    }
+                    if statistics.SelectElement("retryCount") != nil {
+                        retryCount = statistics.SelectElement("retryCount").InnerText()
+                    }
+                    if statistics.SelectElement("numFileFailures") != nil {
+                        numFileFailures = statistics.SelectElement("numFileFailures").InnerText()
+                    }
+                    if statistics.SelectElement("numFileWarnings") != nil {
+                        numFileWarnings = statistics.SelectElement("numFileWarnings").InnerText()
+                    }
+                }
+                var elapsedTime time.Duration
+                if actualStartTimeText != "" {
+                    startTime := getFormattedTime(actualStartTimeText)
+                    completePublishTIme := getFormattedTime(action.SelectAttr("time"))
+                    elapsedTime = completePublishTIme.Sub(startTime)
+                }
+                completedJSON.SetP (sourceAgent.SelectAttr("agent"),"transfer.sourceAgent" )
+                completedJSON.SetP (destAgent.SelectAttr("agent"),"transfer.destinationAgent" )
+                completedJSON.SetP (actualStartTimeText, "transfer.actualStartTime")
+                completedJSON.SetP (action.SelectAttr("time"),"transfer.completionTime")
+                completedJSON.SetP (elapsedTime,"transfer.elapsedTime")
+                completedJSON.SetP (retryCount,"transfer.retryCount" )
+                completedJSON.SetP (numFileFailures,"transfer.numberOfFailures")
+                completedJSON.SetP (numFileWarnings, "transfer.numberOfWarnings")
+                println(completedJSON.StringIndent("", "  "))
+                } else if strings.EqualFold(action.InnerText(),"progress") {
+					completedJSON.SetP (action.InnerText(),"transfer.status")
+                    // Process transfer progress Xml message
+                    destAgent := transaction.SelectElement("destinationAgent")
+					sourceAgent := transaction.SelectElement("sourceAgent")
+					completedJSON.SetP (sourceAgent.SelectAttr("agent"), "transfer.sourceAgent" )
+					completedJSON.SetP (destAgent.SelectAttr("agent"),   "transfer.destinationAgent" )
+					completedJSON.SetP (action.SelectAttr("time"), "transfer.publishTime" )
+
+                    transferSet := transaction.SelectElement("transferSet")
+                    startTimeText := transferSet.SelectAttr("startTime")
+                    transferSetNode := gabs.New()
+
+                    // Loop through all items in the progress message and display details.
+                    items := transferSet.SelectElements("item")
+                    itemArray, _ := gabs.New().Array("transferSet","items")
+                    for i := 0 ; i < len(items); i++ {
+                        item := gabs.New()
+                        var sourceName string
+                        var sourceSize = "-1"
+                        queueSource := items[i].SelectElement("source/queue")
+                        if queueSource != nil {
+                            sourceName = queueSource.InnerText()
+                        } else {
+                            fileName := items[i].SelectElement("source/file")
+                            if fileName != nil {
+                                sourceName = fileName.InnerText()
+                                sourceSize = fileName.SelectAttr("size")
+                            }
+                        }
+
+                        var destinationName string
+                        queueDest := items[i].SelectElement("destination/queue")
+                        var destinationSize = "-1"
+                        if queueDest != nil {
+                            destinationName = queueDest.InnerText()
+                        } else {
+                            fileName := items[i].SelectElement("destination/file")
+                            if fileName != nil {
+                                destinationName = fileName.InnerText()
+                                destinationSize = fileName.SelectAttr("size")
+                            }
+                        }
+
+                        item.SetP(sourceName,"sourceName")
+                        item.SetP(sourceSize,"sourceSize")
+                        item.SetP(destinationName,"destinationName")
+                        item.SetP(destinationSize,"destinationSize")
+                        status := items[i].SelectElement("status")
+                        resultCode := status.SelectAttr("resultCode")
+                        item.SetP(resultCode,"resultCode")
+                        // Process result code and append any supplement
+                        if resultCode != "0" {
+                            supplement := status.SelectElement("supplement").InnerText()
+                            item.SetP(supplement,"supplement")
+                        }
+                        itemArray.ArrayAppend(item)
+                    }
+                    transferSetNode.Set(itemArray)
+                    completedJSON.SetP (startTimeText, "transfer.startTime")
+                    completedJSON.SetP (transferSet.SelectAttr("total"), "transfer.totalItems")
+                    completedJSON.SetP (transferSet.SelectAttr("bytesSent"), "transfer.bytesSent")
+                    completedJSON.SetP (transferSetNode,"transfer.transferSet")
+                    println(completedJSON.StringIndent("","  "))
+                } else if strings.EqualFold(action.InnerText(),"started") {
+                    // Process transfer started Xml message
+                    destAgent := transaction.SelectElement("destinationAgent")
+                    sourceAgent := transaction.SelectElement("sourceAgent")
+                    transferSet := transaction.SelectElement("transferSet")
+                    startTime := ""
+                    if transferSet != nil {
+                        startTime = transferSet.SelectAttr("startTime")
+                    } else {
+                        startTime = action.SelectAttr("time")
+                    }
+					completedJSON := gabs.New()
+					completedJSON.SetP (sourceAgent.SelectAttr("agent"),"transfer.sourceAgent" )
+					completedJSON.SetP (destAgent.SelectAttr("agent"),"transfer.destinationAgent" )
+					completedJSON.SetP (startTime,"transfer.startTime")
+					completedJSON.SetP (action.InnerText(),"transfer.status")
+                    println(completedJSON.StringIndent("","  "))
+                }
+        }
+    }
+}
+
 func getFormattedTime(timeValue string) time.Time {
     t, err := time.Parse(time.RFC3339, timeValue)
     if err != nil {
@@ -613,7 +767,12 @@ func parseAndDisplay(xmlMessage string, displayTransferType int){
                                     fmt.Printf("%s\t%s\n", transaction.SelectAttr("ID"), "Failed" )
                                     counter++
                                 }
-                            }
+                            } else {
+                                if displayTransferType == transferFAILED  || displayTransferType == 0  {
+                                    fmt.Printf("%s\t%s\n", transaction.SelectAttr("ID"), "Failed" )
+                                    counter++
+                                }
+							}
                         }
                     } else if strings.EqualFold(action.InnerText(),"progress") {
                         if displayTransferType == transferINPROGRESS  || displayTransferType == 0 {
@@ -621,6 +780,11 @@ func parseAndDisplay(xmlMessage string, displayTransferType int){
                             counter++
                         }
                     } else if strings.EqualFold(action.InnerText(),"started") {
+                        if displayTransferType == transferSTARTED  || displayTransferType == 0 {
+                            fmt.Printf("%s\t%s\n", transaction.SelectAttr("ID"), action.InnerText())
+                            counter++
+                        }
+                    } else if strings.EqualFold(action.InnerText(),"queued") {
                         if displayTransferType == transferSTARTED  || displayTransferType == 0 {
                             fmt.Printf("%s\t%s\n", transaction.SelectAttr("ID"), action.InnerText())
                             counter++

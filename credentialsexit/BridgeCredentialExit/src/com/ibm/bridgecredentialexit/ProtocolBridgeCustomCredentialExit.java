@@ -1,5 +1,5 @@
 /**
-© Copyright IBM Corporation 2020, 2020
+ Copyright IBM Corporation 2020, 2021
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-package com.ibm.bridgecredentialexit;
+package com.ibm.wmq.bridgecredentialexit;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -47,11 +47,15 @@ import com.ibm.wmqfte.exitroutine.api.CredentialPrivateKey;
 import org.json.*;
 
 /**
- * @author SHASHIKANTHTHAMBRAHA
- *
+ * A IBM MQ Managed File Transfer Protocol Bridge Custom Credential Exit.
+ * This exit reads User Id and Passwords required for a Protocol Bridge Agent
+ * to connect to SFTP/FTP server from a file. The User Id and passwords can be
+ * in a simple text file or JSON file.
+ * 
  */
 public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredentialExit2{
 
+	// Internal utility class
 	private class CredentialsExt {
 		private String transferRequesterId;
 		private Credentials credential;
@@ -81,14 +85,18 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 	@Override
 	public boolean initialize(Map<String, String> bridgeProperties) {
 		// Get the path of the mq user ID mapping properties file
-		final String propertiesFilePath = bridgeProperties.get("protocolBridgeCredentialConfiguration");
+		String propertiesFilePath = bridgeProperties.get("protocolBridgeCredentialConfiguration");
 
-		if (propertiesFilePath == null || propertiesFilePath.length() == 0) {
+		if (propertiesFilePath == null || propertiesFilePath.trim().length() == 0) {
 			// The properties file path has not been specified. Output an error and return false
 			System.err.println("Error initializing custom bridge credentials exit.");
 			System.err.println("The location of the mqUserID mapping properties file has not been specified in the protocolBridgeCredentialConfiguration property");
-			return false;
+			// Allow agent to come up even if there is an error
+			return true;
 		}
+		
+		// Trim the whitespaces if any.
+		propertiesFilePath = propertiesFilePath.trim();
 
 		// Do some cleanup
 		if(!credentialsMap.isEmpty()) {
@@ -100,7 +108,8 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		String fileData = null;
 
 		try {
-			Path path = Paths.get(propertiesFilePath);
+			File propFile = new File(propertiesFilePath.trim());
+			Path path = propFile.toPath();
 			BufferedReader reader = Files.newBufferedReader(path);
 			StringBuffer sb = new StringBuffer();
 			String line = reader.readLine();
@@ -121,26 +130,33 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 					jsonObj = new JSONObject(fileData.trim());
 					initialisationResult = processV2Credentials(jsonObj);
 				} catch(JSONException jex) {
+					System.out.println("Failed to load credentials in JSON format from file " +  propertiesFilePath + ". The file does not appear to contain credentials in valid JSON format. Agent will now attempt to decode credentials in V1 (key-value) format");
+					System.err.println("Exception details: " + jex);
+
 					// we failed to parse the JSON data, Then this must be old style credential format.
 					try {
 						initialisationResult  = parseV1FormatCredentials(propertiesFilePath);
 					} catch (IOException e) {
 						System.err.println("Error loading credentials from file " + propertiesFilePath + " due to exception " + e);
+						System.err.println(e.getStackTrace());
 					}
 				} catch(Exception ex) {
-					System.err.println("Failed to load credentials due to expection" + ex);
+					System.err.println("Failed to load credentials due to expection. " + ex);
+					System.err.println(ex.getStackTrace());
 				}
 			}
 		}
 		catch (FileNotFoundException ex) {
 			System.err.println("Unable to find the credentials file: " + propertiesFilePath);
-			System.err.println(ex);
+			System.err.println(ex.getStackTrace());
 		}
-		catch (IOException ex) {
-			System.err.println("Error initializing ProtocolBridgeCustomCredentialExit." + ex);
+		catch (Exception ex) {
+			System.err.println("Error initializing ProtocolBridgeCustomCredentialExit: " + ex);
+			System.err.println(ex.getStackTrace());
 		}
 
-		return initialisationResult;
+		// Allow agent to come up even if there is an error
+		return true;
 	}
 
 	/**
@@ -233,17 +249,18 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		String serverPassword = null;
 		String serverPrivateKey = null;
 		String requesterUserId = null;
-
+		
 		try {
 			serverHostName = jsonObj.getString("serverHostName");
-			serverUserId = jsonObj.getString("serverUserId");
-			serverHostKey = jsonObj.getString("serverHostKey");
-			serverAssocName = jsonObj.getString("serverAssocName");
 			serverPassword = jsonObj.getString("serverPassword");
-			serverPrivateKey = jsonObj.getString("serverPrivateKey");
 			requesterUserId = jsonObj.getString("transferRequesterId");
+			serverUserId = jsonObj.getString("serverUserId");
+			serverAssocName = jsonObj.getString("serverAssocName");
+			serverPrivateKey = jsonObj.getString("serverPrivateKey");
+			serverHostKey = jsonObj.getString("serverHostKey");
 		} catch(Exception ex) {
 			// Ignore any exceptions as we do checks below
+			System.err.println("An exception was caught while parsing credentials file."  + ex);
 		}
 
 		// Validate provided values
@@ -258,8 +275,8 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		}
 
 		if(serverAssocName == null) {
-			System.err.println("Credentials does not have the mandatory server association name specified");
-			return false;
+			System.err.println("Credentials does not have serverAssocName specified");
+			// Go ahead if assoc name is not found for user. Just UID/PWD combination may have been specified.
 		}
 
 		String decodedPrivateKey = null;
@@ -296,6 +313,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		}
 
 		// Add it to the list
+		System.out.println("Adding credentials of user [" + requesterUserId + "] for protocol server " + serverHostName);
 		credentialsMap.put(serverHostName, new CredentialsExt(requesterUserId, credentials));
 		return true;
 	}
@@ -448,7 +466,6 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		if ( credentials == null) {
 			// No entry has been found so return no mapping found with no credentials
 			result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
-			System.out.println("mapMQUserId. Credentials not found for " + endPointAddress);
 		}
 		else {
 			// We may need to match the given userId. So do that now.
@@ -461,10 +478,8 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 						result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED, credentials.getCredential());					
 					} else {
 						result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
-						System.out.println("mapMQUserId. Credentials not found for " + endPointAddress + " for use " + mqUserId);
 					}				
 				} catch (Exception ex) {
-					System.out.println("mapMQUserId. Exceotuib occurred when matching using userid " + mqUserId + ". Exception is " + ex.toString());
 					result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
 				}
 			} else {

@@ -1,3 +1,10 @@
 Manifest-Version: 1.0
+Created-By: IBM Corporation
+Specification-Title: com.ibm.wmq.bridgecredentialexit.jar
+Specification-Version: 9.2.4.0
+Specification-Vendor: IBM Corporation
+Implementation-Title: com.ibm.wmq.bridgecredentialexit.jar
+Implementation-Version: 9.2.4.0
+Implementation-Vendor: IBM Corporation
 Sealed: true
 

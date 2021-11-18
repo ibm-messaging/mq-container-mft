@@ -6,7 +6,7 @@ This document describes the steps to setup an IBM MQ Managed File Transfer agent
 ### Setup NFS server on infrastructure node of OpenShift Cluster
 The first step is to setup NFS Server on infrastructure node:
 
-1) SSH to your infrastructure node with user id and password.
+1) SSH to your infrastructure node with user id and password provided by OpenShift.
 
 2) Run `ip addr show` command and note down the internal IP address of the node. Let's assume the IP address is `10.17.12.68`
 

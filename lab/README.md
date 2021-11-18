@@ -121,7 +121,7 @@ podman run \
    --detach \
    --volume mqmftdata:/mnt/mqm \
    -d \
-   --name=mqmftqm \docker.io/ibmcom/mq `
+   --name=mqmftqm \docker.io/ibmcom/mq 
 ```
    
 The command will download MQ container image from DockerHub, if it&#39;s not already available on the local registry and runs the container.

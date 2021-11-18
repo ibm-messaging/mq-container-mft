@@ -33,14 +33,27 @@ import (
 
 // Name of the custom PBA credentials exit
 const PBA_CUSTOM_CRED_EXIT_SRC_PATH="/customexits"
-const PBA_CUSTOM_CRED_EXIT_NAME="bridgecredexit.jar"
+const PBA_CUSTOM_CRED_EXIT_NAME="com.ibm.wmq.bridgecredentialexit.jar"
 const PBA_CUSTOM_CRED_DEPEND_LIB_NAME="json-20210307.jar"
-const PBA_CUSTOM_CRED_EXIT = "/customexits/mqft/pbaexit/bridgecredexit.jar"
+const PBA_CUSTOM_CRED_EXIT = "/customexits/mqft/pbaexit/com.ibm.wmq.bridgecredentialexit.jar"
 const PBA_CUSTOM_CRED_DEPEND_LIB = "/customexits/mqft/pbaexit/json-20210307.jar"
 
 const MOUNT_PATH_FOR_TRANSFERS = "/mountpath/**"
 const LOG_LEVEL_INFO =    1
 const LOG_LEVEL_VERBOSE = 2
+
+// Environment variables 
+const MFT_LOG_LEVEL = "MFT_LOG_LEVEL"
+const MFT_AGENT_NAME = "MFT_AGENT_NAME"
+const MFT_AGENT_CONFIG_FILE="MFT_AGENT_CONFIG_FILE"   
+const BFG_DATA = "BFG_DATA"
+const MFT_AGENT_START_WAIT_TIME = "MFT_AGENT_START_WAIT_TIME"
+const MFT_AGENT_TRACE = "MFT_AGENT_TRACE"
+const MFT_AGENT_CAPTURE_LOG = "MFT_AGENT_CAPTURE_LOG"
+const MFT_AGENT_CREDENTIAL_FILE = "MFT_AGENT_CREDENTIAL_FILE"    
+const MFT_BRIDGE_CREDENTIAL_FILE = "MFT_BRIDGE_CREDENTIAL_FILE"
+const MFT_TRACE_COMMAND = "MFT_TRACE_COMMAND"
+const MFT_TRACE_COMMAND_PATH = "MFT_TRACE_COMMAND_PATH"
 
 // Main entry point to program. This application configures an agent and starts it.
 func main () {
@@ -53,7 +66,7 @@ func main () {
 	logLevel := LOG_LEVEL_INFO
 	
 	// To display agent logs or not.
-	logLevelStr, logLevelSet := os.LookupEnv("MFT_LOG_LEVEL")
+	logLevelStr, logLevelSet := os.LookupEnv(MFT_LOG_LEVEL)
 	if logLevelSet {
 		if logLevelStr == "verbose" {
 			logLevel = LOG_LEVEL_VERBOSE
@@ -86,14 +99,14 @@ func main () {
 	// We are running in a container, so just print it on console
 	utils.PrintLog(fmt.Sprintf("Container Runtime: %s", runtime))
 	
-	agentNameEnv, agentNameSet := os.LookupEnv("MFT_AGENT_NAME")
+	agentNameEnv, agentNameSet := os.LookupEnv(MFT_AGENT_NAME)
 	if !agentNameSet || agentNameEnv == "" {
 		utils.PrintLog("MFT_AGENT_NAME environment variable not set or the value of the variable is empty.")
 		os.Exit(1)
 	}
 	
 	// Read config file from a fixed path
-	bfgConfigFilePath, configFileSet := os.LookupEnv("MFT_AGENT_CONFIG_FILE")    
+	bfgConfigFilePath, configFileSet := os.LookupEnv(MFT_AGENT_CONFIG_FILE)    
 	if !configFileSet || bfgConfigFilePath == "" {
 		utils.PrintLog("MFT_AGENT_CONFIG_FILE environment variable not set or the value of the variable is empty.")
 		os.Exit(1)
@@ -121,7 +134,7 @@ func main () {
 	}
 	
 	// See if we have been given mount point for creating configuration directory.
-	bfgConfigMountPath, bfgCfgMountPathSet := os.LookupEnv("BFG_DATA")
+	bfgConfigMountPath, bfgCfgMountPathSet := os.LookupEnv(BFG_DATA)
 	if bfgCfgMountPathSet && len(bfgConfigMountPath) > 0 {
 		bfgDataPath = bfgConfigMountPath
 		err = utils.CreateDataPath (bfgDataPath)
@@ -140,14 +153,14 @@ func main () {
 		}
 		
 		// Set BFG_DATA environment variable so that we can run MFT commands.
-		os.Setenv("BFG_DATA", bfgDataPath)
+		os.Setenv(BFG_DATA, bfgDataPath)
     }
 	utils.PrintLog(fmt.Sprintf("Agent configuration and log directory: %s", bfgDataPath))
 		
 	// Time to wait for agent to start. 
 	// Default wait time is 10 seconds
 	delayTimeStatusCheck := time.Duration(10) * time.Second
-	timeWaitForAgentStartStr, timeWaitForAgentStartSet := os.LookupEnv("WAIT_TIME_TO_START")
+	timeWaitForAgentStartStr, timeWaitForAgentStartSet := os.LookupEnv(MFT_AGENT_START_WAIT_TIME)
 	// Value is numeric and above 0, then use it.
 	if timeWaitForAgentStartSet && utils.IsNumeric(timeWaitForAgentStartStr) {
 		waitTime := utils.ToNumber(timeWaitForAgentStartStr)
@@ -244,7 +257,7 @@ func main () {
 		mirrorAgentLogs(ctxAgentLog, &wg, agentNameEnv, agentLogPath)
 	}
 	
-	agentTraceEnv, agentTraceEnvSet := os.LookupEnv("MFT_AGENT_TRACE")
+	agentTraceEnv, agentTraceEnvSet := os.LookupEnv(MFT_AGENT_TRACE)
 	if agentTraceEnvSet {
 		if agentTraceEnv == "yes" {
 			// Show contents of last trace file
@@ -262,7 +275,7 @@ func main () {
 	}
 
 	// Mirror capture0.log
-	agentCaptureLogEnv, agentCaptureLogEnvSet := os.LookupEnv("MFT_AGENT_CAPTURE_LOG")
+	agentCaptureLogEnv, agentCaptureLogEnvSet := os.LookupEnv(MFT_AGENT_CAPTURE_LOG)
 	if agentCaptureLogEnvSet {
 		if agentCaptureLogEnv == "yes" {
 			captureLogPath := bfgDataPath + "/mqft/logs/" + coordinationQMgr + "/agents/" + agentNameEnv + "/logs/capture0.log"
@@ -305,9 +318,20 @@ func startAgent(agentName string, coordinationQMgr string, logLevel int) (bool) 
 	if lookPathErr == nil {
 		// We are done with creating agent. Start it now.
 		utils.PrintLog(fmt.Sprintf("Starting agent '%s'", agentName))
+		var cmdArgs [] string
+		cmdArgs = append(cmdArgs, cmdStrAgntPath,"-p", coordinationQMgr, agentName)
+		if enableCommandTracing() == true {
+			cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
+			cmdTracePath := getCommandTracePath()
+			if len(cmdTracePath) > 0 {
+				cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
+			}
+		}
+		
 		cmdStrAgnt := &exec.Cmd {
 				Path: cmdStrAgntPath,
-				Args: [] string {cmdStrAgntPath,"-p", coordinationQMgr, agentName}}
+				Args: cmdArgs,
+			}
   
 		cmdStrAgnt.Stdout = &outb
 		cmdStrAgnt.Stderr = &errb
@@ -334,10 +358,20 @@ func verifyAgentStatus(coordinationQMgr string, agentName string, logLevel int)(
 	utils.PrintLog(fmt.Sprintf("Verifying status of agent '%s'", agentName))
 	cmdListAgentPath, lookPathErr := exec.LookPath("fteListAgents")
 	if lookPathErr == nil {
+		var cmdArgs [] string
+		cmdArgs = append(cmdArgs, cmdListAgentPath, "-p", coordinationQMgr, agentName)
+		if enableCommandTracing() == true {
+			cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
+			cmdTracePath := getCommandTracePath()
+			if len (cmdTracePath) > 0 {
+				cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
+			}
+		}
+	
 		cmdListAgents := &exec.Cmd {
 			Path: cmdListAgentPath,
-			Args: [] string {cmdListAgentPath, 
-						"-p", coordinationQMgr, agentName}}
+			Args: cmdArgs,
+		}
 
 		cmdListAgents.Stdout = &outb
 		cmdListAgents.Stderr = &errb
@@ -413,6 +447,13 @@ func setupAgent(agentConfig string, bfgDataPath string, coordinationQMgr string,
 						"-agentQMgrHost", agentQMgrHost, 
 						"-agentQMgrPort", agentQMgrPort, 
 						"-agentQMgrChannel", agentQMgrChannel, "-f")
+			if enableCommandTracing() == true {
+				params = append(params, "-trace", "com.ibm.wmqfte=all")
+				cmdTracePath := getCommandTracePath()
+				if len(cmdTracePath ) > 0 {
+					params = append(params, "-tracePath", cmdTracePath)
+				}
+			}
 			
 			// Use credentials file if one is specified
 			credFile := gjson.Get(agentConfig,"credentialsFile")
@@ -439,6 +480,13 @@ func setupAgent(agentConfig string, bfgDataPath string, coordinationQMgr string,
 						"-agentQMgrHost", agentQMgrHost, 
 						"-agentQMgrPort", agentQMgrPort, 
 						"-agentQMgrChannel", agentQMgrChannel, "-f")
+			if enableCommandTracing() == true {
+				params = append(params, "-trace", "com.ibm.wmqfte=all")
+				cmdTracePath := getCommandTracePath()
+				if len(cmdTracePath) > 0 {
+					params = append(params, "-tracePath", cmdTracePath)
+				}
+			}
 
 			// Use credentials file if one is specified
 			credFile := gjson.Get(agentConfig,"credentialsFile")
@@ -474,9 +522,9 @@ func setupAgent(agentConfig string, bfgDataPath string, coordinationQMgr string,
 			// If it is bridge agent, then update the ProtocolBridgeProperties file with any additional properties specified.
 			if !standardAgent {
 				// Copy the custom credentials exit to agent's exit directory.
-				protocolBridgeCustExit := bfgDataPath + "/mqft/config/" + coordinationQMgr + "/agents/" + agentName + "/exits/bridgecredexit.jar" 
+				protocolBridgeCustExit := bfgDataPath + "/mqft/config/" + coordinationQMgr + "/agents/" + agentName + "/exits/" + PBA_CUSTOM_CRED_EXIT_NAME 
 				utils.CopyFile(PBA_CUSTOM_CRED_EXIT, protocolBridgeCustExit)
-				protocolBridgeCustExitDependLib := bfgDataPath + "/mqft/config/" + coordinationQMgr + "/agents/" + agentName + "/exits/json-20210307.jar" 
+				protocolBridgeCustExitDependLib := bfgDataPath + "/mqft/config/" + coordinationQMgr + "/agents/" + agentName + "/exits/" + PBA_CUSTOM_CRED_DEPEND_LIB_NAME
 				utils.CopyFile(PBA_CUSTOM_CRED_DEPEND_LIB, protocolBridgeCustExitDependLib)
 				
 				// Delete the custom exit from source directory
@@ -531,12 +579,22 @@ func setupCoordination(allAgentConfig string, bfgDataPath string, agentNameEnv s
 		} else {
 			channel = "SYSTEM.DEF.SVRCONN"
 		}
-		cmdSetupCoord := &exec.Cmd {
-			Path: cmdCoordPath,
-			Args: [] string {cmdCoordPath, 
+		var cmdArgs [] string
+		cmdArgs = append(cmdArgs, cmdCoordPath, 
 				"-coordinationQMgr", gjson.Get(allAgentConfig,"coordinationQMgr.name").String(),
 				"-coordinationQMgrHost", gjson.Get(allAgentConfig,"coordinationQMgr.host").String(), 
-				"-coordinationQMgrPort", port, "-coordinationQMgrChannel", channel, "-f", "-default"},
+				"-coordinationQMgrPort", port, "-coordinationQMgrChannel", channel, "-f", "-default")
+		if enableCommandTracing() == true {
+			cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
+			cmdTracePath := getCommandTracePath()
+			if len(cmdTracePath) > 0 {
+				cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
+			}
+		}
+
+		cmdSetupCoord := &exec.Cmd {
+			Path: cmdCoordPath,
+			Args: cmdArgs,
 		}
 
 		// Execute the fteSetupCoordination command. Log an error an exit in case of any error.
@@ -588,14 +646,24 @@ func setupCommands(allAgentConfig string, bfgDataPath string, agentName string, 
 		} else {
 			channel = "SYSTEM.DEF.SVRCONN"
 		}
-		
-		cmdSetupCmds := &exec.Cmd {
-			Path: cmdCmdsPath,
-			Args: [] string {cmdCmdsPath, 
+
+		var cmdArgs [] string
+		cmdArgs = append(cmdArgs, cmdCmdsPath, 
 				"-p", gjson.Get(allAgentConfig,"coordinationQMgr.name").String(), 
 				"-connectionQMgr", gjson.Get(allAgentConfig,"commandQMgr.name").String(), 
 				"-connectionQMgrHost", gjson.Get(allAgentConfig,"commandQMgr.host").String(), 
-				"-connectionQMgrPort", port, "-connectionQMgrChannel", channel,"-f"},
+				"-connectionQMgrPort", port, "-connectionQMgrChannel", channel,"-f")
+		if enableCommandTracing() == true {
+			cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
+			cmdTracePath := getCommandTracePath()
+			if len(cmdTracePath) > 0{
+				cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
+			}
+		}
+		
+		cmdSetupCmds := &exec.Cmd {
+			Path: cmdCmdsPath,
+			Args: cmdArgs,
 		}
 		  
 		cmdSetupCmds.Stdout = &outb
@@ -796,23 +864,23 @@ func updateAgentProperties(propertiesFile string, agentConfig string, sectionNam
 	}
 
 	// If agent credentials file has been specified as environment variable, then set it here
-	agentCredPath, agentCredPathSet := os.LookupEnv("MFT_AGENT_CREDENTIAL_FILE")    
+	agentCredPath, agentCredPathSet := os.LookupEnv(MFT_AGENT_CREDENTIAL_FILE)    
 	if agentCredPathSet && agentCredPath != "" {
-		if _, err := f.WriteString ("\n" + "agentQMgrAuthenticationCredentialsFile=" + agentCredPath + " \n"); err != nil {
+		if _, err := f.WriteString ("\n" + "agentQMgrAuthenticationCredentialsFile=" + agentCredPath + "\n"); err != nil {
 			utils.PrintLog(fmt.Sprintf("%v", err))
 		}
 	}
   
   // If this is a bridge agent, then configure custom exit
   if bridgeAgent {
-	bridgeCredPath, bridgeCredPathSet := os.LookupEnv("MFT_BRIDGE_CREDENTIAL_FILE")    
+	bridgeCredPath, bridgeCredPathSet := os.LookupEnv(MFT_BRIDGE_CREDENTIAL_FILE)    
 	if bridgeCredPathSet && bridgeCredPath != "" {
-		if _, err := f.WriteString ("\n" + "protocolBridgeCredentialConfiguration=" + bridgeCredPath + " \n"); err != nil {
+		if _, err := f.WriteString ("\n" + "protocolBridgeCredentialConfiguration=" + bridgeCredPath + "\n"); err != nil {
 			utils.PrintLog(fmt.Sprintf("%v", err))
 		}
 	}
 	
-	if _, err := f.WriteString ("\n" + "protocolBridgeCredentialExitClasses=com.ibm.bridgecredentialexit.ProtocolBridgeCustomCredentialExit\n"); err != nil {
+	if _, err := f.WriteString ("\n" + "protocolBridgeCredentialExitClasses=com.ibm.wmq.bridgecredentialexit.ProtocolBridgeCustomCredentialExit\n"); err != nil {
 		utils.PrintLog(fmt.Sprintf("%v", err))
 	}
   } else {
@@ -921,10 +989,21 @@ func deleteAgent (coordinationQMgr string, agentName string) (error) {
 	if lookErr != nil {
 		return lookErr
 	}
+	
+	var cmdArgs [] string
+	cmdArgs = append(cmdArgs, cmdDltAgentPath, "-p", coordinationQMgr, "-f", agentName)
+	if enableCommandTracing() == true {
+		cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
+		cmdTracePath := getCommandTracePath()
+		if len(cmdTracePath) > 0 {
+			cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
+		}
+	}
+	
 	// -f force option is not used so that monitor is not recreated if it already exists.
 	cmdDltAgentCmd := &exec.Cmd {
 		Path: cmdDltAgentPath,
-		Args: [] string {cmdDltAgentPath, "-p", coordinationQMgr, "-f", agentName},
+		Args: cmdArgs,
 	}
 
 	// Reuse the same buffer
@@ -964,6 +1043,24 @@ func cleanAgent (agentConfig string, coordinationQMgr string, agentName string, 
 	}
 }
 
+// Check if command tracing is enabled.
+func enableCommandTracing() (bool) {
+	enableCommandTrace, enableCommandTraceSet := os.LookupEnv(MFT_TRACE_COMMAND)    
+	if enableCommandTraceSet && enableCommandTrace == "yes" {
+		return true
+	}
+	return false
+}
+
+// Return command trace path.
+func getCommandTracePath() (string) {
+	commandTracePath, commandTracePathSet := os.LookupEnv(MFT_TRACE_COMMAND_PATH)    
+	if commandTracePathSet && commandTracePath != "" {
+		return strings.Trim(commandTracePath, " ")
+	}
+	return ""
+}
+
 // Clean agent on start of container.
 func cleanAgentItem (coordinationQMgr string, agentName string, item string, option string, logLevel int) (error) {
 	var outb, errb bytes.Buffer
@@ -975,10 +1072,20 @@ func cleanAgentItem (coordinationQMgr string, agentName string, item string, opt
 		return lookErr
 	}
 	
-	// -f force option is not used so that monitor is not recreated if it already exists.
+	var cmdArgs [] string
+	cmdArgs = append(cmdArgs, cmdCleanAgentPath, "-p", coordinationQMgr, option, agentName)
+	if enableCommandTracing() == true {
+		cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
+		cmdTracePath := getCommandTracePath()
+		if len(cmdTracePath) > 0 {
+			cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
+		}
+	}
+	
+	// Clean agent before starting
 	cmdCleanAgentCmd := &exec.Cmd {
 		Path: cmdCleanAgentPath,
-		Args: [] string {cmdCleanAgentPath, "-p", coordinationQMgr, option, agentName},
+		Args: cmdArgs,
 	}
 
 	// Reuse the same buffer

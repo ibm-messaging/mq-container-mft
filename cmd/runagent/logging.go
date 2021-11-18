@@ -22,13 +22,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-//	"os/exec"
 	"strings"
 	"sync"	
 	"time"
-//	"github.com/ibm-messaging/mq-container-mft/cmd/mqcont/utilities/command"
 	"github.com/ibm-messaging/mq-container-mft/cmd/mqcont/pkg/logger"
 	"github.com/antchfx/xmlquery"
+    "github.com/Jeffail/gabs"
 )
 
 /*
@@ -43,6 +42,7 @@ func logTerminationf(format string, args ...interface{}) {
 	logTermination(fmt.Sprintf(format, args...))
 }
 
+// Terminate logging
 func logTermination(args ...interface{}) {
 	msg := fmt.Sprint(args...)
 	// Write the message to the termination log.  This is not the default place
@@ -55,10 +55,43 @@ func logTermination(args ...interface{}) {
 	eventLog.Error(msg)
 }
 
+// Returns log format type. JSON or basic
+// Returns basic if anything other than json is set or not set.
 func getLogFormat() string {
-	// We only support basic type - i.e. whatever the format that is logged in 
-	// agent output0.log file.
-	return "basic"
+	var logFormat string
+	logFormatStr, logFormatSet := os.LookupEnv("MFT_LOG_FORMAT")
+	if logFormatSet {
+		if logFormatStr == "json" {
+			logFormat = logFormatStr
+		} else {
+			logFormat = "basic"
+		}
+	} else {
+		logFormat = "basic"
+	}
+	return logFormat
+}
+
+// formatJSON formats a log message as "JSON" text
+func formatJSON(obj map[string]interface{}) string {
+	xmlString := fmt.Sprintf("%s", obj["message"]);
+	if strings.Contains(xmlString, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"){
+		// If this is a transfer log, then format it.
+		if strings.Contains(xmlString, "<transaction version") {
+			return formatTransferJSON(xmlString)
+		} else if strings.Contains(xmlString, "<monitorLog version") {
+			return ""
+			//return formatMonitorXML(xmlString)
+		} else {
+			return ""
+		}
+	} else {
+		if strings.HasPrefix(xmlString, "#") {
+			return ""
+		} else {
+			return fmt.Sprintf("%s\n", obj["message"])
+		}
+	}
 }
 
 // formatBasic formats a log message parsed from JSON, as "basic" text
@@ -81,6 +114,14 @@ func formatBasic(obj map[string]interface{}) string {
 			return fmt.Sprintf("%s\n", obj["message"])
 		}
 	}
+}
+
+func getFormattedTimeRFC3339(timeValue string) time.Time {
+    t, err := time.Parse(time.RFC3339, timeValue)
+    if err != nil {
+        fmt.Printf("%s\n", err)
+    }
+    return t
 }
 
 // Format time into given format
@@ -256,6 +297,158 @@ func formatTransferXML(xmlMessage string) string {
 	return parsedData
 }
 
+// Parse the transfer XML message and return a JSON string
+func formatTransferJSON(xmlMessage string) string {
+	var parsedData string
+    // Replace all &quot; with single quote
+    strings.ReplaceAll(xmlMessage, "&quot;", "'")
+    // Create an parsed XML document
+    doc, err := xmlquery.Parse(strings.NewReader(xmlMessage))
+    if err != nil {
+        return parsedData
+    }
+
+    // Get required elements from Xml message
+    transaction := xmlquery.FindOne(doc, "//transaction")
+    if transaction != nil {
+        transferId := transaction.SelectAttr("ID")
+		transferLogJSON := gabs.New()
+        transferLogJSON.SetP(strings.ToUpper(transferId),"transfer.id")
+        if action := transaction.SelectElement("action"); action != nil {
+            if strings.EqualFold(action.InnerText(),"completed") {
+                status := transaction.SelectElement("status")
+                if status != nil {
+					transferLogJSON.SetP (action.InnerText(),"transfer.status")
+                    transferLogJSON.SetP (status.SelectAttr("resultCode"),"transfer.resultCode")
+                    transferLogJSON.SetP (status.SelectElement("supplement").InnerText(),"transfer.supplement")
+                    transferLogJSON.SetP (action.SelectAttr("time"),"transfer.time")
+                }
+
+				sourceAgent := transaction.SelectElement("sourceAgent")
+                destAgent := transaction.SelectElement("destinationAgent")
+				transferLogJSON.SetP (sourceAgent.SelectAttr("agent"),"transfer.sourceAgent" )
+                transferLogJSON.SetP (destAgent.SelectAttr("agent"),"transfer.destinationAgent" )
+				
+                var actualStartTimeText string = ""
+                statistics := transaction.SelectElement("statistics")
+                if statistics != nil {
+                    actualStartTime := statistics.SelectElement("actualStartTime")
+                    if actualStartTime != nil {
+                        actualStartTimeText = actualStartTime.InnerText()
+						transferLogJSON.SetP (actualStartTimeText, "transfer.actualStartTime")
+                    }
+                }
+                var retryCount string
+                var numFileFailures string
+                var numFileWarnings string
+                if statistics != nil {
+                    if statistics.SelectElement("retryCount") != nil {
+                        retryCount = statistics.SelectElement("retryCount").InnerText()
+                    }
+                    if statistics.SelectElement("numFileFailures") != nil {
+                        numFileFailures = statistics.SelectElement("numFileFailures").InnerText()
+                    }
+                    if statistics.SelectElement("numFileWarnings") != nil {
+                        numFileWarnings = statistics.SelectElement("numFileWarnings").InnerText()
+                    }
+                }
+				
+                var elapsedTime time.Duration
+                if actualStartTimeText != "" {
+                    startTime := getFormattedTimeRFC3339(actualStartTimeText)
+                    completePublishTime := getFormattedTimeRFC3339(action.SelectAttr("time"))
+                    elapsedTime = completePublishTime.Sub(startTime)
+                }
+				
+                transferLogJSON.SetP (action.SelectAttr("time"),"transfer.completionTime")
+                transferLogJSON.SetP (elapsedTime,"transfer.elapsedTime")
+                transferLogJSON.SetP (retryCount,"transfer.retryCount" )
+                transferLogJSON.SetP (numFileFailures,"transfer.numberOfFailures")
+                transferLogJSON.SetP (numFileWarnings, "transfer.numberOfWarnings")
+				parsedData = transferLogJSON.StringIndent("","  ")
+            } else if strings.EqualFold(action.InnerText(),"progress") {
+				transferLogJSON.SetP (action.InnerText(),"transfer.status")
+                destAgent := transaction.SelectElement("destinationAgent")
+				sourceAgent := transaction.SelectElement("sourceAgent")
+				transferLogJSON.SetP (sourceAgent.SelectAttr("agent"), "transfer.sourceAgent" )
+				transferLogJSON.SetP (destAgent.SelectAttr("agent"),   "transfer.destinationAgent" )
+				transferLogJSON.SetP (action.SelectAttr("time"), "transfer.publishTime" )
+				
+                transferSet := transaction.SelectElement("transferSet")
+                startTimeText := transferSet.SelectAttr("startTime")				
+				transferSetNode := gabs.New()
+
+                items := transferSet.SelectElements("item")
+                itemArray, _ := gabs.New().Array("transferSet","items")
+                for i := 0 ; i < len(items); i++ {
+                    item := gabs.New()
+                    var sourceName string
+					var sourceSize = "-1"
+                    queueSource := items[i].SelectElement("source/queue")
+                    if queueSource != nil {
+                        sourceName = queueSource.InnerText()
+                    } else {
+                        fileName := items[i].SelectElement("source/file")
+                        if fileName != nil {
+                            sourceName = fileName.InnerText()
+                            sourceSize = fileName.SelectAttr("size")
+                        }
+                    }
+
+                    var destinationName string
+                    var destinationSize = "-1"
+                    queueDest := items[i].SelectElement("destination/queue")
+                    if queueDest != nil {
+                        destinationName = queueDest.InnerText()
+                    } else {
+                        fileName := items[i].SelectElement("destination/file")
+                        if fileName != nil {
+                           destinationName = fileName.InnerText()
+                           destinationSize = fileName.SelectAttr("size")
+                        }
+                    }
+                    item.SetP(sourceName,"sourceName")
+                    item.SetP(sourceSize,"sourceSize")
+                    item.SetP(destinationName,"destinationName")
+                    item.SetP(destinationSize,"destinationSize")
+                    status := items[i].SelectElement("status")
+                    resultCode := status.SelectAttr("resultCode")
+                    item.SetP(resultCode,"resultCode")
+                    // Process result code and append any supplement
+                    if resultCode != "0" {
+                        supplement := status.SelectElement("supplement").InnerText()
+                        item.SetP(supplement,"supplement")
+                    }
+                    itemArray.ArrayAppend(item)
+                }
+                transferSetNode.Set(itemArray)
+                transferLogJSON.SetP (startTimeText, "transfer.startTime")
+                transferLogJSON.SetP (transferSet.SelectAttr("total"), "transfer.totalItems")
+                transferLogJSON.SetP (transferSet.SelectAttr("bytesSent"), "transfer.bytesSent")
+                transferLogJSON.SetP (transferSetNode,"transfer.transferSet")
+				parsedData = transferLogJSON.StringIndent("","  ")
+            } else if strings.EqualFold(action.InnerText(),"started") {
+				transferLogJSON.SetP (action.InnerText(),"transfer.status")
+                destAgent := transaction.SelectElement("destinationAgent")
+                sourceAgent := transaction.SelectElement("sourceAgent")
+				transferLogJSON.SetP (sourceAgent.SelectAttr("agent"),"transfer.sourceAgent" )
+				transferLogJSON.SetP (destAgent.SelectAttr("agent"),"transfer.destinationAgent" )
+                transferSet := transaction.SelectElement("transferSet")
+                startTime := ""
+                if transferSet != nil {
+                    startTime = transferSet.SelectAttr("startTime")
+                } else {
+                    startTime = action.SelectAttr("time")
+                }
+				transferLogJSON.SetP (startTime,"transfer.startTime")
+				parsedData = transferLogJSON.StringIndent("","  ")
+            }
+        } // Action
+    } // Transaction != null
+	
+	return parsedData
+}
+
 
 // mirrorAgentEventLogs starts a goroutine to mirror the contents of the agent logs
 func mirrorAgentEventLogs(ctx context.Context, wg *sync.WaitGroup, logFilePath string, fromStart bool, mf mirrorFunc) (chan error, error) {
@@ -274,7 +467,7 @@ func configureLogger(name string) (mirrorFunc, error) {
 	f := getLogFormat()
 	d := getDebug()
 	switch f {
-	case "basic":
+	case "json":
 		eventLog, err = logger.NewLogger(os.Stderr, d, false, name)
 		if err != nil {
 			return nil, err
@@ -283,7 +476,23 @@ func configureLogger(name string) (mirrorFunc, error) {
 			// Parse the JSON message, and print a simplified version
 			obj, err := processLogMessage(msg)
 			if err != nil {
-				eventLog.Printf("Failed to unmarshall JSON - %v", err)
+				eventLog.Printf("Failed to process log message - %v", err)
+			} else {
+				fmt.Printf(formatJSON(obj))
+			}
+			return true
+		}, nil
+	
+	case "basic":
+		eventLog, err = logger.NewLogger(os.Stderr, d, false, name)
+		if err != nil {
+			return nil, err
+		}
+		return func(msg string) bool {
+			// Parse the message and print a simplified version
+			obj, err := processLogMessage(msg)
+			if err != nil {
+				eventLog.Printf("Failed to process log message - %v", err)
 			} else {
 				fmt.Printf(formatBasic(obj))
 			}
@@ -297,6 +506,7 @@ func configureLogger(name string) (mirrorFunc, error) {
 		return nil, fmt.Errorf("invalid value for LOG_FORMAT: %v", f)
 	}
 }
+
 // Process log messages from agent's output0.log and others.
 func processLogMessage(msg string) (map[string]interface{}, error) {
 	var obj map[string]interface{}

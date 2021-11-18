@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-
 	"github.com/syndtr/gocapability/capability"
 	"golang.org/x/sys/unix"
 )
