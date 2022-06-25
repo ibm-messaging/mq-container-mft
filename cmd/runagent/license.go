@@ -17,11 +17,11 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
-	"fmt"
 )
 
 // resolveLicenseFile returns the file name of the MQ MFT license file, taking into
@@ -78,8 +78,8 @@ func checkLicense() (bool, error) {
 	case ok && lic == "accept":
 		return true, nil
 	case ok && lic == "view":
-	    // Display MFT Redistributable package license file
-		file := filepath.Join("/opt/mqm/mqft/licences/", resolveLicenseFile())
+		// Display MFT Redistributable package license file
+		file := filepath.Join(DIR_LICENSE_FILES, resolveLicenseFile())
 		// #nosec G304
 		buf, err := ioutil.ReadFile(file)
 		if err != nil {
@@ -89,7 +89,5 @@ func checkLicense() (bool, error) {
 		fmt.Println(string(buf))
 		return false, nil
 	}
-	fmt.Println("Error: Set environment variable LICENSE=accept to indicate acceptance of license terms and conditions.")
-	fmt.Println("License agreements and information can be viewed by setting the environment variable LICENSE=view.  You can also set the LANG environment variable to view the license in a different language.")
-	return false, errors.New("Set environment variable LICENSE=accept to indicate acceptance of license terms and conditions")
+	return false, errors.New(MFT_CONT_LICENES_NOT_ACCESSPTED_0004)
 }

@@ -231,6 +231,8 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 			} else if(serverType.equalsIgnoreCase("FTP")) {
 				parsed = processV2FTPCredential(jsonObj);
 			}
+		} else {
+			System.out.println("Server type not found");
 		}
 
 		return parsed;
@@ -252,31 +254,48 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		
 		try {
 			serverHostName = jsonObj.getString("serverHostName");
-			serverPassword = jsonObj.getString("serverPassword");
-			requesterUserId = jsonObj.getString("transferRequesterId");
+		} catch (Exception ex) {
+			System.err.println("Credentials does not have the mandatory attribute 'serverHostName' specified. Agent will not be able to communicate with protocol server.");
+			return false;
+		}
+
+		try {
 			serverUserId = jsonObj.getString("serverUserId");
+		}catch(Exception ex) {
+			System.err.println("Credentials does not have the mandatory attribute 'serverUserId' specified. Agent will not be able to communicate with protocol server.");
+			return false;
+		}
+
+		try {
+			serverPassword = jsonObj.getString("serverPassword");
+		}catch(Exception ex) {
+			System.err.println("Credentials does not have the mandatory attribute 'serverPassword' specified. Agent will not be able to communicate with protocol server.");
+			return false;
+		}
+
+		try {
+			requesterUserId = jsonObj.getString("transferRequesterId");
+		}catch (Exception ex) {
+			requesterUserId = "*";
+		}
+
+		try {
 			serverAssocName = jsonObj.getString("serverAssocName");
+		}catch (Exception ex) {
+			// Ignore if it's not found.
+			serverAssocName = "dummyAssocName";
+		}
+
+		try {
 			serverPrivateKey = jsonObj.getString("serverPrivateKey");
+		}catch (Exception ex) {
+			// Not found, ignore
+		}
+
+		try {
 			serverHostKey = jsonObj.getString("serverHostKey");
-		} catch(Exception ex) {
-			// Ignore any exceptions as we do checks below
-			System.err.println("An exception was caught while parsing credentials file."  + ex);
-		}
-
-		// Validate provided values
-		if(serverHostName == null) {
-			System.err.println("Credentials does not have the mandatory server host name specified");
-			return false;
-		}
-
-		if(serverUserId == null) {
-			System.err.println("Credentials does not have the mandatory server user ide specified");
-			return false;
-		}
-
-		if(serverAssocName == null) {
-			System.err.println("Credentials does not have serverAssocName specified");
-			// Go ahead if assoc name is not found for user. Just UID/PWD combination may have been specified.
+		}catch (Exception ex) {
+			// Not found, ignore
 		}
 
 		String decodedPrivateKey = null;
@@ -313,7 +332,6 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		}
 
 		// Add it to the list
-		System.out.println("Adding credentials of user [" + requesterUserId + "] for protocol server " + serverHostName);
 		credentialsMap.put(serverHostName, new CredentialsExt(requesterUserId, credentials));
 		return true;
 	}
@@ -343,7 +361,8 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 
 		if(valid) {
 			if(requesterUserId == null || requesterUserId.trim().isEmpty()) {
-				valid = false;
+				valid = true;
+				requesterUserId = "*";
 			}
 		}
 
@@ -472,14 +491,22 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 			if(mqUserId != null && credentials.getRequesterId() != null) {
 				// We may have wild cards.
 				try {
-					Pattern p = Pattern.compile(credentials.getRequesterId());
+					String requesterIdCred = credentials.getRequesterId();
+					requesterIdCred = requesterIdCred.replaceAll("\\*", "\\\\*");
+					Pattern p = Pattern.compile(requesterIdCred);
 					Matcher m = p.matcher(mqUserId);
 					if(m.matches()) {
-						result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED, credentials.getCredential());					
+						result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED, credentials.getCredential());
 					} else {
-						result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
-					}				
+						// If the requester id is *, then match every id that is supplied
+						if (credentials.getRequesterId().equalsIgnoreCase("*")) {
+							result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED, credentials.getCredential());
+						} else {
+							result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
+						}
+					}
 				} catch (Exception ex) {
+					System.out.println(ex);
 					result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
 				}
 			} else {

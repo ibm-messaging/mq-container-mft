@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
 	"github.com/syndtr/gocapability/capability"
 	"golang.org/x/sys/unix"
 )
@@ -30,17 +31,17 @@ const (
 	RuntimeKubernetes = "kube"
 	// RuntimeGarden is the string for the garden runtime.
 	RuntimeGarden = "garden"
-    //Runtime OCI 
+	//Runtime OCI
 	RuntimeOCI = "oci"
-    //Runtime - Podman
+	//Runtime - Podman
 	RuntimePodman = "podman"
-	
+
 	uint32Max = 4294967295
 )
 
 var (
 	// ErrContainerRuntimeNotFound describes when a container runtime could not be found.
-	ErrContainerRuntimeNotFound = errors.New("container runtime could not be found")
+	ErrContainerRuntimeNotFound = errors.New("Container runtime could not be found")
 
 	runtimes = []string{RuntimeDocker, RuntimeRkt, RuntimeNspawn, RuntimeLXC, RuntimeLXCLibvirt, RuntimeOpenVZ, RuntimeKubernetes, RuntimeGarden, RuntimeOCI, RuntimePodman}
 )

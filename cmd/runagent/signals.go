@@ -16,14 +16,16 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
+
+	"github.com/ibm-messaging/mq-container-mft/pkg/utils"
+
 	"golang.org/x/sys/unix"
-	"fmt"
-	"os/exec"
-	"bytes"	
-	"github.com/ibm-messaging/mq-container-mft/cmd/utils"
 )
 
 const (
@@ -42,7 +44,7 @@ func signalHandler(agentName string, coordinationQMgr string) chan int {
 		for {
 			select {
 			case sig := <-stopSignals:
-				utils.PrintLog(fmt.Sprintf("Signal received: %v", sig))
+				utils.PrintLog(fmt.Sprintf(MFT_CONT_SIGNAL_RECD_0071, sig))
 				signal.Stop(reapSignals)
 				signal.Stop(stopSignals)
 				// #nosec G104
@@ -53,13 +55,17 @@ func signalHandler(agentName string, coordinationQMgr string) chan int {
 				// End the goroutine
 				return
 			case <-reapSignals:
-				utils.PrintLog(fmt.Sprintf("Received SIGCHLD signal"))
+				if logLevel == LOG_LEVEL_DIGANOSTIC {
+					utils.PrintLog(MFT_CONT_SIGNAL_CHILD_0069)
+				}
 				reapZombies()
 			case job := <-control:
 				switch {
 				case job == startReaping:
 					// Add SIGCHLD to the list of signals we're listening to
-					utils.PrintLog(fmt.Sprintf("Listening for SIGCHLD signals"))
+					if logLevel == LOG_LEVEL_DIGANOSTIC {
+						utils.PrintLog(MFT_CONT_SIGNAL_LISTEN_0070)
+					}
 					signal.Notify(reapSignals, syscall.SIGCHLD)
 				case job == reapNow:
 					reapZombies()
@@ -80,24 +86,26 @@ func reapZombies() {
 		if pid == 0 || err == unix.ECHILD {
 			return
 		}
-		utils.PrintLog(fmt.Sprintf("Reaped PID %v", pid))
+		if logLevel == LOG_LEVEL_DIGANOSTIC {
+			utils.PrintLog(fmt.Sprintf(MFT_CONT_REAPED_PID_0072, pid))
+		}
 	}
 }
 
 // Stops an agent when container stop is issued.
 func stopAgent(agentName string, coordinationQMgr string) {
 	var outb, errb bytes.Buffer
-	// Get the path of MFT fteStopAgent command. 
-	cmdStopAgntPath, lookPathErr:= exec.LookPath("fteStopAgent")
+	// Get the path of MFT fteStopAgent command.
+	cmdStopAgntPath, lookPathErr := exec.LookPath("fteStopAgent")
 	if lookPathErr != nil {
-		utils.PrintLog(fmt.Sprintf("fteStopAgent command not found. %s", lookPathErr));
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_NOT_FOUND_0028, lookPathErr))
 		os.Exit(1)
 	}
-	cmdStopAgnt := &exec.Cmd {
+	cmdStopAgnt := &exec.Cmd{
 		Path: cmdStopAgntPath,
-		Args: [] string {cmdStopAgntPath,"-p", coordinationQMgr, agentName, "-i"},
+		Args: []string{cmdStopAgntPath, "-p", coordinationQMgr, agentName, "-i"},
 	}
-    
+
 	outb.Reset()
 	errb.Reset()
 	cmdStopAgnt.Stdout = &outb
@@ -108,11 +116,11 @@ func stopAgent(agentName string, coordinationQMgr string) {
 		utils.PrintLog(fmt.Sprintf("Command: %s\n", outb.String()))
 		utils.PrintLog(fmt.Sprintf("Error %s\n", errb.String()))
 	} else {
-		utils.PrintLog(fmt.Sprintf("Agent '%s' has been stopped", agentName))
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGENT_STOPPED_0068, agentName))
 	}
 }
 
-// Temporary logging 
+// Temporary logging
 func writeLog(messageToLog string) {
 	logPath := os.Getenv("BFG_DATA") + "/mqft/logs/signal.log"
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
@@ -121,7 +129,7 @@ func writeLog(messageToLog string) {
 		return
 	}
 	defer f.Close()
-	
+
 	// If we can't write to file
 	_, errWrite := f.WriteString(messageToLog + "\n")
 	if errWrite != nil {

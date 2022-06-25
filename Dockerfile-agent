@@ -1,5 +1,5 @@
 #
-#© Copyright IBM Corporation 2020, 2021
+#© Copyright IBM Corporation 2020, 2022
 #
 #Licensed under the Apache License, Version 2.0 (the "License");
 #you may not use this file except in compliance with the License.
@@ -14,14 +14,16 @@
 #limitations under the License.
 #
 
-ARG BASE_IMAGE=registry.redhat.io/ubi8/ubi-minimal
-ARG BASE_TAG=8.5-204
-ARG GO_WORKDIR=/go/src/github.com/ibm-messaging/mq-container-mft
+ARG UBI_BASE_IMAGE=registry.redhat.io/ubi8/ubi-minimal
+ARG UBI_BASE_TAG=8.6-751
+ARG GO_TOOLSET_IMAGE=registry.redhat.io/ubi8/go-toolset
+ARG GO_TOOLSET_TAG=1.17.7-13
+ARG GO_WORKDIR=/opt/app-root/src/go/src/github.com/ibm-messaging/mq-container-mft
 
 ###############################################################################
 # Build stage to build Go code
 ###############################################################################
-FROM docker.io/golang:1.14.13 as gobuilder
+FROM $GO_TOOLSET_IMAGE:$GO_TOOLSET_TAG as gobuilder
 
 ARG IMAGE_REVISION="Not specified"
 ARG IMAGE_SOURCE="Not specified"
@@ -34,27 +36,30 @@ USER 0
 RUN git --version
 RUN go get -u github.com/tidwall/gjson \
     && go get -u golang.org/x/sys/unix \
-	&& go get -u golang.org/x/vgo \
     && go get -u github.com/syndtr/gocapability/capability \
     && go get -u github.com/icza/backscanner \ 
-   	&& go get -u github.com/antchfx/xmlquery \
+ 	&& go get -u golang.org/x/net \
 	&& go get -u github.com/spf13/pflag \
-    && go get -u github.com/Jeffail/gabs
+    && go get -u github.com/Jeffail/gabs \
+    && go get github.com/antchfx/xmlquery@v1.3.9
+	
+# Create a directory where compiled golang programs will be copied
+RUN mkdir -p /run
 
 # Set golang working directory
 WORKDIR $GO_WORKDIR/
 
-# Create a directory where compiled golang programs will be copied
-RUN mkdir -p /run
-
 # Copy golang source code for compilation	
-COPY ./cmd ./cmd
+COPY go.mod go.sum ./
+COPY cmd ./cmd
+#COPY internal/ ./internal
+#COPY pkg/ ./pkg
 
 # Build the required go programs and copy them to /run directory
-RUN go build -ldflags "-X \"main.ImageCreated=$(date --iso-8601=seconds)\" -X \"main.ImageRevision=$IMAGE_REVISION\" -X \"main.ImageSource=$IMAGE_SOURCE\" -X \"main.ImageTag=$IMAGE_TAG\"" -o /run/runagent ./cmd/runagent/
-RUN go build -o /run/agentalive ./cmd/agentalive/
-RUN go build -o /run/agentready ./cmd/agentready/
-RUN go build -o /run/mqfts ./cmd/mqfts/ 
+RUN go build -ldflags "-X \"main.ImageCreated=$(date --iso-8601=seconds)\" -X \"main.ImageRevision=$IMAGE_REVISION\" -X \"main.ImageSource=$IMAGE_SOURCE\" -X \"main.ImageTag=$IMAGE_TAG\"" -o /run/runagent ./cmd/runagent/ \
+  && go build -o /run/agentalive ./cmd/agentalive/ \
+  && go build -o /run/agentready ./cmd/agentready/ \
+  && go build -o /run/mqfts ./cmd/mqfts/ 
 
 # Run unit tests
 RUN go test -v ./cmd/runagent
@@ -94,8 +99,14 @@ ARG ARG_MQMFT_BFG_DATA
 ENV BFG_DATA=/mnt/mftdata
 ENV CREDENTIALS_PATH=/mnt/credentials
 
+# Use a fixed path for system and user preferences. This is to avoid "System preferences 
+# are unusable" exception. This path must be set via BFG_JVM_PROPERTIES environment variable
+# while running image via docker/podman run command or via the deployment yaml in Kubernetes.
+ENV JAVA_PREFS_SYSTEM_DIR = /jprefs/.java/.systemPrefs
+ENV JAVA_PREFS_USER_DIR = /jprefs/.java/.userPrefs
+
 # Meta information of our container image
-LABEL summary="IBM MQ Managed File Transfer"
+LABEL summary="IBM MQ Managed File Transfer Agent"
 LABEL description="Move files and messages"
 LABEL vendor="IBM"
 LABEL maintainer="IBM"
@@ -105,8 +116,8 @@ LABEL url="https://www.ibm.com/products/mq/advanced"
 LABEL io.openshift.tags="mq managed file transfer"
 LABEL io.k8s.display-name="IBM MQ Managed File Transfer"
 LABEL io.k8s.description="Move files and messages"
-LABEL base-image=$BASE_IMAGE
-LABEL base-image-release=$BASE_TAG
+LABEL base-image=$UBI_BASE_IMAGE
+LABEL base-image-release=$UBI_BASE_TAG
 
 # Do everything as root. We will change the user at a later point
 USER 0
@@ -148,6 +159,10 @@ RUN mkdir -p $BFG_DATA \
     && mkdir -p $CREDENTIALS_PATH \
     && mkdir -p /mountpath \
 	&& chmod -R guo+rwx /mountpath \
+    && mkdir -p ${JAVA_PREFS_SYSTEM_DIR} \
+	&& chmod -R guo+rwx ${JAVA_PREFS_SYSTEM_DIR} \
+    && mkdir -p ${JAVA_PREFS_USER_DIR} \
+	&& chmod -R guo+rwx ${JAVA_PREFS_USER_DIR} \
     && chmod -R guo+rwx $BFG_DATA \
     && chmod -R guo+rwx $CREDENTIALS_PATH \
     && chgrp -Rf root /run/runagent \

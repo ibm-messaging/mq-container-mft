@@ -93,5 +93,5 @@ spec:
 		  terminationMessagePolicy: File
           
 		  image: >-
-             docker.io/ibmcom/mqmft::9.2.2.0-amd64 <- URI from where an agent container image will be pulled for deployment
+             icr.io/ibm-messaging/mqmft:latest <- URI from where an agent container image will be pulled for deployment
 ```

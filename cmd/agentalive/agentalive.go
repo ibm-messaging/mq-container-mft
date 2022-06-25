@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2020, 2021
+© Copyright IBM Corporation 2020, 2022
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,69 +22,86 @@ limitations under the License.
 * running or not. Returns true if the process is alive else false.
 * Based on the return value of this probe, a container orchestration
 * platform like Kubernetes can recycle an agent.
-*/
+ */
 package main
 
 import (
-	"os"
 	"fmt"
-    "github.com/tidwall/gjson"
-	"github.com/ibm-messaging/mq-container-mft/cmd/utils"
+	"os"
+	"strings"
+
+	"github.com/ibm-messaging/mq-container-mft/pkg/utils"
+	"github.com/tidwall/gjson"
 )
 
 /*
 * Main entry point to liveness probe
  */
-func main () {
+func main() {
 	var bfgDataPath string
-	var bfgConfigFilePath string 
-	var agentConfig string 
+	var bfgConfigFilePath string
+	var agentConfig string
 	var e error
-	 //Name of the agent is retrieved from environment variable MFT_AGENT_NAME
-	var agentNameEnv string = os.Getenv("MFT_AGENT_NAME")
+
+	//Name of the agent is retrieved from environment variable MFT_AGENT_NAME
+	agentNameEnv, agentNameEnvSet := os.LookupEnv("MFT_AGENT_NAME")
+	if !agentNameEnvSet {
+		utils.PrintLog(AGENT_ALIV_ENV_AGENT_NAME_NOT_SET_4001)
+		os.Exit(AGENT_ALIV_EXIT_CODE_1)
+	}
 
 	/*
 	 * Read the name of an agent configuration file from environment
 	 * variable MFT_AGENT_CONFIG_FILE
 	 */
-	bfgConfigFilePath = os.Getenv("MFT_AGENT_CONFIG_FILE")
+	bfgConfigFilePath, bfgConfigFilePathSet := os.LookupEnv("MFT_AGENT_CONFIG_FILE")
+	if !bfgConfigFilePathSet {
+		utils.PrintLog(AGENT_ALIV_ENV_AGENT_CFG_FILE_NOT_SET_4002)
+		os.Exit(AGENT_ALIV_EXIT_CODE_2)
+	}
+
 	// Read agent configuration data from JSON file.
 	agentConfig, e = utils.ReadConfigurationDataFromFile(bfgConfigFilePath)
 	// Exit if we had any error when reading configuration file
 	if e != nil {
-		utils.PrintLog(fmt.Sprintf("%v", e))
-		os.Exit(1)
+		utils.PrintLog(fmt.Sprintf(AGENT_ALIV_ENV_CFG_FILE_READ_4003, bfgConfigFilePath, e))
+		os.Exit(AGENT_ALIV_EXIT_CODE_3)
 	}
-	
-    // Get path from environment variable
-	bfgConfigMountPath := os.Getenv("BFG_DATA")
-	if len(bfgConfigMountPath) > 0 {
-		bfgDataPath = bfgConfigMountPath
+
+	// Get path from environment variable
+	bfgConfigMountPath, bfgConfigMountPathSet := os.LookupEnv("BFG_DATA")
+	if bfgConfigMountPathSet {
+		bfgConfigMountPath = strings.Trim(bfgConfigMountPath, "")
+		if len(bfgConfigMountPath) > 0 {
+			bfgDataPath = bfgConfigMountPath
+		} else {
+			// BFG_DATA is not set. So fixed path
+			bfgDataPath = utils.FIXED_BFG_DATAPATH
+		}
 	} else {
-	   // BFG_DATA is not set. So fixed path
-	   bfgDataPath = utils.FIXED_BFG_DATAPATH
-    }
+		// BFG_DATA is not set. So fixed path
+		bfgDataPath = utils.FIXED_BFG_DATAPATH
+	}
 
 	// Read the agentPid file from the agent logs directory
 	agentPidPath := bfgDataPath + "/mqft/logs/" + gjson.Get(agentConfig, "coordinationQMgr.name").String() + "/agents/" + agentNameEnv + "/agent.pid"
 	// Open agent.pid file and read the pid from the file.
-	agentPid := utils.GetAgentPid(agentPidPath)
+	agentPid, _ := utils.GetAgentPid(agentPidPath)
 	if agentPid > 1 {
 		agentRunning, err := utils.IsAgentRunning(agentPid)
 		if err != nil {
-			utils.PrintLog("Agent is not running")
-			os.Exit(1)
+			utils.PrintLog(fmt.Sprintf(AGENT_ALIV_NOT_RUNNING_4004, agentNameEnv))
+			os.Exit(AGENT_ALIV_EXIT_CODE_4)
 		} else {
 			if agentRunning {
-				utils.PrintLog("Agent is running")
-				os.Exit(0)
+				os.Exit(AGENT_ALIV_EXIT_CODE_0)
 			} else {
-				utils.PrintLog("Agent is not running")
-				os.Exit(1)
+				utils.PrintLog(fmt.Sprintf(AGENT_ALIV_NOT_RUNNING_4004, agentNameEnv))
+				os.Exit(AGENT_ALIV_EXIT_CODE_5)
 			}
 		}
 	} else {
-		utils.PrintLog("Agent is not running")
-		os.Exit(1)
+		utils.PrintLog(fmt.Sprintf(AGENT_ALIV_NOT_RUNNING_4004, agentNameEnv))
+		os.Exit(AGENT_ALIV_EXIT_CODE_6)
 	}
 }

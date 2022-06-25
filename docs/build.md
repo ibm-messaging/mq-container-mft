@@ -15,7 +15,7 @@ You will also need a [Red Hat Account](https://access.redhat.com) to be able to 
 This procedure works for building the MQ Managed File Transfer Redistributable package on `amd64` architectures.
 
 1. Clone the GitHub repository to local directory.
-2. Login to the Red Hat Registry: `docker login registry.redhat.io` using your Customer Portal credentials.
+2. Login to the Red Hat Registry: `podman login registry.redhat.io` using your Customer Portal credentials.
 3. Navigate to directory where `Dockerfile-agent` is located.
 4. Download **9.2.4.0-IBM-MQFA-Redist-LinuxX64.tar.gz** or higher from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into the current directory.
 5. Unpack the **9.2.4.0-IBM-MQFA-Redist-LinuxX64.tar.gz** to a temporay directory. Copy com.ibm.wmqfte.com.ibm.wmqfte.exitroutines.api.jar to credentialsexit/BridgeCredentialExit/thirdparty directory.

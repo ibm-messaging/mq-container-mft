@@ -1,5 +1,0 @@
-QueueManager:
-   Name=a/b
-   Directory=a&b
-   Prefix=/var/mqm
-   InstallationName=Installation1

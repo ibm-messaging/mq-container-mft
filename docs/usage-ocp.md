@@ -1,7 +1,7 @@
 
 # Deploying agent image in OpenShift Container Platform
 
-This document describes the steps for using IBM MQ Managed File Transfer (MFT) image in an OpenShift Container Platform. This document assumes that OpenShift Container Platform v4.6.6 is already setup and required CLI has been downloaded. The MFT container image will be pulled from DockerHub for deployment.
+This document describes the steps for using IBM MQ Managed File Transfer (MFT) image in an OpenShift Container Platform. This document assumes that OpenShift Container Platform v4.6.6 or above is already setup and required CLI has been downloaded. The MFT container image will be pulled from IBM Container Registry for deployment.
 
 1) Login to your OpenShift portal.
 
@@ -233,8 +233,11 @@ data:
         "host":"coordqm.ibm.com",
         "port":1414,
         "channel":"MFTCORDSVRCONN",
+      "qmgrCredentials" : {
+         "mqUserId":"mquser",
+         "mqPassword":"cGFzc3cwcmQ="
+      },
         "additionalProperties" : {
-          "coordinationQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
         }
       },
       "commandQMgr":{
@@ -242,8 +245,11 @@ data:
         "host":"cmdqm.ibm.com",
         "port":1414,
         "channel":"MFTCMDSVRCONN",
+      "qmgrCredentials" : {
+         "mqUserId":"mquser",
+         "mqPassword":"cGFzc3cwcmQ="
+      },
         "additionalProperties" : {
-          "connectionQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
         }
       },
       "agents":[{
@@ -253,9 +259,12 @@ data:
         "qmgrHost":"agentqm.ibm.com",
         "qmgrPort":1414,
         "qmgrChannel":"MFTSVRCONN",
+      "qmgrCredentials" : {
+         "mqUserId":"mquser",
+         "mqPassword":"cGFzc3cwcmQ="
+      },
         "additionalProperties":{
           "enableQueueInputOutput":"true",
-          "agentQMgrAuthenticationCredentialsFile":"/mnt/credentials/MQMFTCredentials.xml"
         }
     }, {
       "name":"AGENTDEST",
@@ -264,6 +273,10 @@ data:
       "qmgrHost":"agentqmdest.mycomp.com",
       "qmgrPort":1818,
       "qmgrChannel":"MFTSVRCONN",
+      "qmgrCredentials" : {
+         "mqUserId":"mquser",
+         "mqPassword":"cGFzc3cwcmQ="
+      },
       "protocolBridge" : {
         "serverType":"FTP",
         "serverHost":"ftp.ibm.com",
@@ -276,7 +289,6 @@ data:
         "serverPassiveMode"="true", 
       },
       "additionalProperties": {
-        "agentQMgrAuthenticationCredentialsFile" : "/mnt/credentials/MQMFTCredentials.xml",
         "protocolBridgeCredentialConfiguration" : "/mnt/credentials/ProtocolBridgeCredentials.prop"
       }
     }] }
@@ -327,7 +339,33 @@ Run the following command to create the ConfigMap. Replace `pba.yaml` with your 
 	
 `oc apply -f <pba.yaml>`
 
-9. Next step is to deply the container image from docker hub.
+9) Starting with 9.2.4 CD release, MQ Managed File Transfer creates additional logs that tracks the progress of a transfer more granularly. The logs, in json format, are written to transferlog0.json file under the agent's log directory. The MFT container image provides an option using which transfer logs can be automatically pushed to logDNA server. The details of the logDNA server like the URL, injestion key must be provided as a JSON object through a kubernetes secret. The contents of the secret must be base64 encoded. Here is the JSON structure:
+
+```
+{ 
+	"type":"logDNA", 
+	"logDNA":{
+		"url":"https://<your logdna host name>/logs/ingest",
+		"injestionKey":"<your injestion key>"
+	}
+}
+```
+
+The entire content must be base64 encoded before putting into a secret. Then the secret must be mounted into the container. An example secret is here:
+
+```
+  kind: Secret
+  apiVersion: v1
+  metadata:
+    name: logdna-secret
+    namespace: ibmmqft
+  data:
+    logdna.json: >-
+      <base64 encoded data>
+```
+
+
+10) Next step is to deploy the container image from IBM Container Registry or other image repository.
 
 	Create deployment yaml for IBM MQ Managed File Transfer image. Refer the documentation [here](https://github.com/ibm-messaging/mft-cloud/tree/9.2.2/config/ibm-mqmft-deployment.yaml) for more details.
 	
@@ -355,6 +393,12 @@ spec:
           configMap:
             name: mqmft-agent-config
             defaultMode: 420
+        - name: logdna-url-secret
+          secret:
+            secretName: logdna-secret
+            items:
+            - key: logdna.json
+              path: logdna.json
       containers:
         - resources: {}
           readinessProbe:
@@ -386,13 +430,19 @@ spec:
               value: /mqmftcfg/agentconfig/mqmftcfg.json
             - name: MFT_LOG_LEVEL
               value: "info"
+            - name: MFT_AGENT_TRANSFER_LOG_PUBLISH_CONFIG_FILE
+              value: /logdna/logdna.json
           imagePullPolicy: Always
           volumeMounts:
             - name: mqmft-agent-config-map
               mountPath: /mqmftcfg/agentconfig
+            - name: logdna-url-secret
+              mountPath: /logdna/logdna.json
+              subPath: logdna.json
+              readOnly: true              
           terminationMessagePolicy: File
           image: >-
-             docker.io/ibmcom/mqmft:latest
+             icr.io/ibm-messaging/mqmft:latest
       restartPolicy: Always
 
 ```
@@ -400,13 +450,13 @@ Then run the following command to deploy the image. Replace `deployment.yaml` wi
 
 `oc apply -f <deployment.yaml>`
 		
-10) Login into your OCP Cluster portal and verify the agent is running or use the following commands to verify
+11) Login into your OCP Cluster portal and verify the agent is running or use the following commands to verify
 
 	`oc get pods`
 	
 	`oc describe pod <pod name>`
 
-11) Login to the terminal of the pod and do any further configuration like creating resource monitor, scheduled transfer or submitting transfers can be done via terminal. 
+12) Login to the terminal of the pod and do any further configuration like creating resource monitor, scheduled transfer or submitting transfers can be done via terminal. 
 	
 	Run the following command to display status of your agent
 	
@@ -416,7 +466,7 @@ Then run the following command to deploy the image. Replace `deployment.yaml` wi
 
 	`fteListAgents <agent name>`
 
-12) Initiating transfers
+13) Initiating transfers
 
 	Agent will have a restricted access to the file system of the container. Agent can read from or write to only the `/mountpath` folder on the file system and not any other part of the file system. This folder can also be mapped to a external file system via a mount point. 
 	
@@ -428,12 +478,10 @@ Then run the following command to deploy the image. Replace `deployment.yaml` wi
         - name: mqmft-nfs
           persistentVolumeClaim:
             claimName: nfs-pvc
-
       containers:
           env:
             - name: MFT_MOUNT_PATH
               value: /mountpath
-
 	      volumeMounts:
             - name: mqmft-nfs
               mountPath: /mountpath

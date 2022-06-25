@@ -21,7 +21,7 @@ import (
 	"io/ioutil"
 	"strings"
 	"fmt"
-	"github.com/ibm-messaging/mq-container-mft/cmd/utils"
+	"github.com/ibm-messaging/mq-container-mft/pkg/utils"
 )
 
 /*

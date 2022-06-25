@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2020, 2021
+© Copyright IBM Corporation 2020, 2022
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,760 +16,415 @@ limitations under the License.
 package main
 
 import (
-	"os"
-	"os/exec"
-    "io/ioutil"
-	"strings"
-	"bytes"
-	"time"
-	"github.com/tidwall/gjson"
-	"errors"
-	"sync"
 	"context"
-	"strconv"
 	"fmt"
-	"github.com/ibm-messaging/mq-container-mft/cmd/utils"
+	"os"
+	"os/user"
+	"runtime"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/ibm-messaging/mq-container-mft/pkg/utils"
+	"github.com/tidwall/gjson"
 )
 
-// Name of the custom PBA credentials exit
-const PBA_CUSTOM_CRED_EXIT_SRC_PATH="/customexits"
-const PBA_CUSTOM_CRED_EXIT_NAME="com.ibm.wmq.bridgecredentialexit.jar"
-const PBA_CUSTOM_CRED_DEPEND_LIB_NAME="json-20210307.jar"
-const PBA_CUSTOM_CRED_EXIT = "/customexits/mqft/pbaexit/com.ibm.wmq.bridgecredentialexit.jar"
-const PBA_CUSTOM_CRED_DEPEND_LIB = "/customexits/mqft/pbaexit/json-20210307.jar"
+// Variable that controls the diagnotstic information level
+var logLevel int
 
-const MOUNT_PATH_FOR_TRANSFERS = "/mountpath/**"
-const LOG_LEVEL_INFO =    1
-const LOG_LEVEL_VERBOSE = 2
+// Variable to track if command tracing is enabled or not
+var commandTracingEnabled bool = false
 
-// Environment variables 
-const MFT_LOG_LEVEL = "MFT_LOG_LEVEL"
-const MFT_AGENT_NAME = "MFT_AGENT_NAME"
-const MFT_AGENT_CONFIG_FILE="MFT_AGENT_CONFIG_FILE"   
-const BFG_DATA = "BFG_DATA"
-const MFT_AGENT_START_WAIT_TIME = "MFT_AGENT_START_WAIT_TIME"
-const MFT_AGENT_TRACE = "MFT_AGENT_TRACE"
-const MFT_AGENT_CAPTURE_LOG = "MFT_AGENT_CAPTURE_LOG"
-const MFT_AGENT_CREDENTIAL_FILE = "MFT_AGENT_CREDENTIAL_FILE"    
-const MFT_BRIDGE_CREDENTIAL_FILE = "MFT_BRIDGE_CREDENTIAL_FILE"
-const MFT_TRACE_COMMAND = "MFT_TRACE_COMMAND"
-const MFT_TRACE_COMMAND_PATH = "MFT_TRACE_COMMAND_PATH"
-
-// Main entry point to program. This application configures an agent and starts it.
-func main () {
+/**
+* Main entry point of the runagent program.
+*
+* This program reads the agent configuration details provided in JSON file,
+* configures an agent and starts it. Details of configuration steps are
+* displayed on the console when container is being started.
+ */
+func main() {
 	var bfgDataPath string
-	var bfgConfigFilePath string 
-	var allAgentConfig string 
+	var bfgConfigFilePath string
+	var allAgentConfig string
 	var e error
-	
-	// By default verbose logging is not enabled.
-	logLevel := LOG_LEVEL_INFO
-	
-	// To display agent logs or not.
+
+	// By default minimal logging is enabled.
+	logLevel = LOG_LEVEL_INFO
+	// Determine the level of diagnostic information to be logged.
 	logLevelStr, logLevelSet := os.LookupEnv(MFT_LOG_LEVEL)
 	if logLevelSet {
-		if logLevelStr == "verbose" {
+		// Trim the value specified.
+		logLevelStr = strings.Trim(logLevelStr, TEXT_TRIM)
+		if strings.EqualFold(logLevelStr, LOG_LEVEL_VERBOSE_TXT) {
+			// Verbose level logging.
 			logLevel = LOG_LEVEL_VERBOSE
-			utils.PrintLog(fmt.Sprintf("Log level '%s'", "verbose"))
+			utils.PrintLog(MFT_CONT_DIAGNOSTIC_LEVEL_0002)
+		} else if strings.EqualFold(logLevelStr, LOG_LEVEL_DIAG) {
+			logLevel = LOG_LEVEL_DIGANOSTIC
+			utils.PrintLog(MFT_CONT_DIAGNOSTIC_LEVEL_0003)
 		} else {
-			utils.PrintLog(fmt.Sprintf("Log level '%s'", "info"))
-		}
-	}
-	
-	// First check if license is accepted or not.
-	accepted, err := checkLicense()
-	if err != nil {
-		utils.PrintLog(fmt.Sprintf("Error checking license acceptance: %v", err))
-		os.Exit(1)
-	}
-	
-	// License was not accepted
-	if !accepted {
-		utils.PrintLog(fmt.Sprintf("%v", errors.New("License not accepted")))
-		os.Exit(1)
-	}
-	
-	// Exit if we are not running inside a known container type like Docker/Kube etc.
-    runtime, err := DetectRuntime()
-	if err != nil && err != ErrContainerRuntimeNotFound {
-		utils.PrintLog(fmt.Sprintf("%v", err))
-		os.Exit(1)
-	}
-		
-	// We are running in a container, so just print it on console
-	utils.PrintLog(fmt.Sprintf("Container Runtime: %s", runtime))
-	
-	agentNameEnv, agentNameSet := os.LookupEnv(MFT_AGENT_NAME)
-	if !agentNameSet || agentNameEnv == "" {
-		utils.PrintLog("MFT_AGENT_NAME environment variable not set or the value of the variable is empty.")
-		os.Exit(1)
-	}
-	
-	// Read config file from a fixed path
-	bfgConfigFilePath, configFileSet := os.LookupEnv(MFT_AGENT_CONFIG_FILE)    
-	if !configFileSet || bfgConfigFilePath == "" {
-		utils.PrintLog("MFT_AGENT_CONFIG_FILE environment variable not set or the value of the variable is empty.")
-		os.Exit(1)
-	}
-	
-	// Read the entire agent configuration data from JSON file. The configuration file
-	// may contain data for multiple agents. We will choose data for matching agent name.
-	allAgentConfig, e = utils.ReadConfigurationDataFromFile(bfgConfigFilePath)
-	if e != nil {
-		// Exit if we had any error when reading configuration file
-		utils.PrintLog(fmt.Sprintf("%v", e))
-		os.Exit(1)
-	}
-	
-	// Validate coordination queue manager attributes
-	if validateCoordinationAttributes (allAgentConfig) != nil {
-		utils.PrintLog("Supplied coordination queue manager parameters are not valid")
-		os.Exit(1)
-	}
-
-	// Validate command queue manager attributes
-	if validateCommandAttributes (allAgentConfig) != nil {
-		utils.PrintLog("Supplied command queue manager parameters are not valid")
-		os.Exit(1)
-	}
-	
-	// See if we have been given mount point for creating configuration directory.
-	bfgConfigMountPath, bfgCfgMountPathSet := os.LookupEnv(BFG_DATA)
-	if bfgCfgMountPathSet && len(bfgConfigMountPath) > 0 {
-		bfgDataPath = bfgConfigMountPath
-		err = utils.CreateDataPath (bfgDataPath)
-		// The directory might alrady exist. Ignore error in such cases.
-		if err != nil {
-			utils.PrintLog(fmt.Sprintf("%v", err))
+			// Any other level or unknown value, set the level to Info
+			if !strings.EqualFold(logLevelStr, LOG_LEVEL_INFO_TXT) {
+				utils.PrintLog(MFT_CONT_DIAGNOSTIC_LEVEL_0073)
+			}
 		}
 	} else {
-	    // Make the default BFG_DATA path as /mnt/mftdata if BFG_DATA is not set.
-	    bfgDataPath = utils.FIXED_BFG_DATAPATH
-		// First check if the specified data directory exists.
-		err = utils.CreateDataPath (bfgDataPath)
-		if err != nil {
-			utils.PrintLog(fmt.Sprintf("%v", err))
-			os.Exit (1)
-		}
-		
-		// Set BFG_DATA environment variable so that we can run MFT commands.
-		os.Setenv(BFG_DATA, bfgDataPath)
-    }
-	utils.PrintLog(fmt.Sprintf("Agent configuration and log directory: %s", bfgDataPath))
-		
-	// Time to wait for agent to start. 
-	// Default wait time is 10 seconds
+		utils.PrintLog(MFT_CONT_DIAGNOSTIC_LEVEL_0001)
+	}
+
+	// First check if license is accepted or not.
+	_, err := checkLicense()
+	if err != nil {
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_LIC_ERROR_OCCUR_0074, err))
+		os.Exit(MFT_CONT_ERR_CODE_1)
+	}
+
+	// Print container image details
+	printImageInfo()
+
+	// Determine we have the agent name specified in environment variable
+	agentNameEnv, agentNameSet := os.LookupEnv(MFT_AGENT_NAME)
+	if !agentNameSet {
+		utils.PrintLog(MFT_CONT_ENV_AGENT_NAME_NOT_SPECIFIED_0006)
+		os.Exit(MFT_CONT_ERR_CODE_3)
+	}
+	agentNameEnv = strings.Trim(agentNameEnv, TEXT_TRIM)
+	if len(agentNameEnv) == 0 {
+		utils.PrintLog(MFT_CONT_ENV_AGENT_NAME_BLANK_0007)
+		os.Exit(MFT_CONT_ERR_CODE_4)
+	}
+
+	// Time to wait for agent to start. Default wait time is 10 seconds
 	delayTimeStatusCheck := time.Duration(10) * time.Second
 	timeWaitForAgentStartStr, timeWaitForAgentStartSet := os.LookupEnv(MFT_AGENT_START_WAIT_TIME)
 	// Value is numeric and above 0, then use it.
-	if timeWaitForAgentStartSet && utils.IsNumeric(timeWaitForAgentStartStr) {
-		waitTime := utils.ToNumber(timeWaitForAgentStartStr)
-		if waitTime > 0 {
-			delayTimeStatusCheck = time.Duration(waitTime) * time.Second
+	if timeWaitForAgentStartSet {
+		isNum, _ := utils.IsNumeric(timeWaitForAgentStartStr)
+		if isNum {
+			waitTime, _ := utils.ToNumber(timeWaitForAgentStartStr)
+			if waitTime > 0 {
+				delayTimeStatusCheck = time.Duration(waitTime) * time.Second
+			}
+		} else {
+			if logLevel == LOG_LEVEL_VERBOSE {
+				utils.PrintLog(MFT_CONT_ENV_AGENT_START_TIME_0008)
+			}
 		}
 	}
-	
-	// Cache the coordination queue manager name
-	coordinationQMgr := gjson.Get(allAgentConfig, "coordinationQMgr.name").String()
 
-	// Setup coordination configuration
-	coordinationCreated := setupCoordination (allAgentConfig, bfgDataPath, agentNameEnv,  logLevel)
-	if !coordinationCreated {
-		utils.PrintLog("fteSetupCoordination failed. Container will end now.")
-		os.Exit(1)	
+	// Check if MFT command tracing is enabled
+	commandTracingEnabled = IsCommandTracingEnabled()
+
+	// See if we have been given mount point for creating agent configuration and log directory.
+	bfgConfigMountPath, bfgCfgMountPathSet := os.LookupEnv(BFG_DATA)
+	if bfgCfgMountPathSet {
+		bfgConfigMountPath = strings.Trim(bfgConfigMountPath, TEXT_TRIM)
+		if len(bfgConfigMountPath) > 0 {
+			bfgDataPath = bfgConfigMountPath
+			// We have a path specified. Attempt to create the directory
+			// Ignore errors if directory already exists
+			err = utils.CreateDataPath(bfgDataPath)
+			// Exit the creation if an error occurs
+			if err != nil {
+				utils.PrintLog(fmt.Sprintf("%v", err))
+				os.Exit(MFT_CONT_ERR_CODE_5)
+			}
+		} else {
+			// Blank value was specified, hence use default
+			utils.PrintLog(MFT_CONT_ENV_BFG_DATA_BLANK_0009)
+			bfgDataPath = utils.FIXED_BFG_DATAPATH
+			err = utils.CreateDataPath(bfgDataPath)
+			if err != nil {
+				os.Exit(MFT_CONT_ERR_CODE_6)
+			}
+
+			// Set BFG_DATA environment variable so that we can run MFT commands.
+			os.Setenv(BFG_DATA, bfgDataPath)
+		}
+	} else {
+		// Make the default BFG_DATA path as /mnt/mftdata if BFG_DATA is not set.
+		bfgDataPath = utils.FIXED_BFG_DATAPATH
+		err = utils.CreateDataPath(bfgDataPath)
+		if err != nil {
+			os.Exit(MFT_CONT_ERR_CODE_7)
+		}
+
+		// Set BFG_DATA environment variable so that we can run MFT commands.
+		os.Setenv(BFG_DATA, bfgDataPath)
 	}
-	
-	// Setup command configuration
-	commandsCreated := setupCommands(allAgentConfig, bfgDataPath, agentNameEnv, logLevel)
-	if !commandsCreated{
-		utils.PrintLog("fteSetupCommand failed. Container will end now.")
-		os.Exit(1)	
+	utils.PrintLog(fmt.Sprintf(MFT_CONT_CONFIG_PATH_0010, bfgDataPath))
+
+	// Read agent configuration data from file specified in the environment
+	// variable MFT_AGENT_CONFIG_FILE.
+	bfgConfigFilePath, configFileSet := os.LookupEnv(MFT_AGENT_CONFIG_FILE)
+	if !configFileSet {
+		utils.PrintLog(MFT_CONT_ENV_AGNT_CFG_FILE_NOT_SPECIFIED_0011)
+		os.Exit(MFT_CONT_ERR_CODE_8)
 	}
-	
+	bfgConfigFilePath = strings.Trim(bfgConfigFilePath, TEXT_TRIM)
+	if bfgConfigFilePath == TEXT_BLANK {
+		utils.PrintLog(MFT_CONT_ENV_AGNT_CFG_FILE_BLANK_0012)
+		os.Exit(MFT_CONT_ERR_CODE_9)
+	}
+
+	// Read the entire agent configuration data from JSON file. The configuration file
+	// may contain data for multiple agents. We will choose data for matching agent name
+	// specified in MFT_AGENT_NAME environment variable
+	allAgentConfig, e = utils.ReadConfigurationDataFromFile(bfgConfigFilePath)
+	if e != nil {
+		// Exit if we had any error when reading configuration file
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_FILE_READ_0013, bfgConfigFilePath, e))
+		os.Exit(MFT_CONT_ERR_CODE_10)
+	}
+
+	// Validate coordination queue manager attributes. Throw an error if minimum attributes
+	// are not available
+	errorCrd := ValidateCoordinationAttributes(allAgentConfig)
+	if errorCrd != nil {
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_CORD_MISSING_ATTRIBS_0016, allAgentConfig, errorCrd))
+		os.Exit(MFT_CONT_ERR_CODE_11)
+	}
+
+	// Validate command queue manager attributes. Throw an error if minimum attributes are
+	// not available
+	errorCmd := ValidateCommandAttributes(allAgentConfig)
+	if errorCmd != nil {
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_CORD_MISSING_ATTRIBS_0016, allAgentConfig, errorCmd))
+		os.Exit(MFT_CONT_ERR_CODE_12)
+	}
+
 	// We may have multiple agent configurations defined in the JSON file. Iterate through all
 	// definitions and pick the one that has matching agent name specified in environment variable
 	var singleAgentConfig string
-	configurationFound := false 
+	configurationFound := false
 	agentsJson := gjson.Get(allAgentConfig, "agents").Array()
 	for i := 0; i < len(agentsJson); i++ {
 		singleAgentConfig = agentsJson[i].String()
-		agentNameConfig := gjson.Get(singleAgentConfig,"name").String()
+		agentNameConfig := gjson.Get(singleAgentConfig, "name").String()
 		if strings.Contains(agentNameConfig, agentNameEnv) {
-			utils.PrintLog(fmt.Sprintf("Required configuration information found for agent '%s'", agentNameEnv))
 			configurationFound = true
 			break
 		}
 	}
-	
-	// Exit if we did not find the configuration for specified agent 
+
+	// Exit if we did not find the configuration for specified agent
 	if !configurationFound {
-		utils.PrintLog(fmt.Sprintf("Configuration not found for agent %s. Container will end now.", agentNameEnv))
-		os.Exit(1)
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_AGENT_CONFIG_MISSING_0019, agentNameEnv, bfgConfigFilePath))
+		os.Exit(MFT_CONT_ERR_CODE_13)
+	} else {
+		err := ValidateAgentAttributes(singleAgentConfig)
+		if err != nil {
+			utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_AGENT_CONFIG_ERROR_0023, bfgConfigFilePath, err))
+			os.Exit(MFT_CONT_ERR_CODE_14)
+		}
 	}
 
-	// Validate if required agent attributes have been specified
-	if validateAgentAttributes	(singleAgentConfig) != nil {
-		utils.PrintLog("Required agent attributes were not found in the configuration file")
-		os.Exit(1)	
+	// Cache the coordination queue manager name
+	coordinationQMgr := gjson.Get(allAgentConfig, "coordinationQMgr.name").String()
+
+	// Setup coordination configuration
+	coordinationCreated := SetupCoordination(allAgentConfig, bfgDataPath, agentNameEnv)
+	if !coordinationCreated {
+		utils.PrintLog(MFT_CONT_CORD_CFG_FAILED_0029)
+		os.Exit(MFT_CONT_ERR_CODE_15)
 	}
-	
+
+	// Setup command configuration
+	commandsCreated := SetupCommands(allAgentConfig, bfgDataPath, agentNameEnv)
+	if !commandsCreated {
+		utils.PrintLog(MFT_CONT_CMD_CFG_FAILED_0030)
+		os.Exit(MFT_CONT_ERR_CODE_16)
+	}
+
 	// Create the specified agent configuration
-	setupAgentDone := setupAgent(singleAgentConfig, bfgDataPath, coordinationQMgr, logLevel)
+	setupAgentDone := SetupAgent(singleAgentConfig, bfgDataPath, coordinationQMgr)
 	if !setupAgentDone {
-		utils.PrintLog("Agent creation failed. Container will end now.")
-		os.Exit(1)	
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_CFG_FAILED_0031, agentNameEnv))
+		os.Exit(MFT_CONT_ERR_CODE_17)
 	}
-	
+
 	// Clean agent if asked for before starting the agent
-	cleanAgent (singleAgentConfig, coordinationQMgr, agentNameEnv, logLevel)
-	
+	cleanAgent(singleAgentConfig, coordinationQMgr, agentNameEnv)
+
 	// Submit request to start the agent.
-	startAgentDone := startAgent(agentNameEnv, coordinationQMgr, logLevel) 
+	startAgentDone := StartAgent(agentNameEnv, coordinationQMgr)
 	if !startAgentDone {
-		utils.PrintLog("Agent start command failed. Container will end now.")
-		os.Exit(1)	
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_START_FAILED_0032, agentNameEnv))
+		os.Exit(MFT_CONT_ERR_CODE_18)
 	}
-	
-	// Verify the agent status
-	agentStatus := verifyAgentStatus(coordinationQMgr, agentNameEnv, logLevel)
-	if strings.Contains(agentStatus,"STOPPED") == true {
-		//if agent not started yet, wait for some time and then reissue fteListAgents commad
-		utils.PrintLog(fmt.Sprintf("Agent not started yet. Wait for %d seconds and verify agent status again", delayTimeStatusCheck/time.Second))
-		time.Sleep(delayTimeStatusCheck)
-		agentStatus = verifyAgentStatus(coordinationQMgr, agentNameEnv, logLevel)
-	}
-	
+
+	// Setup agent log mirroring.
 	var wg sync.WaitGroup
 	defer func() {
-		fmt.Println("Waiting for log mirroring to complete")
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_WAIT_MIRROR_CMP_0035, agentNameEnv))
 		wg.Wait()
 	}()
 
 	ctxAgentLog, cancelMirrorAgentLog := context.WithCancel(context.Background())
 	defer func() {
-		fmt.Println("Cancel mirror logging")
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_WAIT_MIRROR_STOP_0036, agentNameEnv))
 		cancelMirrorAgentLog()
 	}()
 
 	// Display the contents of agent's output0.log file on the console.
 	if logLevel == LOG_LEVEL_VERBOSE {
-		agentLogPath := bfgDataPath + "/mqft/logs/" + coordinationQMgr + "/agents/" + agentNameEnv + "/logs/output0.log"
-		mirrorAgentLogs(ctxAgentLog, &wg, agentNameEnv, agentLogPath)
+		agentLogPath := bfgDataPath + DIR_AGENT_LOGS + coordinationQMgr + DIR_AGENTS + agentNameEnv + "/logs/output0.log"
+		mirrorAgentLogs(ctxAgentLog, &wg, agentNameEnv, agentLogPath, "", "", LOG_TYPE_CONSOLE, -1)
 	}
-	
-	agentTraceEnv, agentTraceEnvSet := os.LookupEnv(MFT_AGENT_TRACE)
-	if agentTraceEnvSet {
-		if agentTraceEnv == "yes" {
-			// Show contents of last trace file
-			if gjson.Get(singleAgentConfig, "trace").Exists(){
-				// Do this only if trace is enabled in agent properties file.
-				var traceValue string = gjson.Get(singleAgentConfig, "trace").String()
-				if traceValue != ""{
-					agentPidPath := bfgDataPath + "/mqft/logs/" + coordinationQMgr  + "/agents/" + agentNameEnv + "/agent.pid"
-					agentPid := utils.GetAgentPid(agentPidPath)
-					agentTracePath := bfgDataPath + "/mqft/logs/" + coordinationQMgr + "/agents/" + agentNameEnv + "/logs/trace" + strconv.Itoa(int(agentPid)) + "/trace" + strconv.Itoa(int(agentPid)) + ".txt.0"
-					mirrorAgentLogs(ctxAgentLog, &wg, agentNameEnv, agentTracePath)
-				}
+
+	// Verify that agent is ready to accept to requests
+	pingWaitTime := strconv.Itoa((int)(delayTimeStatusCheck / time.Second))
+	agentReady := PingAgent(coordinationQMgr, agentNameEnv, pingWaitTime)
+	if !agentReady {
+		//if agent not started yet, wait for some time and then reissue fteListAgents commad
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_NOT_STARTED_0033, agentNameEnv, delayTimeStatusCheck/time.Second))
+		time.Sleep(delayTimeStatusCheck)
+		agentReady = PingAgent(coordinationQMgr, agentNameEnv, pingWaitTime)
+		// Agent has not started, exit.
+		if !agentReady {
+			if logLevel == LOG_LEVEL_INFO {
+				utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_FAILED_TO_START_0034, agentNameEnv))
 			}
+			os.Exit(MFT_CONT_ERR_CODE_21)
 		}
 	}
 
-	// Mirror capture0.log
-	agentCaptureLogEnv, agentCaptureLogEnvSet := os.LookupEnv(MFT_AGENT_CAPTURE_LOG)
-	if agentCaptureLogEnvSet {
-		if agentCaptureLogEnv == "yes" {
-			captureLogPath := bfgDataPath + "/mqft/logs/" + coordinationQMgr + "/agents/" + agentNameEnv + "/logs/capture0.log"
-			mirrorAgentLogs(ctxAgentLog, &wg, agentNameEnv, captureLogPath)
-		}
-	}
+	// Mirror contents of capture log on the console
+	setupMirrorCaptureLogs(ctxAgentLog, &wg, bfgDataPath, coordinationQMgr, agentNameEnv)
 
-	// If agent status is READY or ACTIVE, then we are good. 
-	if (strings.Contains(agentStatus,"READY") == true || strings.Contains(agentStatus,"ACTIVE") == true) ||
-		utils.IsAgentReady (bfgDataPath, agentNameEnv, coordinationQMgr) {
-		utils.PrintLog(fmt.Sprintf("Agent '%s' has started", agentNameEnv))
+	// Mirror contents trace files to console
+	setupMirrorTraceLogs(ctxAgentLog, &wg, bfgDataPath, coordinationQMgr, agentNameEnv)
+
+	// Push transfer logs to specified server
+	setupMirrorTransferLogs(ctxAgentLog, &wg, bfgDataPath, coordinationQMgr, agentNameEnv)
+
+	// If agent status is READY or ACTIVE, then we are good.
+	if agentReady {
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_STARTED_0038, agentNameEnv))
+		// Create resource monitor if asked for
+		if gjson.Get(singleAgentConfig, "resourceMonitors").Exists() {
+			result := gjson.Get(singleAgentConfig, "resourceMonitors")
+			result.ForEach(func(key, value gjson.Result) bool {
+				createResourceMonitor(coordinationQMgr, agentNameEnv,
+					gjson.Get(singleAgentConfig, "qmgrName").String(),
+					key.String(),
+					value.String())
+				return true // keep looping till end
+			})
+		}
 
 		// Setup a siganl handle and wait for till container is stopped.
 		signalControl := signalHandler(agentNameEnv, coordinationQMgr)
 		<-signalControl
 		cancelMirrorAgentLog()
-		
+
 		// Delete agent configuration on exit
 		deleteAgentOnExit := gjson.Get(singleAgentConfig, "deleteOnTermination").Bool()
 		// Delete agent configuration if asked for
 		if deleteAgentOnExit {
 			deleteAgent(coordinationQMgr, agentNameEnv)
+		} else {
+			utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_CFG_DELETED_0039, agentNameEnv))
 		}
-		
+
 		// Agent has ended. Return success
-		os.Exit(0)
+		os.Exit(MFT_CONT_SUCCESS_CODE_0)
 	} else {
-		utils.PrintLog("Agent failed to start. Container will end now.")
-		os.Exit(1)
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_START_FAILED_0040, agentNameEnv))
+		os.Exit(MFT_CONT_ERR_CODE_22)
 	}
 }
 
-// Call fteStartAgent command to submit a request to start an agent.
-func startAgent(agentName string, coordinationQMgr string, logLevel int) (bool) {
-	var outb, errb bytes.Buffer
-	var startSubmitted bool = false
-
-	// Get the path of MFT fteStartAgent command. 
-	cmdStrAgntPath, lookPathErr:= exec.LookPath("fteStartAgent")
-	if lookPathErr == nil {
-		// We are done with creating agent. Start it now.
-		utils.PrintLog(fmt.Sprintf("Starting agent '%s'", agentName))
-		var cmdArgs [] string
-		cmdArgs = append(cmdArgs, cmdStrAgntPath,"-p", coordinationQMgr, agentName)
-		if enableCommandTracing() == true {
-			cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
-			cmdTracePath := getCommandTracePath()
-			if len(cmdTracePath) > 0 {
-				cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
-			}
-		}
-		
-		cmdStrAgnt := &exec.Cmd {
-				Path: cmdStrAgntPath,
-				Args: cmdArgs,
-			}
-  
-		cmdStrAgnt.Stdout = &outb
-		cmdStrAgnt.Stderr = &errb
-		// Run fteStartAgent command. Log an error and exit in case of any error.
-		if err := cmdStrAgnt.Run(); err != nil {
-			utils.PrintLog(fmt.Sprintf("Command: %s\nError: %s", outb.String(), errb.String()))
+// Mirror trace file contents to console if we have been asked
+func setupMirrorCaptureLogs(ctxCaptureLog context.Context, wg *sync.WaitGroup, bfgDataPath string,
+	coordinationQMgr string, agentNameEnv string) {
+	agentCaptureLogEnv, agentCaptureLogEnvSet := os.LookupEnv(MFT_AGENT_DISPLAY_CAPTURE_LOG)
+	if agentCaptureLogEnvSet {
+		if strings.EqualFold(agentCaptureLogEnv, TEXT_YES) {
+			captureLogPath := bfgDataPath + DIR_AGENT_LOGS + coordinationQMgr + DIR_AGENTS + agentNameEnv + "/logs/capture0.log"
+			mirrorAgentLogs(ctxCaptureLog, wg, agentNameEnv, captureLogPath, "", "", LOG_TYPE_CONSOLE, -1)
 		} else {
-			if logLevel == LOG_LEVEL_VERBOSE {
-				utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
+			if !strings.EqualFold(agentCaptureLogEnv, TEXT_NO) {
+				utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_CAPT_LOG_ERROR_0037, agentCaptureLogEnv))
 			}
-			startSubmitted = true
 		}
-	} else {
-		utils.PrintLog(fmt.Sprintf("fteStartAgent command not found. %s", lookPathErr))
 	}
-	return startSubmitted
 }
 
-// Verify the status of agent by calling fteListAgents command.
-func verifyAgentStatus(coordinationQMgr string, agentName string, logLevel int)(string) {
-	var outb, errb bytes.Buffer
-	var agentStatus string
-
-	utils.PrintLog(fmt.Sprintf("Verifying status of agent '%s'", agentName))
-	cmdListAgentPath, lookPathErr := exec.LookPath("fteListAgents")
-	if lookPathErr == nil {
-		var cmdArgs [] string
-		cmdArgs = append(cmdArgs, cmdListAgentPath, "-p", coordinationQMgr, agentName)
-		if enableCommandTracing() == true {
-			cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
-			cmdTracePath := getCommandTracePath()
-			if len (cmdTracePath) > 0 {
-				cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
-			}
+// Mirror trace file contents to console if we have been asked
+func setupMirrorTraceLogs(ctxCaptureLog context.Context, wg *sync.WaitGroup, bfgDataPath string,
+	coordinationQMgr string, agentNameEnv string) {
+	agentTraceEnv, agentTraceEnvSet := os.LookupEnv(MFT_AGENT_ENABLE_TRACE)
+	if agentTraceEnvSet {
+		if strings.EqualFold(agentTraceEnv, TEXT_YES) {
+			agentPidPath := bfgDataPath + DIR_AGENT_LOGS + coordinationQMgr + DIR_AGENTS + agentNameEnv + "/agent.pid"
+			agentPid, _ := utils.GetAgentPid(agentPidPath)
+			agentTracePath := bfgDataPath + DIR_AGENT_LOGS + coordinationQMgr + DIR_AGENTS + agentNameEnv + "/logs/trace" + strconv.Itoa(int(agentPid)) + "/trace" + strconv.Itoa(int(agentPid)) + ".txt.0"
+			mirrorAgentLogs(ctxCaptureLog, wg, agentNameEnv, agentTracePath, "", "", LOG_TYPE_CONSOLE, -1)
 		}
-	
-		cmdListAgents := &exec.Cmd {
-			Path: cmdListAgentPath,
-			Args: cmdArgs,
-		}
-
-		cmdListAgents.Stdout = &outb
-		cmdListAgents.Stderr = &errb
-		// Execute and get the output of the command into a byte buffer
-		if err := cmdListAgents.Run(); err != nil {
-			utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
-			utils.PrintLog(fmt.Sprintf("Error %s", errb.String()))
-		} else {
-			if logLevel == LOG_LEVEL_VERBOSE {
-				utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
-			}
-			// Now parse the output of fteListAgents command and take appropriate actions.
-			agentStatus = outb.String()
-		}
-	} else {
-		utils.PrintLog("Failed to find fteListAgents command")
 	}
-	
-	return agentStatus
 }
 
-// Calls fteCreateAgent/fteCreateBridgeAgent commands to setup agent configuration
-func setupAgent(agentConfig string, bfgDataPath string, coordinationQMgr string, logLevel int) (bool) {
-	// Variables for Stdout and Stderr
-	var outb, errb bytes.Buffer
-	var created bool = false
-    var cmdSetup bool = false
-	
-	// Create agent.
-	utils.PrintLog(fmt.Sprintf("Creating '%s' type configuration for agent '%s'", gjson.Get(agentConfig, "type"), gjson.Get(agentConfig, "name")))
-			
-	var cmdCrtAgnt * exec.Cmd
-	var standardAgent bool
-	// Determine if we will be creating a standard or a bridge agent
-	if strings.EqualFold(gjson.Get(agentConfig, "type").String(), "STANDARD") == true {
-		standardAgent = true
-	} else {
-		standardAgent = false
-	}
-	
-	// Keep the agent name
-	agentName := gjson.Get(agentConfig,"name").String()
-	agentQMgrName := gjson.Get(agentConfig,"qmgrName").String()
-	agentQMgrHost := gjson.Get(agentConfig,"qmgrHost").String()
-	
-	var agentQMgrPort string
-	if gjson.Get(agentConfig,"qmgrPort").Exists() {
-		agentQMgrPort = gjson.Get(agentConfig,"qmgrPort").String()
-	} else {
-		// Not found, use default 1414
-		agentQMgrPort = "1414"
-	}
-	
-	var agentQMgrChannel string
-	if gjson.Get(agentConfig,"qmgrChannel").Exists() {
-		agentQMgrChannel = gjson.Get(agentConfig,"qmgrChannel").String()
-	} else {
-		// Default to SYSTEM.DEF.SVRCONN
-		agentQMgrChannel = "SYSTEM.DEF.SVRCONN"
-	}
-	
-	// We are creating a STANDARD agent
-	if  standardAgent {
-		// Get the path of MFT fteCreateAgent command. 
-		cmdCrtAgntPath, lookPathErr := exec.LookPath("fteCreateAgent")
-		if lookPathErr == nil {
-			// Creating a standard agent
-			var  params [] string
-			params = append(params, cmdCrtAgntPath,
-						"-p", coordinationQMgr, 
-						"-agentName", agentName, 
-						"-agentQMgr", agentQMgrName, 
-						"-agentQMgrHost", agentQMgrHost, 
-						"-agentQMgrPort", agentQMgrPort, 
-						"-agentQMgrChannel", agentQMgrChannel, "-f")
-			if enableCommandTracing() == true {
-				params = append(params, "-trace", "com.ibm.wmqfte=all")
-				cmdTracePath := getCommandTracePath()
-				if len(cmdTracePath ) > 0 {
-					params = append(params, "-tracePath", cmdTracePath)
+// Setup a mirror to push transfer logs to specified server
+func setupMirrorTransferLogs(ctxTransferLog context.Context, wg *sync.WaitGroup, bfgDataPath string,
+	coordinationQMgr string, agentNameEnv string) {
+	agentTransferLogEnv, agentTransferLogEnvSet := os.LookupEnv(MFT_AGENT_TRANSFER_LOG_PUBLISH_CONFIG_FILE)
+	if agentTransferLogEnvSet {
+		if !strings.EqualFold(strings.Trim(agentTransferLogEnv, TEXT_TRIM), TEXT_BLANK) {
+			// Read the URL and Injestion key from the given JSON file.
+			serverLogData, e := utils.ReadConfigurationDataFromFile(agentTransferLogEnv)
+			if e != nil {
+				// Exit if we had any error when reading configuration file
+				utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_FILE_READ_0013, agentTransferLogEnv, e))
+			} else {
+				// Check if the data can be bas64 decoded - as the data may have come from
+				// kubernetes secret
+				serverLogDataDecoded, decoded := Base64Decode(serverLogData)
+				if decoded != nil {
+					// decode successful
+					serverLogData = serverLogDataDecoded
+				} else {
+					// Failed to decode, try parsing as is.
+				}
+
+				// Is it a valid json
+				if !gjson.Valid(serverLogData) {
+					// Not valid. log a message to console and exit
+					utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_FILE_READ_0013, agentTransferLogEnv, e))
+					return
+				}
+				if gjson.Get(serverLogData, KEY_TYPE).Exists() {
+					logType := gjson.Get(serverLogData, KEY_TYPE).String()
+					if strings.EqualFold(strings.Trim(logType, TEXT_BLANK), LOG_SERVER_TYPE_DNA) {
+						if gjson.Get(serverLogData, KEY_URL_DNA).Exists() &&
+							gjson.Get(serverLogData, KEY_INJESTION_DNA).Exists() {
+							logDNAUrl := gjson.Get(serverLogData, KEY_URL_DNA).String()
+							logDNAKey := gjson.Get(serverLogData, KEY_INJESTION_DNA).String()
+							transferLogPath := bfgDataPath + DIR_AGENT_LOGS + coordinationQMgr + DIR_AGENTS + agentNameEnv + "/logs/transferlog0.json"
+							mirrorAgentLogs(ctxTransferLog, wg, "IBMMQMFT Agent "+agentNameEnv, transferLogPath, logDNAUrl, logDNAKey, LOG_TYPE_TRANSFER,
+								LOG_SERVER_TYPE_DNA_NUM)
+						}
+					} else if strings.EqualFold(strings.Trim(logType, TEXT_BLANK), LOG_SERVER_TYPE_ELK) {
+						if gjson.Get(serverLogData, KEY_URL_ELK).Exists() {
+							logUrlElk := gjson.Get(serverLogData, KEY_URL_ELK).String()
+							transferLogPath := bfgDataPath + DIR_AGENT_LOGS + coordinationQMgr + DIR_AGENTS + agentNameEnv + "/logs/transferlog0.json"
+							mirrorAgentLogs(ctxTransferLog, wg, agentNameEnv, transferLogPath, logUrlElk, "", LOG_TYPE_TRANSFER,
+								LOG_SERVER_TYPE_ELK_NUM)
+						}
+					}
 				}
 			}
-			
-			// Use credentials file if one is specified
-			credFile := gjson.Get(agentConfig,"credentialsFile")
-			if credFile.Exists() {
-				params = append(params, "-credentialsFile", credFile.String())
-			}
-			// Now build the command to create standard agent
-			cmdCrtAgnt = &exec.Cmd {Path: cmdCrtAgntPath, Args: params }
-			cmdSetup = true
 		} else {
-			utils.PrintLog(fmt.Sprintf("fteCreateAgent command not found. %s", lookPathErr))
-		}
-	} else {
-		// We are creating a BRIDGE agent
-		// Get the path of MFT fteCreateBridgeAgent command
-		cmdCrtBridgeAgntPath, lookPathErr := exec.LookPath("fteCreateBridgeAgent")
-		if lookPathErr == nil {
-			// Creating a bridge agent
-			var  params [] string 
-			params = append(params, cmdCrtBridgeAgntPath,  
-						"-p", coordinationQMgr, 
-						"-agentName", agentName, 
-						"-agentQMgr", agentQMgrName, 
-						"-agentQMgrHost", agentQMgrHost, 
-						"-agentQMgrPort", agentQMgrPort, 
-						"-agentQMgrChannel", agentQMgrChannel, "-f")
-			if enableCommandTracing() == true {
-				params = append(params, "-trace", "com.ibm.wmqfte=all")
-				cmdTracePath := getCommandTracePath()
-				if len(cmdTracePath) > 0 {
-					params = append(params, "-tracePath", cmdTracePath)
-				}
-			}
-
-			// Use credentials file if one is specified
-			credFile := gjson.Get(agentConfig,"credentialsFile")
-			if credFile.Exists() {
-				params = append(params, "-credentialsFile", credFile.String())
-			}
-						
-			// Now build the command to create a bridge agent
-			bridgeParams := processBridgeParameters(agentConfig, params)
-			cmdCrtAgnt = &exec.Cmd {
-				Path: cmdCrtBridgeAgntPath,
-				Args: bridgeParams,
-			}
-			cmdSetup = true
-		} else {
-			utils.PrintLog(fmt.Sprintf("fteCreateBridgeAgent command not found. %s", lookPathErr))
+			utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_TRANSFER_LOG_ERROR_0078, agentTransferLogEnv))
 		}
 	}
-	
-	// Ready to execute the command
-	if cmdSetup == true {
-		// Reuse the same buffer
-		cmdCrtAgnt.Stdout = &outb
-		cmdCrtAgnt.Stderr = &errb
-		
-		// Execute the fteCreateAgent/fteCreateBridgeAgent to create agent configuration.
-		// Log an error an exit in case of any error.
-		if err := cmdCrtAgnt.Run(); err != nil {
-			utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
-			utils.PrintLog(fmt.Sprintf("Error %s", errb.String()))
-			utils.PrintLog(fmt.Sprintf("Create Agent command failed. The error is %s", err))
-		} else {			
-			// If it is bridge agent, then update the ProtocolBridgeProperties file with any additional properties specified.
-			if !standardAgent {
-				// Copy the custom credentials exit to agent's exit directory.
-				protocolBridgeCustExit := bfgDataPath + "/mqft/config/" + coordinationQMgr + "/agents/" + agentName + "/exits/" + PBA_CUSTOM_CRED_EXIT_NAME 
-				utils.CopyFile(PBA_CUSTOM_CRED_EXIT, protocolBridgeCustExit)
-				protocolBridgeCustExitDependLib := bfgDataPath + "/mqft/config/" + coordinationQMgr + "/agents/" + agentName + "/exits/" + PBA_CUSTOM_CRED_DEPEND_LIB_NAME
-				utils.CopyFile(PBA_CUSTOM_CRED_DEPEND_LIB, protocolBridgeCustExitDependLib)
-				
-				// Delete the custom exit from source directory
-				err := os.RemoveAll(PBA_CUSTOM_CRED_EXIT_SRC_PATH)
-				if err != nil {
-					utils.PrintLog(fmt.Sprintf("%v", err))
-				}
-				//utils.DeleteDir(PBA_CUSTOM_CRED_EXIT)
-				//utils.DeleteDir(PBA_CUSTOM_CRED_DEPEND_LIB)
-			}
-			
-			// Update agent properties file with additional attributes specified.
-			agentPropertiesFile := bfgDataPath + "/mqft/config/" + coordinationQMgr + "/agents/" + agentName + "/agent.properties"
-			updateAgentProperties(agentPropertiesFile, agentConfig, "additionalProperties", !standardAgent);
-			
-			// Update UserSandbox XML file - valid only for STANDARD agents
-			if standardAgent {
-				createUserSandbox (bfgDataPath + "/mqft/config/" + coordinationQMgr + "/agents/" + agentName + "/UserSandboxes.xml")
-			}
-			// Tell user that agent has been configured.
-			utils.PrintLog(fmt.Sprintf("Configuration for agent '%s' has been created", gjson.Get(agentConfig,"name").String()))
-			created = true
-		}
-	}
-	
-	return created
-}
-
-// Setup coordination configuration for agent.
-func setupCoordination(allAgentConfig string, bfgDataPath string, agentNameEnv string, logLevel int) (bool) {
-	// Variables for Stdout and Stderr
-	var outb, errb bytes.Buffer
-	var created bool = false
-	
-	// Get the path of MFT fteSetupCoordination command. 
-	cmdCoordPath, lookPathErr := exec.LookPath("fteSetupCoordination")
-	if lookPathErr == nil {
-		// Setup coordination configuration
-		utils.PrintLog(fmt.Sprintf("Setting up coordination configuration '%s' for agent '%s'",
-			gjson.Get(allAgentConfig,"coordinationQMgr.name"), agentNameEnv))
-		
-		var port string
-		var channel string
-		if gjson.Get(allAgentConfig,"coordinationQMgr.port").Exists() {
-			port = gjson.Get(allAgentConfig,"coordinationQMgr.port").String()
-		} else {
-			port = "1414"
-		}
-		
-		if gjson.Get(allAgentConfig,"coordinationQMgr.channel").Exists() {
-			channel = gjson.Get(allAgentConfig,"coordinationQMgr.channel").String()
-		} else {
-			channel = "SYSTEM.DEF.SVRCONN"
-		}
-		var cmdArgs [] string
-		cmdArgs = append(cmdArgs, cmdCoordPath, 
-				"-coordinationQMgr", gjson.Get(allAgentConfig,"coordinationQMgr.name").String(),
-				"-coordinationQMgrHost", gjson.Get(allAgentConfig,"coordinationQMgr.host").String(), 
-				"-coordinationQMgrPort", port, "-coordinationQMgrChannel", channel, "-f", "-default")
-		if enableCommandTracing() == true {
-			cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
-			cmdTracePath := getCommandTracePath()
-			if len(cmdTracePath) > 0 {
-				cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
-			}
-		}
-
-		cmdSetupCoord := &exec.Cmd {
-			Path: cmdCoordPath,
-			Args: cmdArgs,
-		}
-
-		// Execute the fteSetupCoordination command. Log an error an exit in case of any error.
-		cmdSetupCoord.Stdout = &outb
-		cmdSetupCoord.Stderr = &errb
-		if err := cmdSetupCoord.Run(); err != nil {
-			utils.PrintLog(fmt.Sprintf("fteSetupCoordination command failed. The error is %s", err))
-			utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
-			utils.PrintLog(fmt.Sprintf("Error %s", errb.String()))
-		} else {
-			if logLevel == LOG_LEVEL_VERBOSE {
-				utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
-			}
-			utils.PrintLog(fmt.Sprintf ("Coordination setup for '%s' complete", gjson.Get(allAgentConfig,"coordinationQMgr.name").String()))
-			// Update coordination properties file with additional attributes specified.
-			coordinationPropertiesFile := bfgDataPath + "/mqft/config/" + gjson.Get(allAgentConfig, "coordinationQMgr.name").String() + "/coordination.properties"
-			updateProperties(coordinationPropertiesFile, allAgentConfig, "coordinationQMgr.additionalProperties")
-			created = true
-		}
-	} else {
-		utils.PrintLog(fmt.Sprintf("fteSetupCoordination command not found. %s", lookPathErr))
-	}
-	
-	return created
-}
-
-// Calls fteSetupCommands to create command queue manager configuration.
-func setupCommands(allAgentConfig string, bfgDataPath string, agentName string, logLevel int) (bool) {
-	// Variables for Stdout and Stderr
-	var outb, errb bytes.Buffer
-	var created bool = false
-	
-	// Get the path of MFT fteSetupCommands command. 
-	cmdCmdsPath, lookPathErr := exec.LookPath("fteSetupCommands")
-	if lookPathErr == nil {
-		// Setup commands configuration
-		utils.PrintLog(fmt.Sprintf("Setting up commands configuration '%s' for agent '%s'", 
-			gjson.Get(allAgentConfig,"coordinationQMgr.name"), agentName))
-		var port string
-		var channel string
-		if gjson.Get(allAgentConfig,"commandQMgr.port").Exists() {
-			port = gjson.Get(allAgentConfig,"commandQMgr.port").String()
-		} else {
-			port = "1414"
-		}
-		
-		if gjson.Get(allAgentConfig,"commandQMgr.channel").Exists() {
-			channel = gjson.Get(allAgentConfig,"commandQMgr.channel").String()
-		} else {
-			channel = "SYSTEM.DEF.SVRCONN"
-		}
-
-		var cmdArgs [] string
-		cmdArgs = append(cmdArgs, cmdCmdsPath, 
-				"-p", gjson.Get(allAgentConfig,"coordinationQMgr.name").String(), 
-				"-connectionQMgr", gjson.Get(allAgentConfig,"commandQMgr.name").String(), 
-				"-connectionQMgrHost", gjson.Get(allAgentConfig,"commandQMgr.host").String(), 
-				"-connectionQMgrPort", port, "-connectionQMgrChannel", channel,"-f")
-		if enableCommandTracing() == true {
-			cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
-			cmdTracePath := getCommandTracePath()
-			if len(cmdTracePath) > 0{
-				cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
-			}
-		}
-		
-		cmdSetupCmds := &exec.Cmd {
-			Path: cmdCmdsPath,
-			Args: cmdArgs,
-		}
-		  
-		cmdSetupCmds.Stdout = &outb
-		cmdSetupCmds.Stderr = &errb
-		// Execute the fteSetupCommands command. Log an error an exit in case of any error.
-		if err := cmdSetupCmds.Run(); err != nil {
-			utils.PrintLog(fmt.Sprintf("fteSetupCommands command failed. The errror is %s", err))
-			utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
-			utils.PrintLog(fmt.Sprintf("Error %s", errb.String()))
-			os.Exit(1)
-		} else {
-			if logLevel == LOG_LEVEL_VERBOSE {
-				utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
-			}
-			utils.PrintLog(fmt.Sprintf("Command setup for '%s' is complete", gjson.Get(allAgentConfig,"coordinationQMgr.name").String()))
-			
-			// Update command properties file with additional attributes specified.
-			commandsPropertiesFile := bfgDataPath + "/mqft/config/" + gjson.Get(allAgentConfig, "coordinationQMgr.name").String() + "/command.properties"
-			updateProperties(commandsPropertiesFile, allAgentConfig, "commandQMgr.additionalProperties");
-			created = true
-		}
-	} else {
-		utils.PrintLog(fmt.Sprintf("fteSetupCommands command not found. %s", lookPathErr))
-	}
-	
-	return created
-}
-
-// Read and process protocol bridge server attributes from configuration JSON file
-func processBridgeParameters(agentConfig string, params [] string ) ([] string) {
-	// Set protocol server type
-	serverType := gjson.Get(agentConfig, "protocolBridge.serverType")
-	if serverType.Exists() {
-		// Use the supplied one.
-		params = append(params, "-bt", serverType.String())
-	} else {
-		// Otherwise use default as FTP
-		params = append(params, "-bt", "FTP")
-	}
-			
-	// Set the protocol server host
-	serverHost := gjson.Get(agentConfig, "protocolBridge.serverHost")
-	if serverHost.Exists(){
-		params = append(params, "-bh", serverHost.String())
-	} else {
-		// Use local host if host name is not specified.
-		params = append(params, "-bh", "localhost")
-	}
-			
-	// Set the protocol server timezone, valid only for FTP and FTPS server
-	if serverType.String() != "SFTP" {
-		serverTimezone := gjson.Get(agentConfig, "protocolBridge.serverTimezone")
-		if serverTimezone.Exists() {
-			params = append(params, "-btz", serverTimezone.String())
-		}
-	}
-	
-	// Set the protocol server platform.
-	serverPlatform := gjson.Get(agentConfig, "protocolBridge.serverPlatform")
-	if serverPlatform.Exists() {
-		params = append(params, "-bm", serverPlatform.String())
-	}
-			
-	// Set the protocol server locale
-	if serverType.String() != "SFTP" {
-		serverLocale := gjson.Get(agentConfig, "protocolBridge.serverLocale")
-		if serverLocale.Exists() {
-			params = append(params, "-bsl", serverLocale.String())
-		}
-	}
-
-	// Set protocol server file encoding
-	serverFileEncoding := gjson.Get(agentConfig, "protocolBridge.serverFileEncoding")
-	if serverFileEncoding.Exists() {
-		params = append(params, "-bfe", serverFileEncoding.String())
-	}
-			
-	// Set the protocol server port
-	serverPort := gjson.Get(agentConfig, "protocolBridge.serverPort")
-	if serverPort.Exists() {
-		params = append(params, "-bp", serverPort.String())
-	}
-			
-	// Set the protocol server trust store file
-	serverTrustStoreFile := gjson.Get(agentConfig, "protocolBridge.serverTrustStoreFile")
-	if serverTrustStoreFile.Exists () {
-		params = append(params, "-bts", serverTrustStoreFile.String())
-	}
-			
-	// Set protocol server limited write flag
-	serverLimitedWrite := gjson.Get(agentConfig, "protocolBridge.serverLimitedWrite")
-	if serverLimitedWrite.Exists () {
-		params = append(params, "-blw", serverLimitedWrite.String())
-	}
-			
-	// Set the protocol server list format.
-	serverListFormat := gjson.Get(agentConfig, "protocolBridge.serverListFormat")
-	if serverListFormat.Exists () {
-		params = append(params, "-blf", serverListFormat.String())
-	}
-	return params
 }
 
 // Output the contents of agent logs to stdout
-func mirrorAgentLogs(ctx context.Context, wg *sync.WaitGroup, agentName string, logPathName string) (error){
-	mf, err := configureLogger(agentName)
+func mirrorAgentLogs(ctx context.Context, wg *sync.WaitGroup, agentName string, logPathName string,
+	logDNAUrl string, logDNAKey string, logType string, logServerType int16) error {
+	mf, err := configureLogger(agentName, logDNAUrl, logDNAKey, logType, logServerType)
 	if err != nil {
 		logTermination(err)
 		return err
@@ -783,392 +438,35 @@ func mirrorAgentLogs(ctx context.Context, wg *sync.WaitGroup, agentName string, 
 	return nil
 }
 
-// Validate attributes in JSON file.
-// Check if the configuration JSON contains all required attribtes 
-func validateCoordinationAttributes(jsonData string) (error){  
-	// Coordination queue manager is mandatory
-	if !gjson.Get(jsonData, "coordinationQMgr.name").Exists() {
-		err := errors.New("Coordination queue manager name missing. Can't setup agent configuration")
-		return err
-	}
-
-	// Coordination queue manager host is mandatory
-	if !gjson.Get(jsonData, "coordinationQMgr.host").Exists() {
-		err := errors.New("Coordination queue manager host name missing. Can't setup agent configuration")
-		return err
-	}
-	
-	return nil
-}
-
-func validateCommandAttributes(jsonData string) (error){
-	// Commands queue manager is mandatory
-	if !gjson.Get(jsonData, "commandQMgr.name").Exists() {
-		err := errors.New("Command queue manager name missing. Can't setup agent configuration")
-		return err
-	}
-	// Coordination queue manager host is mandatory
-	if !gjson.Get(jsonData, "commandQMgr.host").Exists() {
-		err := errors.New("Coordination queue manager host name missing. Can't setup agent configuration")
-		return err
-	}
-	
-	return nil
-}
-
-func validateAgentAttributes(jsonData string) (error) {
-	// Agent name is mandatory
-	if !gjson.Get(jsonData, "name").Exists() {
-		err := errors.New("Agent name missing. Can not setup agent configuration")
-		return err
-	}
-
-	// Agent queue manager name is mandatory
-	if !gjson.Get(jsonData, "qmgrName").Exists() {
-		err := errors.New("Agent queue manager name missing. Can not setup agent configuration")
-		return err
-	}
-
-	// Agent queue manager host is mandatory
-	if !gjson.Get(jsonData, "qmgrHost").Exists() {
-		err := errors.New("Agent queue manager host name missing. Can not setup agent configuration")
-		return err
-	}
-
-	return nil
-}
-
-// Update agent.properties file with any additional properties specified in
-// configuration JSON file.
-func updateAgentProperties(propertiesFile string, agentConfig string, sectionName string, bridgeAgent bool) {
-	f, err := os.OpenFile(propertiesFile, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		utils.PrintLog(fmt.Sprintf("%v",err))
-		return
-	}
-	defer f.Close()
-	
-	// Enable logCapture by default. Customer can turn off by specifying it again in config map
-	if _, err := f.WriteString("\nlogCapture=true\n"); err != nil {
-		utils.PrintLog(fmt.Sprintf("%v", err))
-	}
-  
-	if gjson.Get(agentConfig, sectionName).Exists() {
-		result := gjson.Get(agentConfig, sectionName)
-		result.ForEach(func(key, value gjson.Result) bool {
-		if _, err := f.WriteString("\n" + key.String() + "=" + value.String() + "\n"); err != nil {
-			utils.PrintLog(fmt.Sprintf("%v", err))
-		}
-		return true // keep iterating
-      })
-	}
-
-	// If agent credentials file has been specified as environment variable, then set it here
-	agentCredPath, agentCredPathSet := os.LookupEnv(MFT_AGENT_CREDENTIAL_FILE)    
-	if agentCredPathSet && agentCredPath != "" {
-		if _, err := f.WriteString ("\n" + "agentQMgrAuthenticationCredentialsFile=" + agentCredPath + "\n"); err != nil {
-			utils.PrintLog(fmt.Sprintf("%v", err))
-		}
-	}
-  
-  // If this is a bridge agent, then configure custom exit
-  if bridgeAgent {
-	bridgeCredPath, bridgeCredPathSet := os.LookupEnv(MFT_BRIDGE_CREDENTIAL_FILE)    
-	if bridgeCredPathSet && bridgeCredPath != "" {
-		if _, err := f.WriteString ("\n" + "protocolBridgeCredentialConfiguration=" + bridgeCredPath + "\n"); err != nil {
-			utils.PrintLog(fmt.Sprintf("%v", err))
-		}
-	}
-	
-	if _, err := f.WriteString ("\n" + "protocolBridgeCredentialExitClasses=com.ibm.wmq.bridgecredentialexit.ProtocolBridgeCustomCredentialExit\n"); err != nil {
-		utils.PrintLog(fmt.Sprintf("%v", err))
-	}
-  } else {
-	if _, err := f.WriteString ("\n" + "userSandboxes=true"); err != nil {
-		utils.PrintLog(fmt.Sprintf("%v", err))
-	}
-  }
-}
-
-// Update coordination and command properties file with any additional properties specified in
-// configuration JSON file.
-func updateProperties(propertiesFile string, agentConfig string, sectionName string) {
-	f, err := os.OpenFile(propertiesFile, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		utils.PrintLog(fmt.Sprintf("%v", err))
-		return
-	}
-	defer f.Close()
-  
-	if gjson.Get(agentConfig, sectionName).Exists() {
-		result := gjson.Get(agentConfig, sectionName)
-		result.ForEach(func(key, value gjson.Result) bool {
-		if _, err := f.WriteString("\n" + key.String() + "=" + value.String() + "\n"); err != nil {
-			utils.PrintLog(fmt.Sprintf("%v", err))
-		}
-		return true // keep iterating
-      })
-  }
-}
-
-// Returns the contents of the specified file.
-func readFileContents(propertiesFile string, logLevel int) (string) {
-	// Open our xmlFile
-    bridgeProperiesXmlFile, err := os.Open(propertiesFile)
-	// if we os.Open returns an error then handle it
-    if err != nil {
-		if logLevel == LOG_LEVEL_VERBOSE {
-			utils.PrintLog(fmt.Sprintf("%v", err))
-			return ""
-		}
-    }
-
-    // defer the closing of our xml file so that we can parse it later on
-    defer bridgeProperiesXmlFile.Close()
-
-	xmlData,_ := ioutil.ReadAll(bridgeProperiesXmlFile)
-	xmlText := string(xmlData)
-	return xmlText
-}
-
-// Updates ProtocolBridgeProperties file with specified additional attributes
-func updateProtocolBridgePropertiesFile(propertiesFile string, agentConfig string, sectionName string, logLevel int) {
-	// First read the entire contents of the ProtocolBridgeProperties file.
-	bridgeProperites := readFileContents(propertiesFile, logLevel)
-	if len(bridgeProperites) > 0 {
-		// Find the last index of ProtocolBridgeProperties.xsd in the file contents. 
-		// We will be inserting new attributes of that "ProtocolBridgeProperties.xsd>"
-		lastIndex := strings.LastIndex(bridgeProperites,"ProtocolBridgeProperties.xsd")
-		// Add 30 to index because of the length of "ProtocolBridgeProperties.xsd>" is 30.
-		insertIndex := lastIndex + 30
-
-		f, err := os.OpenFile(propertiesFile, os.O_WRONLY, 0644)
-		if err != nil {
-			utils.PrintLog(fmt.Sprintf("%v", err))
-			return
-		}
-		defer f.Close()  
-		
-		if gjson.Get(agentConfig, sectionName).Exists() {
-			result := gjson.Get(agentConfig, sectionName)
-			result.ForEach(func(key, value gjson.Result) bool {
-				// We support only two properties that can be set from config file. Others are ignored.
-				if strings.EqualFold(key.String(),"credentialsFile") == true {
-					insertString := "\n<tns:credentialsFile path=\"" + value.String() + "\" />"
-					bridgeProperites = bridgeProperites[:insertIndex] + insertString + bridgeProperites[insertIndex:]
-					insertIndex += len(insertString)
-				} else if strings.EqualFold(key.String(),"credentialsKeyFile") == true {
-					//<tns:credentialsKeyFile path="c:\temp\agentinitkey.key"/>
-					insertString := "\n<tns:credentialsKeyFile path=\"" + value.String() + "\" />"
-					bridgeProperites = bridgeProperites[:insertIndex] + insertString + bridgeProperites[insertIndex:]
-					insertIndex += len(insertString)
-				}
-				return true // go on till we insert all properties
-			})
-		}
-
-		// Print the updated contents of the ProtocolBridgeProperties.xml file
-		if logLevel == LOG_LEVEL_VERBOSE {
-			utils.PrintLog(bridgeProperites)
-		}
-		// Write the updated properties to file.
-		_, writeErr := f.WriteString(bridgeProperites)
-		if writeErr != nil {
-			utils.PrintLog(fmt.Sprintf("%v", writeErr))
-		}
-	}
-}
-
-// Unregister and delete agent 
-func deleteAgent (coordinationQMgr string, agentName string) (error) {
-	var outb, errb bytes.Buffer
-	utils.PrintLog(fmt.Sprintf("Deleting configuration for agent '%s'", agentName))
-  
-	// Get the path of MFT fteDeleteAgent command. 
-	cmdDltAgentPath, lookErr:= exec.LookPath("fteDeleteAgent")
-	if lookErr != nil {
-		return lookErr
-	}
-	
-	var cmdArgs [] string
-	cmdArgs = append(cmdArgs, cmdDltAgentPath, "-p", coordinationQMgr, "-f", agentName)
-	if enableCommandTracing() == true {
-		cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
-		cmdTracePath := getCommandTracePath()
-		if len(cmdTracePath) > 0 {
-			cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
-		}
-	}
-	
-	// -f force option is not used so that monitor is not recreated if it already exists.
-	cmdDltAgentCmd := &exec.Cmd {
-		Path: cmdDltAgentPath,
-		Args: cmdArgs,
-	}
-
-	// Reuse the same buffer
-	cmdDltAgentCmd.Stdout = &outb
-	cmdDltAgentCmd.Stderr = &errb
-	// Execute the fteDeleteAgent command. Log an error an exit in case of any error.
-	if err := cmdDltAgentCmd.Run(); err != nil {
-		utils.PrintLog(fmt.Sprintf("fteDeleteAgent command failed. The errror is: %s", err))
-		utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
-		utils.PrintLog(fmt.Sprintf("Error %s", errb.String()))
-		// Return no error even if we fail to create monitor. We have output the
-		// information to console.
+// Display details of image and user
+func printImageInfo() {
+	// Print CPU architecture
+	utils.PrintLog(fmt.Sprintf("CPU Architecture: %s", runtime.GOARCH))
+	// Detect the type of container runtime we are running in. Exit if we are not
+	// running inside a known container type like Docker/Kube/Oci etc.
+	runtime, err := DetectRuntime()
+	if err != nil && err != ErrContainerRuntimeNotFound {
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_RUNTM_ERROR_OCCUR_0075, err))
+		os.Exit(MFT_CONT_ERR_CODE_2)
 	} else {
-		utils.PrintLog(fmt.Sprintf("Configuration for agent '%s' has been deleted", agentName))
+		// We are running in a container, so just print it on console
+		utils.PrintLog(fmt.Sprintf(MFT_CONT_RUNTIME_NAME_0005, runtime))
 	}
-	return nil
-}
+	utils.PrintLog(fmt.Sprintf("Base image: %s %s", os.Getenv("ENV_BASE_IMAGE_NAME"), os.Getenv("ENV_BASE_IMAGE_VERSION")))
 
-// Clean agent before starting it.
-func cleanAgent (agentConfig string, coordinationQMgr string, agentName string, logLevel int){
-	cleanOnStart := gjson.Get(agentConfig, "cleanOnStart")
-	if cleanOnStart.Exists() {
-		cleanItem := cleanOnStart.String()
-		if cleanItem == "transfers" {
-			cleanAgentItem (coordinationQMgr, agentName, cleanItem, "-trs", logLevel)
-		} else if cleanItem == "monitors" {
-			cleanAgentItem (coordinationQMgr, agentName, cleanItem, "-ms", logLevel)
-		} else if cleanItem == "scheduledTransfers" {
-			cleanAgentItem (coordinationQMgr, agentName, cleanItem, "-ss", logLevel)
-		} else if cleanItem == "invalidMessages" {
-			cleanAgentItem (coordinationQMgr, agentName, cleanItem, "-ims", logLevel)
-		} else if cleanItem == "all" {
-			cleanAgentItem (coordinationQMgr, agentName, cleanItem, "-all", logLevel)
-		} else {
-			utils.PrintLog(fmt.Sprintf("Invalid value '%s' specified for cleanOnStart attribte has been ignored", cleanItem))
+	// Print current user.
+	currentUser, err := user.Current()
+	if err == nil {
+		utils.PrintLog(fmt.Sprintf("Running as user ID %s with primary group %v", currentUser.Username, currentUser.Gid))
+	}
+	// Image creation time
+	imageTime, imgErr := utils.ReadConfigurationDataFromFile("/usr/tmp/imgdetails.json")
+	if imgErr == nil {
+		if gjson.Get(imageTime, "imageCreateTime").Exists() {
+			utils.PrintLog(fmt.Sprintf("Image created: %s", gjson.Get(imageTime, "imageCreateTime").String()))
 		}
 	}
-}
 
-// Check if command tracing is enabled.
-func enableCommandTracing() (bool) {
-	enableCommandTrace, enableCommandTraceSet := os.LookupEnv(MFT_TRACE_COMMAND)    
-	if enableCommandTraceSet && enableCommandTrace == "yes" {
-		return true
-	}
-	return false
-}
-
-// Return command trace path.
-func getCommandTracePath() (string) {
-	commandTracePath, commandTracePathSet := os.LookupEnv(MFT_TRACE_COMMAND_PATH)    
-	if commandTracePathSet && commandTracePath != "" {
-		return strings.Trim(commandTracePath, " ")
-	}
-	return ""
-}
-
-// Clean agent on start of container.
-func cleanAgentItem (coordinationQMgr string, agentName string, item string, option string, logLevel int) (error) {
-	var outb, errb bytes.Buffer
-	utils.PrintLog(fmt.Sprintf("Cleaning %s of agent %s", item, agentName))
-  
-	// Get the path of MFT fteCleanAgent command. 
-	cmdCleanAgentPath, lookErr:= exec.LookPath("fteCleanAgent")
-	if lookErr != nil {
-		return lookErr
-	}
-	
-	var cmdArgs [] string
-	cmdArgs = append(cmdArgs, cmdCleanAgentPath, "-p", coordinationQMgr, option, agentName)
-	if enableCommandTracing() == true {
-		cmdArgs = append(cmdArgs, "-trace", "com.ibm.wmqfte=all")
-		cmdTracePath := getCommandTracePath()
-		if len(cmdTracePath) > 0 {
-			cmdArgs = append(cmdArgs, "-tracePath", cmdTracePath)
-		}
-	}
-	
-	// Clean agent before starting
-	cmdCleanAgentCmd := &exec.Cmd {
-		Path: cmdCleanAgentPath,
-		Args: cmdArgs,
-	}
-
-	// Reuse the same buffer
-	cmdCleanAgentCmd.Stdout = &outb
-	cmdCleanAgentCmd.Stderr = &errb
-	// Execute the fteCleanAgent command. Log an error an exit in case of any error.
-	if err := cmdCleanAgentCmd.Run(); err != nil {
-		utils.PrintLog(fmt.Sprintf("fteCleanAgent command failed. The errror is: %s", err))
-		utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
-		utils.PrintLog(fmt.Sprintf("Error %s", errb.String()))
-		// Return no error even if we fail to create monitor. We have output the
-		// information to console.
-	} else {
-		if logLevel == LOG_LEVEL_VERBOSE {
-			utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
-		} else {
-			utils.PrintLog("Agent cleaned")
-		}
-	}
-	return nil
-}
-
-// Setup userSandBox configuration to restrict access to file system
-func createUserSandbox(sandboxXmlFileName string) {
-	// Open existing UserSandboxes.xml file
-	userSandBoxXmlFile, err := os.OpenFile(sandboxXmlFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	// if we os.Open returns an error then handle it
-    if err != nil {
-		utils.PrintLog(fmt.Sprintf("%v", err))
-		return
-    }
-
-    // defer the closing of our xml file so that we can parse it later on
-    defer userSandBoxXmlFile.Close()
-	
-	// Set sandBoxRoot for standard agents to restrict the file system access. Use the value specified in 
-	// MFT_MOUNT_PATH environment variable if available else use the default "/mountpath" folder.
-	// Agent will be able to read from or write to this folder and it will not have access to other parts
-	// of the file system.
-	mountPathEnv := os.Getenv("MFT_MOUNT_PATH")
-	var mountPath string
-	if len(mountPathEnv) > 0 {
-		//If the supplied path does not have /** suffix, then add it
-		if !strings.HasSuffix(mountPathEnv, "/**") {
-			if strings.HasSuffix(mountPathEnv, "/*") {
-				mountPath = mountPathEnv + "*"
-			} else if strings.HasSuffix(mountPathEnv, "/") {
-				mountPath = mountPathEnv + "**"
-			} else {
-				mountPath = mountPathEnv + "/**"
-			}
-		} else {
-			mountPath = mountPathEnv
-		}
-	} else {
-		// No environment variable specified. So use fixed path.
-		mountPath = MOUNT_PATH_FOR_TRANSFERS
-	}
-
-    // Write a generic 
-	var sandboxXmlText string
-	sandboxXmlText =  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	sandboxXmlText += "<tns:userSandboxes\n"
-	sandboxXmlText += "         xmlns:tns=\"http://wmqfte.ibm.com/UserSandboxes\"\n"
-	sandboxXmlText += "         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
-	sandboxXmlText += "         xsi:schemaLocation=\"http://wmqfte.ibm.com/UserSandboxes UserSandboxes.xsd\">\n\n"
-	sandboxXmlText += "    <tns:agent>\n"
-	sandboxXmlText += "         <tns:sandbox user=\"^[a-zA-Z0-9]*$\" userPattern=\"regex\">\n"
-	sandboxXmlText += "              <tns:read>\n"
-    sandboxXmlText += "       	          <tns:include name=\"" + mountPath + "\"/>\n"
-    sandboxXmlText += "	                  <tns:include name=\"**\" type=\"queue\"/>\n"
-	sandboxXmlText += "              </tns:read>\n"
-	sandboxXmlText += "              <tns:write>\n"
-    sandboxXmlText += "	                  <tns:include name=\"" + mountPath + "\"/>\n"
-	sandboxXmlText += "                   <tns:include name=\"**\" type=\"queue\"/>\n"
-	sandboxXmlText += "              </tns:write>\n"
-	sandboxXmlText += "        </tns:sandbox>\n"
-	sandboxXmlText += "     </tns:agent>\n"
-	sandboxXmlText += "</tns:userSandboxes>"
-	
-	// Write the updated properties to file.
-	_, writeErr := userSandBoxXmlFile.WriteString(sandboxXmlText)
-	if writeErr != nil {
-		utils.PrintLog(fmt.Sprintf("%v", writeErr))
-	}
+	// MFT Redistributable package version
+	utils.PrintLog(fmt.Sprintf("IBM MQ Managed File Transfer Redistributable Agent: %s Build Level: %s", os.Getenv("ENV_MQ_VERSION"), os.Getenv("ENV_MQ_BUILD_LEVEL")))
 }

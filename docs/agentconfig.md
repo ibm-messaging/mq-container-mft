@@ -1,5 +1,7 @@
 # Agent configuration file
-Agent is created and started during container creation time. The information required for creation of agent, like the agent name, coordination queue manager, agent queue manager etc must be provided via a json file located on a mount point. The path of the json file must be passed as a value to **MFT_AGENT_CONFIG_FILE** environment variable. The configMap can contain attributes for multiple agents. 
+Agent is created and started during container creation time. The information required for creation of agent, like the agent name, coordination queue manager, agent queue manager etc must be provided via a json file located on a mount point. The path of the json file must be passed as a value to **MFT_AGENT_CONFIG_FILE** environment variable. 
+
+The configuration file can contain attributes for multiple agents. However all agents will be created under the same cooridation queue manager.
 
 This document describes attributes of the json file.
 
@@ -8,14 +10,20 @@ This document describes attributes of the json file.
 - **host** - Type: String. Host name to be used for connecting to coordination queue manager.
 - **port** - Type: int. Port number to be used for connecting to coordination queue manager.
 - **channel** - Type: String. Channel name to be used for connecting to coordination queue manager.
-- **additionalProperties** - Optional. Type: Group. Any additional parameters to be set in coordination.properties file of the container. Name of the attribute in this group must match the name of properties in coordination.properties file. If the property value, for example `coordinationQMgrAuthenticationCredentialsFile` points to a file, then that file must be on a mount point.
+- **qmgrCredentials** - Type: Group. Defines the credentials required for connecting to coordination queue manager. The credentials provided here are save to MQMFTCredentials.xml file during container start.
+- **mqUserId** - Type: String. Name of user for connecting to coordination queue manager.
+- **mqPassword** - Type: String. Password of user for connecting to coordination queue manager. Recommended to base64 encode this value.
+- **additionalProperties** - Optional. Type: Group. Any additional parameters to be set in coordination.properties file of the container. Names of the attributes in this group must match the name of properties in coordination.properties file.
 
-- **commandQMgr** - Type: Group. Defines the configuration information command queue manager.
+- **commandQMgr** - Type: Group. Defines the configuration information for a command queue manager.
 - **name** - Type: String. Name of the command queue manager.
 - **host** - Type: String. Host name to be used for connecting to command queue manager.
 - **port** - Type: int. Port number to be used for connecting to command queue manager.
 - **channel** - Type: String. Channel name to be used for connecting to command queue manager.
-- **additionalProperties** - Optional. Type: Group. Any additional parameters to be set in command.properties file of the container. Name of the attribute in this group must match the name of properties in command.properties file. If the property value, for example `connectionrdinationQMgrAuthenticationCredentialsFile` points to a file, then that file must be on a mount point.
+- **qmgrCredentials** - Type: Group. Defines the credentials required for connecting to coordination queue manager. The credentials provided here are save to MQMFTCredentials.xml file during container start.
+- **mqUserId** - Type: String. Name of user for connecting to command queue manager.
+- **mqPassword** - Type: String. Password of user for connecting to command queue manager. Recommended to base64 encode this value.
+- **additionalProperties** - Optional. Type: Group. Any additional parameters to be set in command.properties file of the container. Name of the attribute in this group must match the name of properties in command.properties file.
 
 - **agents** - Type: Group. Defines an array of configuration information of agent. You can define multiple agent configuration. This allows same JSON file to be used for creating multiple agents. All agents would use the same coordination and command queue managers.
 - **name** - Type: String. Name of the agent to be created.
@@ -26,9 +34,12 @@ This document describes attributes of the json file.
 - **qmgrHost** - Type: String. Host name to be used for connecting to agent queue manager.
 - **qmgrPort** - Type: int. Port number to be used for connecting to agent queue manager.
 - **qmgrChannel** - Type: String. Channel name to be used for connecting to agent queue manager.
-- **additionalProperties** - Type: Group. Any additional parameters to be set in agent.properties file of the container. Name of the attribute in this group must match the name of properties in agent.properties file. If the property value, for example `agentQMgrAuthenticationCredentialsFile` points to a file, then that file must be on a mount point.
+- **qmgrCredentials** - Type: Group. Defines the credentials required for connecting to coordination queue manager. The credentials provided here are save to MQMFTCredentials.xml file during container start.
+- **mqUserId** - Type: String. Name of user for connecting to agent queue manager.
+- **mqPassword** - Type: String. Password of user for connecting to agent queue manager. Recommended to base64 encode this value.
+- **additionalProperties** - Type: Group. Any additional parameters to be set in agent.properties file of the container. Name of the attribute in this group must match the name of properties in agent.properties file.
 - **protocolBridgeCredentialConfiguration** Type: String. Path of the custom protocol bridge credential file. This property must be set if the agent is of type BRIDGE. This file must contain "key=value" pair(s) containing credential information.
-- **protocolBridge** - Required for BRIDGE agent. Type: String. Group element that defines additional properties if the agent type is `BRIDGE`.
+- **protocolBridge** - Required for BRIDGE agent. Type: JSONArray. Contains group of elements that defines additional properties if the agent type is `BRIDGE`.
 - **serverType** - Type: String. Defines the protocol bridge type. `FTP`, `FTPS` and `SFTP` are the supported types.
 - **serverHost** Type: String. Host name of the protocol server the agent will connect to. 
 - **serverTimezone** Type: String. Timezone where protocol server is running. For example `Europe/London`. Valid only if serverType is `FTP` or `FTPS`.
@@ -47,8 +58,12 @@ An example json is here:
       "host":"coordqm.ibm.com",
       "port":1414,
       "channel":"MFT_CORD_CHN",
+      "qmgrCredentials" : {
+         "mqUserId":"JohnDover",
+         "mqPassword":"bXlwYXNzdzByZA==",
+      },
       "additionalProperties" : {
-         "coordinationQMgrAuthenticationCredentialsFile":"/mftagentcfg/agentcfg/MQMFTCredentials.xml"
+         "coordinationQMgrStandby":"9.20.20.20(1414)"
       }
    },
    "commandsQMgr":{
@@ -57,8 +72,12 @@ An example json is here:
       "port":1414,
       "channel":"MFT_CMD_CHN",
       "additionalProperties" : {
-         "connectionQMgrAuthenticationCredentialsFile":"/mftagentcfg/agentcfg/MQMFTCredentials.xml"
-      }
+         "connectionQMgrStandby":"9.20.20.20(1414)"
+      },
+      "qmgrCredentials" : {
+         "mqUserId":"JohnDover",
+         "mqPassword":"bXlwYXNzdzByZA==",
+      },
    },
    "agents":[{
       "name":"AGENTSRC",
@@ -68,9 +87,12 @@ An example json is here:
       "qmgrPort":1414,
       "qmgrChannel":"MFT_AGENT_CHN",
       "additionalProperties":{
-         "enableQueueInputOutput":"true",
-         "agentQMgrAuthenticationCredentialsFile":"/mftagentcfg/agentcfg/MQMFTCredentials.xml"
-      }
+         "enableQueueInputOutput":"true"
+      },
+      "qmgrCredentials" : {
+         "mqUserId":"JohnDover",
+         "mqPassword":"bXlwYXNzdzByZA==",
+      },
    },
    {
       "name":"AGENTDEST",
@@ -79,21 +101,24 @@ An example json is here:
       "qmgrHost":"agentqmdest.mycomp.com",
       "qmgrPort":1818,
       "qmgrChannel":"MFT_AGENT_CHN",
-      "protocolBridge" : {
+      "qmgrCredentials" : {
+         "mqUserId":"JohnDover",
+         "mqPassword":"bXlwYXNzdzByZA==",
+      },
+      "protocolBridge" : [{
          "serverType":"FTP",
-         "serverHost":"ftp.ibm.com",
+         "serverHost":"ftp.mycomp.com",
          "serverTimezone":"Europe/London",
          "serverPlatform":"UNIX",
          "serverLocale":"en-GB",
-         "serverListFormat"="UNIX", 
-         "serverLimitedWrite"="false", 
-         "serverFileEncoding"="UTF8", 
-         "serverPassiveMode"="true", 
-	  },
+         "serverListFormat":"UNIX", 
+         "serverLimitedWrite":"false", 
+         "serverFileEncoding":"UTF8", 
+         "serverPassiveMode":"true", 
+	  }],
 	  "additionalProperties": {
-         "agentQMgrAuthenticationCredentialsFile" : "/mftagentcfg/agentcfg/MQMFTCredentials.xml",
 		 "protocolBridgeCredentialConfiguration" : "/mqmftbridgecred/agentcreds/ProtocolBridgeCredentials.prop"
-      }
+      },
    }]
 }
 ```
