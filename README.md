@@ -1,5 +1,4 @@
 # IBM MQ Managed File Transfer Container
-[![Build Status](https://travis.ibm.com/mq-cloudpak/mq-container-mft.svg?token=xZr8j7p3SLYrpzU9uf3c&branch=master)](https://travis.ibm.com/mq-cloudpak/mq-container-mft)
 
 ## Overview
 IBM MQ Managed File Transfer transfers files between systems in a managed and auditable way, regardless of file size or the operating systems used. You can use Managed File Transfer to build a customized, scalable, and automated solution that enables you to manage, trust, and secure file transfers. Managed File Transfer eliminates costly redundancies, lowers maintenance costs, and maximizes your existing IT investments.
