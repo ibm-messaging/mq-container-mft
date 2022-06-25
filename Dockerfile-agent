@@ -52,8 +52,7 @@ WORKDIR $GO_WORKDIR/
 # Copy golang source code for compilation	
 COPY go.mod go.sum ./
 COPY cmd ./cmd
-#COPY internal/ ./internal
-#COPY pkg/ ./pkg
+COPY pkg/ ./pkg
 
 # Build the required go programs and copy them to /run directory
 RUN go build -ldflags "-X \"main.ImageCreated=$(date --iso-8601=seconds)\" -X \"main.ImageRevision=$IMAGE_REVISION\" -X \"main.ImageSource=$IMAGE_SOURCE\" -X \"main.ImageTag=$IMAGE_TAG\"" -o /run/runagent ./cmd/runagent/ \
@@ -88,7 +87,7 @@ RUN mkdir -p /credentialsexit/BridgeCredentialExit/bin  \
 ###############################################################################
 # Main build stage, to build MQMFT image
 ###############################################################################
-FROM $BASE_IMAGE:$BASE_TAG AS mqmft
+FROM $UBI_BASE_IMAGE:$UBI_BASE_TAG AS mqmft
 
 # Set environment variables so that any shell scripts can make use of them
 ARG ARG_MQMFT_REDIST_FILE
