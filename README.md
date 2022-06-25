@@ -8,7 +8,7 @@ Run IBM MQ Managed File Transfer agents in a container .
 See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 
 ## Developer image
-Developer version of the MFT Agent container image is available in IBM Container Registry. Use the podman/docker pull command to pull the image.
+Developer version of the MFT Agent container image is available in IBM Container Registry. Use the podman/docker command to pull the image.
 
 `podman pull icr.io/ibm-messaging/mqmft`
 
