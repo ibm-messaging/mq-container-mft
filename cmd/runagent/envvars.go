@@ -76,3 +76,6 @@ const MFT_BFG_JVM_PROPERTIES = "BFG_JVM_PROPERTIES"
 
 // Configuration file containing details of logDNA server
 const MFT_AGENT_TRANSFER_LOG_PUBLISH_CONFIG_FILE = "MFT_AGENT_TRANSFER_LOG_PUBLISH_CONFIG_FILE"
+
+// Resource monitor configuration file
+const MFT_MONITOR_CONFIG_FILE = "MFT_MONITOR_CONFIG_FILE"

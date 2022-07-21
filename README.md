@@ -31,8 +31,6 @@ Note that in order to use the image, it is necessary to accept the terms of the 
 - **MFT_LOG_LEVEL** - Optional - Level of information displayed. `info` and `verbose` are the supported values with `info` being default. Contents of agent's output0.log is displayed if MFT_LOG_LEVEL is set to `verbose`.
 - **MFT_AGENT_START_WAIT_TIME** - Optionl. An agent might take some time to start after fteStartAgent command is issued. This is the time, in seconds, the containor will wait for an agent to start. If an agent does not within the specified wait time, the container will end.
 - **MFT_MOUNT_PATH** - Optional. Environment variable pointing to path from where agent will read files or write to.
-- **MFT_BRIDGE_CREDENTIAL_FILE** - Required for bridge type agents. Path of the user supplied protocol bridge credentials file used for connecting to protocol servers. See [here](docs/custompbacred.md) for more details on the format of the credential file. 
-- **MFT_BRIDGE_PROPERTIES_FILE** - Optional. Valid only for bridge type agents. Path of the user supplied bridge properties file in XML format.
 
 ### Location of agent configuration files
 

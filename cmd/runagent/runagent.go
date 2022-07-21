@@ -302,17 +302,6 @@ func main() {
 	// If agent status is READY or ACTIVE, then we are good.
 	if agentReady {
 		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_STARTED_0038, agentNameEnv))
-		// Create resource monitor if asked for
-		if gjson.Get(singleAgentConfig, "resourceMonitors").Exists() {
-			result := gjson.Get(singleAgentConfig, "resourceMonitors")
-			result.ForEach(func(key, value gjson.Result) bool {
-				createResourceMonitor(coordinationQMgr, agentNameEnv,
-					gjson.Get(singleAgentConfig, "qmgrName").String(),
-					key.String(),
-					value.String())
-				return true // keep looping till end
-			})
-		}
 
 		// Setup a siganl handle and wait for till container is stopped.
 		signalControl := signalHandler(agentNameEnv, coordinationQMgr)

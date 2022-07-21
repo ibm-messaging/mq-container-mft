@@ -611,22 +611,72 @@ func cleanAgentItem(coordinationQMgr string, agentName string, item string, opti
 	return nil
 }
 
-// Create resource monitor
-func createResourceMonitor(coordinationQMgr string, agentName string, agentQMgr string,
-	monitorName string, fileName string) error {
+/**
+* Read a JSON file and setup resource monitors.
+*
+ */
+func SetupMonitors(commandQmgr string, agentName string) {
+	monitorConfigFile, monitorConfigFileSet := os.LookupEnv(MFT_MONITOR_CONFIG_FILE)
+	if monitorConfigFileSet {
+		monitorConfig, err := utils.ReadConfigurationDataFromFile(monitorConfigFile)
+		if err == nil {
+			// Create resource monitor if asked for
+			if gjson.Get(monitorConfig, "resourceMonitors").Exists() {
+				result := gjson.Get(monitorConfig, "resourceMonitors")
+				result.ForEach(func(key, value gjson.Result) bool {
+					createResourceMonitor(agentName,
+						key.String(),
+						value.String())
+					return true // keep looping till end
+				})
+			}
+		}
+	}
+}
+
+/**
+* Read a JSON file and setup resource monitors.
+* @param agentName - Name of the agent in which monitor will be created.
+* @param monitorName - Name of the monitor
+* @param monitorConfig - JSON object containing monitor definition
+ */
+func createResourceMonitor(agentName string, monitorName string, monitorConfig string) error {
 	var outb, errb bytes.Buffer
 	utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_RM_CRT_0053, monitorName))
+
+	// Get the path of MFT fteCreateTransfer command.
+	cmdCrtTransferPath, lookTransferErr := exec.LookPath("fteCreateTransfer")
+	if lookTransferErr != nil {
+		return lookTransferErr
+	}
+
+	// Validate transfer definition parameters
+	if !validateTransferParameters(monitorConfig) {
+		return errors.New("Invalid parameters provided for transfer definition")
+	}
+
+	transferDefinition := gjson.Get(monitorConfig, monitorName+".transferDefinition").String()
+
+	// Build parameter list for fteCreateTransfer command
+	var cmdTransferArgs []string
+	cmdTransferArgs = append(cmdTransferArgs, "-gt", "/mountpath/task.xml")
+	cmdTransferArgs = append(cmdTransferArgs, "-sa", gjson.Get(transferDefinition, "source.name").String())
+	cmdTransferArgs = append(cmdTransferArgs, "-sm", gjson.Get(transferDefinition, "source.qmgrName").String())
+	cmdTransferArgs = append(cmdTransferArgs, "-da", gjson.Get(transferDefinition, "destinationAgent.name").String())
+	cmdTransferArgs = append(cmdTransferArgs, "-dm", gjson.Get(transferDefinition, "destinationAgent.qmgrName").String())
+
+	transferSet := gjson.Get(transferDefinition, "transferSet")
 
 	// Get the path of MFT fteCreateAgent command.
 	cmdCrtMonitorPath, lookErr := exec.LookPath("fteCreateMonitor")
 	if lookErr != nil {
 		return lookErr
 	}
+
 	// -f force option is not used so that monitor is not recreated if it already exists.
 	cmdCrtMonitorCmd := &exec.Cmd{
 		Path: cmdCrtMonitorPath,
-		Args: []string{cmdCrtMonitorPath, "-p", coordinationQMgr,
-			"-mm", agentQMgr,
+		Args: []string{cmdCrtMonitorPath,
 			"-ma", agentName,
 			"-mn", monitorName,
 			"-ix", fileName},
@@ -645,6 +695,40 @@ func createResourceMonitor(coordinationQMgr string, agentName string, agentQMgr 
 		utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_NOT_FOUND_0028, outb.String()))
 	}
 	return nil
+}
+
+/**
+* Verifies if all required attributes for a transfer have been provided
+* in the configuration.
+* @param - JSON object containining monitor definition.
+ */
+func validateTransferParameters(transferDefinition string) bool {
+	if !gjson.Get(transferDefinition, "destinationAgent.name").Exists() {
+		return false
+	}
+
+	if !gjson.Get(transferDefinition, "destinationAgent.qmgrName").Exists() {
+		return false
+	}
+
+	// Transfer set.item array exists
+	if !gjson.Get(transferDefinition, "transferSet.item").Exists() {
+		return false
+	}
+
+	result := gjson.Get(transferDefinition, "transferSet.item")
+	result.ForEach(func(key, value gjson.Result) bool {
+		if !gjson.Get(value.String(), "source.name").Exists() {
+			return false
+		}
+
+		if !gjson.Get(value.String(), "destination.name").Exists() {
+			return false
+		}
+		return true // keep looping till end
+	})
+
+	return true
 }
 
 // Returns the contents of the specified file.
