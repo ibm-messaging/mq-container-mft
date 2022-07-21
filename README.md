@@ -46,6 +46,27 @@ Step-by-step [guide](lab/README.md) to using agent container.
 1) Private key and trust stores are not yet supported for Protocol Bridge Agents. Hence only a userid and password combination must be used for connecting to FTP/SFTP/FTPS servers.
 
 ## Issues and contributions
+### Known issues
+
+When using secure connections to queue manager, agent running in a container may log the following warning messages to console or agent's output0.log. Container will continue to run though.
+```
+[11/07/2022 07:32:16:099 GMT] 00000022 FileSystemPre W   Could not lock User prefs.  Unix error code 2.
+[11/07/2022 07:32:16:100 GMT] 00000022 FileSystemPre W   Couldn't flush user prefs: java.util.prefs.BackingStoreException: Couldn't get file lock.
+
+```
+
+Do the following to resolve the warnings:
+1) Include the following environment variable in your deployment yaml if you are deploying in OpenShift Container Platform
+ ```
+ - name: BFG_JVM_PROPERTIES
+   value: -Djava.util.prefs.systemRoot=/jprefs/.java/.systemPrefs -Djava.util.prefs.userRoot=/jprefs/.java/.userPrefs
+
+```
+2) Include the following environemt variable while running podman/docker runtime:
+```   
+  --env BFG_JVM_PROPERTIES=-Djava.util.prefs.systemRoot=/jprefs/.java/.systemPrefs -Djava.util.prefs.userRoot=/jprefs/.java/.userPrefs
+```
+   
 
 For issues relating specifically to the container image, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mft-cloud/issues). If you do submit a Pull Request related to this container image, please indicate in the Pull Request that you accept and agree to be bound by the terms of the [IBM Contributor License Agreement](CLA.md).
 
