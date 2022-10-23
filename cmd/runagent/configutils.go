@@ -22,6 +22,7 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -30,17 +31,17 @@ import (
 	"strings"
 
 	"github.com/ibm-messaging/mq-container-mft/pkg/utils"
+	"github.com/subchen/go-xmldom"
 	"github.com/tidwall/gjson"
 )
 
 // Update coordination and command properties file with any additional properties specified in
 // configuration JSON file.
-func UpdateProperties(propertiesFile string, agentConfig string, sectionName string,
-	credentialPropName string, credentialFileName string) {
+func UpdateProperties(propertiesFile string, agentConfig string, sectionName string) error {
 	f, err := os.OpenFile(propertiesFile, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_ERR_OPN_FILE_0067, propertiesFile, err))
-		return
+		errorMsg := fmt.Sprintf(utils.MFT_CONT_ERR_OPN_FILE_0067, propertiesFile, err)
+		return errors.New(errorMsg)
 	}
 	defer f.Close()
 
@@ -49,26 +50,18 @@ func UpdateProperties(propertiesFile string, agentConfig string, sectionName str
 		// Write a new line character before updating properties
 		result := gjson.Get(agentConfig, sectionName)
 		if _, err := f.WriteString("\n"); err != nil {
-			utils.PrintLog(fmt.Sprintf(MFT_CONT_ERR_UPDTING_FILE_0066, propertiesFile, err))
-			return
+			errorMsg := fmt.Sprintf(utils.MFT_CONT_ERR_UPDTING_FILE_0066, propertiesFile, err)
+			return errors.New(errorMsg)
 		}
 		result.ForEach(func(key, value gjson.Result) bool {
-			if !strings.EqualFold(strings.ToUpper(credentialPropName), strings.ToUpper(key.String())) {
-				if _, err := f.WriteString(key.String() + "=" + value.String() + "\n"); err != nil {
-					utils.PrintLog(fmt.Sprintf(MFT_CONT_ERR_UPDTING_FILE_0066, propertiesFile, err))
-					return false
-				}
+			if _, err := f.WriteString(key.String() + "=" + value.String() + "\n"); err != nil {
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_ERR_UPDTING_FILE_0066, propertiesFile, err))
+				return false // break if an error occurs.
 			}
 			return true // keep iterating
 		})
 	}
-
-	// Update credentials property
-	if credentialPropName != TEXT_BLANK && credentialFileName != TEXT_BLANK {
-		if _, err := f.WriteString(credentialPropName + "=" + credentialFileName + "\n"); err != nil {
-			utils.PrintLog(fmt.Sprintf(MFT_CONT_ERR_UPDTING_FILE_0066, propertiesFile, err))
-		}
-	}
+	return nil
 }
 
 // Check if command tracing is enabled. Command tracing can be enabled
@@ -76,38 +69,38 @@ func UpdateProperties(propertiesFile string, agentConfig string, sectionName str
 func IsCommandTracingEnabled() bool {
 	var commandTraceEnabled bool = false
 	enableCommandTrace, enableCommandTraceSet := os.LookupEnv(MFT_TRACE_COMMANDS)
-	commandTracePath, commandTracePathSet := os.LookupEnv(MFT_TRACE_COMMAND_PATH)
-	if enableCommandTraceSet && commandTracePathSet {
+	if enableCommandTraceSet {
 		enableCommandTrace = strings.ToLower(strings.Trim(enableCommandTrace, TEXT_TRIM))
 		if strings.EqualFold(enableCommandTrace, TEXT_YES) {
-			if commandTracePath != TEXT_BLANK {
-				commandTraceEnabled = true
-			}
+			commandTraceEnabled = true
 		}
 	}
 	return commandTraceEnabled
 }
 
-// Return command trace path specified as a value MFT_TRACE_COMMAND
-// environment variable
+// Return command trace path
 func GetCommandTracePath() string {
-	commandTracePath, commandTracePathSet := os.LookupEnv(MFT_TRACE_COMMAND_PATH)
+	commandTracePath, commandTracePathSet := os.LookupEnv(BFG_DATA)
 	if commandTracePathSet && strings.Trim(commandTracePath, TEXT_TRIM) != TEXT_BLANK {
-		return strings.Trim(commandTracePath, TEXT_TRIM)
+		commandTracePath += strings.Trim(commandTracePath, TEXT_TRIM) + "/cmdtrace/"
+		// Create command trace path if it does not exist.
+		utils.CreatePath(commandTracePath)
+		return commandTracePath
 	}
 	return TEXT_BLANK
 }
 
 // Setup userSandBox configuration to restrict access to file system
-func CreateUserSandbox(sandboxXmlFileName string) {
+func CreateUserSandbox(sandboxXmlFileName string) error {
+	var errCusbox error = nil
+
 	// Open existing UserSandboxes.xml file
 	userSandBoxXmlFile, err := os.OpenFile(sandboxXmlFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	// if we os.Open returns an error then handle it
 	if err != nil {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_ERR_OPN_SNDBOX_FILE_0065, sandboxXmlFileName, err))
-		return
+		errorMsg := fmt.Sprintf(utils.MFT_CONT_ERR_OPN_SNDBOX_FILE_0065, sandboxXmlFileName, err)
+		return errors.New(errorMsg)
 	}
-
 	// defer the closing of our xml file so that we can parse it later on
 	defer userSandBoxXmlFile.Close()
 
@@ -115,94 +108,117 @@ func CreateUserSandbox(sandboxXmlFileName string) {
 	// MFT_MOUNT_PATH environment variable if available else use the default "/mountpath" folder.
 	// Agent will be able to read from or write to this folder and it will not have access to other parts
 	// of the file system.
+	var transferRootPath string = DEFAULT_MOUNT_PATH_FOR_TRANSFERS
 	mountPathEnv, mountPathEnvSet := os.LookupEnv(MFT_MOUNT_PATH)
-	var mountPath string
 	if mountPathEnvSet {
 		mountPathEnv = strings.Trim(mountPathEnv, TEXT_TRIM)
 		if len(mountPathEnv) > 0 {
 			//If the supplied path does not have /** suffix, then add it
 			if !strings.HasSuffix(mountPathEnv, "/**") {
 				if strings.HasSuffix(mountPathEnv, "/*") {
-					mountPath = mountPathEnv + "*"
+					transferRootPath = mountPathEnv + "*"
 				} else if strings.HasSuffix(mountPathEnv, "/") {
-					mountPath = mountPathEnv + "**"
+					transferRootPath = mountPathEnv + "**"
 				} else {
-					mountPath = mountPathEnv + "/**"
+					transferRootPath = mountPathEnv + "/**"
 				}
 			} else {
-				mountPath = mountPathEnv
+				transferRootPath = mountPathEnv
 			}
-		} else {
-			// Path provided is blank. So use default fixed path.
-			mountPath = DEFAULT_MOUNT_PATH_FOR_TRANSFERS
 		}
-	} else {
-		// No environment variable specified. So use fixed path.
-		mountPath = DEFAULT_MOUNT_PATH_FOR_TRANSFERS
 	}
 
-	// Write a generic
-	var sandboxXmlText string
-	sandboxXmlText = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	sandboxXmlText += "<tns:userSandboxes\n"
-	sandboxXmlText += "         xmlns:tns=\"http://wmqfte.ibm.com/UserSandboxes\"\n"
-	sandboxXmlText += "         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
-	sandboxXmlText += "         xsi:schemaLocation=\"http://wmqfte.ibm.com/UserSandboxes UserSandboxes.xsd\">\n\n"
-	sandboxXmlText += "    <tns:agent>\n"
-	sandboxXmlText += "         <tns:sandbox user=\"^[a-zA-Z0-9]*$\" userPattern=\"regex\">\n"
-	sandboxXmlText += "              <tns:read>\n"
-	sandboxXmlText += "       	          <tns:include name=\"" + mountPath + "\"/>\n"
-	sandboxXmlText += "	                  <tns:include name=\"**\" type=\"queue\"/>\n"
-	sandboxXmlText += "              </tns:read>\n"
-	sandboxXmlText += "              <tns:write>\n"
-	sandboxXmlText += "	                  <tns:include name=\"" + mountPath + "\"/>\n"
-	sandboxXmlText += "                   <tns:include name=\"**\" type=\"queue\"/>\n"
-	sandboxXmlText += "              </tns:write>\n"
-	sandboxXmlText += "        </tns:sandbox>\n"
-	sandboxXmlText += "     </tns:agent>\n"
-	sandboxXmlText += "</tns:userSandboxes>"
+	sandBoxDoc := xmldom.NewDocument("tns:userSandboxes")
+	sandBoxDoc.Root.SetAttributeValue("xmlns:tns", "http://wmqfte.ibm.com/UserSandboxes")
+	sandBoxDoc.Root.SetAttributeValue("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+	sandBoxDoc.Root.SetAttributeValue("xsi:schemaLocation", "http://wmqfte.ibm.com/UserSandboxes UserSandboxes.xsd")
+	agentNode := sandBoxDoc.Root.CreateNode("tns:agent")
+	sandBoxNode := agentNode.CreateNode("tns:sandbox")
+	sandBoxNode.SetAttributeValue("user", "^[a-zA-Z0-9]*$")
+	sandBoxNode.SetAttributeValue("userPattern", "regex")
+	readNode := sandBoxNode.CreateNode("tns:read")
+	includeNode := readNode.CreateNode("tns:include")
+	includeNode.SetAttributeValue("name", transferRootPath)
+	includeNode = readNode.CreateNode("tns:include")
+	includeNode.SetAttributeValue("name", "*")
+	includeNode.SetAttributeValue("type", "queue")
+	writeNode := sandBoxNode.CreateNode("tns:write")
+	includeNode = writeNode.CreateNode("tns:include")
+	includeNode.SetAttributeValue("name", transferRootPath)
+	includeNode = readNode.CreateNode("tns:include")
+	includeNode.SetAttributeValue("name", "*")
+	includeNode.SetAttributeValue("type", "queue")
 
-	if logLevel == LOG_LEVEL_DIGANOSTIC {
-		utils.PrintLog(sandboxXmlText)
+	if logLevel >= LOG_LEVEL_VERBOSE {
+		utils.PrintLog(sandBoxDoc.XMLPretty())
 	}
 
 	// Write the updated properties to file.
-	_, writeErr := userSandBoxXmlFile.WriteString(sandboxXmlText)
+	_, writeErr := userSandBoxXmlFile.Write([]byte(sandBoxDoc.XMLPretty()))
 	if writeErr != nil {
-		utils.PrintLog(fmt.Sprintf("%v", writeErr))
+		errorMsg := fmt.Sprintf(utils.MFT_FAILED_WRITING_SANDBOX, writeErr)
+		errCusbox = errors.New(errorMsg)
 	}
+
+	return errCusbox
 }
 
 /**
 * SetupCredentials
+*
 * This method creats specified credentials file which will contain userid and password
 * required for connecting to agent queue manager. The userid and password are from
 * agent configuration file, like agentconfig.json. This method exepect the userid to
 * be in plain text while the password to be base64 encoded.
  */
-func SetupCredentials(mqmftCredentialsXmlFileName string, configData string, qmName string) bool {
-	// Check if mqUserId attribute exists in JSON file. The password must be base64 encoded
-	if gjson.Get(configData, "mqUserId").Exists() && gjson.Get(configData, "mqPassword").Exists() {
-		mqUserId := gjson.Get(configData, "mqUserId").String()
-		mqPassword := gjson.Get(configData, "mqPassword").String()
-		mqUserId = strings.Trim(mqUserId, TEXT_TRIM)
-		mqPassword = strings.Trim(mqPassword, TEXT_TRIM)
+func SetupCredentials(mqmftCredentialsXmlFileName string, bufferCred string) error {
+	// Create an empty credentials file, truncate if one exists
+	mqmftCredentialsXmlFile, err := os.OpenFile(mqmftCredentialsXmlFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	// if we os.Open returns an error then handle it
+	if err != nil {
+		errorMsg := fmt.Sprintf(utils.MFT_CONT_ERR_OPN_CRED_FILE_0064, mqmftCredentialsXmlFileName, err)
+		return errors.New(errorMsg)
+	}
+	defer mqmftCredentialsXmlFile.Close()
 
-		if mqUserId != TEXT_BLANK && mqPassword != TEXT_BLANK {
-			// Create an empty credentials file, truncate if one exists
-			mqmftCredentialsXmlFile, err := os.OpenFile(mqmftCredentialsXmlFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-			// if we os.Open returns an error then handle it
-			if err != nil {
-				utils.PrintLog(fmt.Sprintf(MFT_CONT_ERR_OPN_CRED_FILE_0064, mqmftCredentialsXmlFileName, err))
-				return false
-			}
-			defer mqmftCredentialsXmlFile.Close()
+	// Write the updated properties to file.
+	_, writeErr := mqmftCredentialsXmlFile.WriteString(bufferCred)
+	if writeErr != nil {
+		errorMsg := fmt.Sprintf("%v", writeErr)
+		return errors.New(errorMsg)
+	}
 
+	if logLevel >= LOG_LEVEL_VERBOSE {
+		utils.PrintLog(bufferCred)
+	}
+
+	return nil
+}
+
+/**
+* Update XML data with credentials of queue manager
+ */
+func UpdateXmlWithQmgrCredentials(xmlWriter *xmldom.Document, configData string, qmName string) error {
+	var mqUserId string
+	var mqPassword string
+	var err error
+	var currentUser string
+	var plainTextPassword string
+	var errReturn error = nil
+
+	if gjson.Get(configData, "mqUserId").Exists() &&
+		gjson.Get(configData, "mqPassword").Exists() {
+		mqUserId = strings.Trim(gjson.Get(configData, "mqUserId").String(), TEXT_TRIM)
+		mqPassword = strings.Trim(gjson.Get(configData, "mqPassword").String(), TEXT_TRIM)
+
+		if len(mqUserId) > 0 && len(mqPassword) > 0 {
 			// Decode the password from base64 format
-			plainTextPassword, errDecode := Base64Decode(mqPassword)
-			if errDecode != nil {
-				utils.PrintLog(fmt.Sprintf(MFT_CONT_CRED_DECODE_FAILED_0060, err))
-				//MFT_CONT_CRED_NOT_AVAIL_ASM_DFLT_0062)
+			plainTextPassword, err = Base64Decode(mqPassword)
+			if err != nil {
+				// Password has not been Base64 encoded. Use as it is.
+				if logLevel >= LOG_LEVEL_VERBOSE {
+					utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CRED_DECODE_FAILED_0060, err))
+				}
 				plainTextPassword = mqPassword
 			} else {
 				plainTextPassword = mqPassword
@@ -210,46 +226,51 @@ func SetupCredentials(mqmftCredentialsXmlFileName string, configData string, qmN
 
 			// Get the current process user id
 			user, err := user.Current()
-			if err != nil {
-				utils.PrintLog(fmt.Sprintf(MFT_CONT_ERR_CONT_USER_0063, err))
-				return false
+			if err == nil {
+				currentUser = user.Username
+				childNode := xmlWriter.Root.CreateNode("tns:qmgr")
+				childNode.SetAttributeValue("name", qmName)
+				childNode.SetAttributeValue("user", currentUser)
+				childNode.SetAttributeValue("mqUserId", mqUserId)
+				childNode.SetAttributeValue("mqPassword", plainTextPassword)
+			} else {
+				errorMsg := fmt.Sprintf(utils.MFT_CONT_ERR_CONT_USER_0063, err)
+				errReturn = errors.New(errorMsg)
+				childNode := xmlWriter.Root.CreateNode("tns:qmgr")
+				childNode.SetAttributeValue("name", qmName)
+				childNode.SetAttributeValue("user", "unknown")
+				childNode.SetAttributeValue("mqUserId", mqUserId)
+				childNode.SetAttributeValue("mqPassword", plainTextPassword)
 			}
-			userId := user.Username
-
-			// Write a credentials
-			var credetiXmlText string
-			credetiXmlText = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-			credetiXmlText += "<tns:mqmftCredentials\n"
-			credetiXmlText += "         xmlns:tns=\"http://wmqfte.ibm.com/MQMFTCredentials\"\n"
-			credetiXmlText += "         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
-			credetiXmlText += "         xsi:schemaLocation=\"http://wmqfte.ibm.com/MQMFTCredentials MQMFTCredentials.xsd\">\n\n"
-			credetiXmlText += "<tns:qmgr name=\""
-			credetiXmlText += qmName
-			credetiXmlText += "\" user=\""
-			credetiXmlText += userId
-			credetiXmlText += "\" mqUserId=\""
-			credetiXmlText += mqUserId
-			credetiXmlText += "\" mqPassword=\""
-			credetiXmlText += plainTextPassword
-			credetiXmlText += "\"/>\n"
-			credetiXmlText += "</tns:mqmftCredentials>"
-
-			// Write the updated properties to file.
-			_, writeErr := mqmftCredentialsXmlFile.WriteString(credetiXmlText)
-			if writeErr != nil {
-				utils.PrintLog(fmt.Sprintf("%v", writeErr))
-				return false
-			}
-
-			if logLevel == LOG_LEVEL_DIGANOSTIC {
-				utils.PrintLog(credetiXmlText)
-			}
-			return true
 		}
 	} else {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_CRED_NOT_AVAIL_0061, qmName))
+		if logLevel >= LOG_LEVEL_VERBOSE {
+			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CRED_NOT_AVAIL_0061, qmName))
+		}
 	}
-	return false
+	return errReturn
+}
+
+/**
+* Update XML data with credentials of key store/trust store to xml file.
+ */
+func UpdateXmlWithKeyStoreCredentials(xmlWriter *xmldom.Document, trustStore string, trustStorePassword string) {
+	if len(trustStore) > 0 && len(trustStorePassword) > 0 {
+		childNode := xmlWriter.Root.CreateNode("tns:file")
+		childNode.SetAttributeValue("path", trustStore)
+		childNode.SetAttributeValue("password", trustStorePassword)
+	}
+}
+
+/**
+* Initialize credentials file.
+ */
+func InitializeCredentialsDocumentWriter() *xmldom.Document {
+	credentialsDoc := xmldom.NewDocument("tns:mqmftCredentials")
+	credentialsDoc.Root.SetAttributeValue("xmlns:tns", "http://wmqfte.ibm.com/MQMFTCredentials")
+	credentialsDoc.Root.SetAttributeValue("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+	credentialsDoc.Root.SetAttributeValue("xsi:schemaLocation", "http://wmqfte.ibm.com/MQMFTCredentials MQMFTCredentials.xsd")
+	return credentialsDoc
 }
 
 /**
@@ -259,8 +280,8 @@ func SetupCredentials(mqmftCredentialsXmlFileName string, configData string, qmN
  */
 func EncryptCredentialsFile(credentialsFile string) error {
 	var outb, errb bytes.Buffer
-	if logLevel == LOG_LEVEL_VERBOSE {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_CRED_ENCRYPTING_0058, credentialsFile))
+	if logLevel >= LOG_LEVEL_VERBOSE {
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CRED_ENCRYPTING_0058, credentialsFile))
 	}
 
 	// Get the path of MFT fteObfuscate command.
@@ -290,10 +311,10 @@ func EncryptCredentialsFile(credentialsFile string) error {
 	cmdObfucateCmd.Stderr = &errb
 	// Execute the fteObfuscate command. Log an error an exit in case of any error.
 	if err := cmdObfucateCmd.Run(); err != nil {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_ERROR_0042, outb.String(), errb.String()))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CMD_ERROR_0042, outb.String(), errb.String()))
 	} else {
-		if logLevel == LOG_LEVEL_VERBOSE {
-			utils.PrintLog(fmt.Sprintf(MFT_CONT_CRED_ENCRYPTED_0059, credentialsFile))
+		if logLevel >= LOG_LEVEL_VERBOSE {
+			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CRED_ENCRYPTED_0059, credentialsFile))
 		}
 	}
 	return nil
@@ -330,15 +351,7 @@ func ProcessSecureConnectionProperties(secureConfig string) bool {
 		gjson.Get(secureConfig, "trustStorePassword").Exists() &&
 		gjson.Get(secureConfig, "keyStoreType").Exists() &&
 		gjson.Get(secureConfig, "trustStoreType").Exists() {
-		//cipherSpec := strings.Trim(gjson.Get(secureConfig, "cipherSpec").String(), TEXT_TRIM)
-		//keyStore := strings.Trim(gjson.Get(secureConfig, "keyStore").String(), TEXT_TRIM)
-		//keyStorePassword := strings.Trim(gjson.Get(secureConfig, "keyStorePassword").String(), TEXT_TRIM)
-		//keyStoreType := strings.Trim(gjson.Get(secureConfig, "keyStoreType").String(), TEXT_TRIM)
-		//trustStore := strings.Trim(gjson.Get(secureConfig, "trustStore").String(), TEXT_TRIM)
-		//trustStorePassword := strings.Trim(gjson.Get(secureConfig, "trustStorePassword").String(), TEXT_TRIM)
-		//trustStoreType := strings.Trim(gjson.Get(secureConfig, "trustStoreType").String(), TEXT_TRIM)
 		return true
 	}
-
 	return false
 }

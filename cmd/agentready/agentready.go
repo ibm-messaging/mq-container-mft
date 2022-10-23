@@ -25,6 +25,15 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+const AGENT_REDY_EXIT_CODE_0 = 0
+const AGENT_REDY_EXIT_CODE_1 = 1
+const AGENT_REDY_EXIT_CODE_2 = 2
+const AGENT_REDY_EXIT_CODE_3 = 3
+const AGENT_REDY_EXIT_CODE_4 = 4
+const AGENT_REDY_EXIT_CODE_5 = 5
+const AGENT_REDY_EXIT_CODE_6 = 6
+const AGENT_REDY_EXIT_CODE_7 = 7
+
 /*
 * This file contains the source code for the readiness probe. The
 * readiness probe is program that tests if an IBM MQ Managed File
@@ -43,7 +52,7 @@ func main() {
 	//Name of the agent is retrieved from environment variable MFT_AGENT_NAME
 	agentNameEnv, agentNameEnvSet := os.LookupEnv("MFT_AGENT_NAME")
 	if !agentNameEnvSet {
-		utils.PrintLog(AGENT_REDY_ENV_AGENT_NAME_NOT_SET_3001)
+		utils.PrintLog(utils.AGENT_REDY_ENV_AGENT_NAME_NOT_SET_3001)
 		os.Exit(AGENT_REDY_EXIT_CODE_1)
 	}
 
@@ -53,7 +62,7 @@ func main() {
 	 */
 	bfgConfigFilePath, bfgConfigFilePathSet := os.LookupEnv("MFT_AGENT_CONFIG_FILE")
 	if !bfgConfigFilePathSet {
-		utils.PrintLog(AGENT_REDY_ENV_AGENT_CFG_FILE_NOT_SET_3002)
+		utils.PrintLog(utils.AGENT_REDY_ENV_AGENT_CFG_FILE_NOT_SET_3002)
 		os.Exit(AGENT_REDY_EXIT_CODE_2)
 	}
 
@@ -61,7 +70,7 @@ func main() {
 	agentConfig, e = utils.ReadConfigurationDataFromFile(bfgConfigFilePath)
 	// Exit if we had any error when reading configuration file
 	if e != nil {
-		utils.PrintLog(fmt.Sprintf(AGENT_REDY_ENV_CFG_FILE_READ_3003, bfgConfigFilePath, e))
+		utils.PrintLog(fmt.Sprintf(utils.AGENT_REDY_ENV_CFG_FILE_READ_3003, bfgConfigFilePath, e))
 		os.Exit(AGENT_REDY_EXIT_CODE_3)
 	}
 
@@ -88,7 +97,7 @@ func main() {
 	if agentPid > 1 {
 		agentRunning, err := utils.IsAgentRunning(agentPid)
 		if err != nil {
-			utils.PrintLog(fmt.Sprintf(AGENT_REDY_NOT_RUNNING_3004, agentNameEnv))
+			utils.PrintLog(fmt.Sprintf(utils.AGENT_REDY_NOT_RUNNING_3004, agentNameEnv))
 			os.Exit(AGENT_REDY_EXIT_CODE_4)
 		} else {
 			if agentRunning {
@@ -97,16 +106,16 @@ func main() {
 				if agentStatus {
 					os.Exit(AGENT_REDY_EXIT_CODE_0)
 				} else {
-					utils.PrintLog(AGENT_REDY_EVNT_NOT_FOUND_3005)
+					utils.PrintLog(utils.AGENT_REDY_EVNT_NOT_FOUND_3005)
 					os.Exit(AGENT_REDY_EXIT_CODE_5)
 				}
 			} else {
-				utils.PrintLog(fmt.Sprintf(AGENT_REDY_NOT_RUNNING_3004, agentNameEnv))
+				utils.PrintLog(fmt.Sprintf(utils.AGENT_REDY_NOT_RUNNING_3004, agentNameEnv))
 				os.Exit(AGENT_REDY_EXIT_CODE_6)
 			}
 		}
 	} else {
-		utils.PrintLog(fmt.Sprintf(AGENT_REDY_NOT_RUNNING_3004, agentNameEnv))
+		utils.PrintLog(fmt.Sprintf(utils.AGENT_REDY_NOT_RUNNING_3004, agentNameEnv))
 		os.Exit(AGENT_REDY_EXIT_CODE_7)
 	}
 }

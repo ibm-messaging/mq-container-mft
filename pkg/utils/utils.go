@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"syscall"
@@ -46,7 +45,7 @@ func ReadConfigurationDataFromFile(configFile string) (string, error) {
 
 	// read file
 	var data []byte
-	data, err = ioutil.ReadAll(jsonFile)
+	data, err = io.ReadAll(jsonFile)
 	if err != nil {
 		return "", err
 	}
@@ -58,18 +57,18 @@ func ReadConfigurationDataFromFile(configFile string) (string, error) {
 // Is agent running?
 func IsAgentRunning(agentPid int32) (bool, error) {
 	if agentPid <= 0 {
-		return false, errors.New(fmt.Sprintf("Invalid agentPid %d", agentPid))
+		return false, fmt.Errorf("invalid agentPid %d", agentPid)
 	}
 	proc, err := os.FindProcess(int(agentPid))
 	if err != nil {
-		return false, errors.New(fmt.Sprintf("%v", err))
+		return false, fmt.Errorf("%v", err)
 	}
 	err = proc.Signal(syscall.Signal(0))
 	if err == nil {
 		return true, nil
 	}
 	if err.Error() == "process already ended" {
-		return false, errors.New(fmt.Sprintf("%v", err))
+		return false, fmt.Errorf("%v", err)
 	}
 	errno, ok := err.(syscall.Errno)
 	if !ok {
@@ -102,25 +101,25 @@ func IsAgentReady(bfgDataPath string, agentName string, coordinationQMgr string)
 		defer outputLogFile.Close()
 		fi, err := outputLogFile.Stat()
 		if err != nil {
-			returnError = errors.New(fmt.Sprintf("Error finding output0.log file. Error is: %v", err))
+			returnError = fmt.Errorf("error finding output0.log file. Error is: %v", err)
 			ready = false
 		} else {
 			scanner := backscanner.New(outputLogFile, int(fi.Size()))
-			what := []byte("BFGAG0059I")
+			findBFGAG59I := []byte("BFGAG0059I")
 			// If we don't find BFGAG0059I in last 10 lines, then assume agent
 			// has not started and return false
 			for count < 10 {
 				line, _, err := scanner.LineBytes()
 				if err != nil {
 					if err == io.EOF {
-						returnError = errors.New(fmt.Sprintf("%q is not found in file", what))
+						returnError = fmt.Errorf("%q is not found in file", findBFGAG59I)
 					} else {
-						returnError = errors.New(fmt.Sprintf("Error occurred while processing log file %v", err))
+						returnError = fmt.Errorf("error occurred while processing log file %v", err)
 					}
 					break
 				}
 
-				if bytes.Contains(line, what) {
+				if bytes.Contains(line, findBFGAG59I) {
 					ready = true
 					break
 				}
@@ -139,13 +138,13 @@ func IsAgentReady(bfgDataPath string, agentName string, coordinationQMgr string)
 			}
 		}
 	} else {
-		returnError = errors.New(fmt.Sprintf("Error occurred while processing log file %v", err))
+		returnError = fmt.Errorf("error occurred while processing log file %v", err)
 	}
 	return ready, returnError
 }
 
 func ListDirectory(dirName string) {
-	files, err := ioutil.ReadDir(dirName)
+	files, err := os.ReadDir(dirName)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}
@@ -172,7 +171,7 @@ func GetAgentPid(pidFileName string) (int32, error) {
 		defer pidFile.Close()
 		// read file
 		var data []byte
-		data, err = ioutil.ReadAll(pidFile)
+		data, err = io.ReadAll(pidFile)
 		if err == nil {
 			agentPidRead, err := strconv.Atoi(string(data))
 			if err != nil {
@@ -192,23 +191,23 @@ func GetAgentPid(pidFileName string) (int32, error) {
 	return agentPid, returnError
 }
 
-// Create specified MFT data path if it does not exist
-func CreateDataPath(dataPath string) error {
+// Create specified path if it does not exist
+func CreatePath(dataPath string) error {
 	_, err := os.Stat(dataPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			err := os.MkdirAll(dataPath, 0777)
 			if err != nil {
-				return errors.New(fmt.Sprintf("Failed to create path %s due to error: %v", dataPath, err))
+				return fmt.Errorf("failed to create path %s due to error: %v", dataPath, err)
 			} else {
 				// Change permissions Linux.
 				err = os.Chmod(dataPath, 0777)
 				if err != nil {
-					return errors.New(fmt.Sprintf("Failed to modify permissions on path %s due to error %v", dataPath, err))
+					return fmt.Errorf("failed to modify permissions on path %s due to error %v", dataPath, err)
 				}
 			}
 		} else {
-			return errors.New(fmt.Sprintf("An error occurred while determining for Managed File Transfer Datapath - BFG_DATA. %v", err))
+			return fmt.Errorf("an error occurred while checking e %v", err)
 		}
 	}
 
@@ -241,7 +240,7 @@ func CopyFile(srcPath string, dstPath string) error {
 func DeleteDir(dirPath string) error {
 	err := os.RemoveAll(dirPath)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to delete directory - %s due to %v. Continuing.", dirPath, err))
+		return fmt.Errorf("failed to delete directory - %s due to %v. Continuing", dirPath, err)
 	}
 	return nil
 }
@@ -284,4 +283,23 @@ func DoesFileExist(fileName string) bool {
 		}
 	}
 	return true
+}
+
+// Write the given buffer to specified file
+func WriteData(fileName string, bufferToWrite string) error {
+	// Create an empty credentials file, truncate if one exists
+	filePointer, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	// if we os.Open returns an error then handle it
+	if err != nil {
+		return err
+	}
+	defer filePointer.Close()
+
+	// Write the updated properties to file.
+	_, writeErr := filePointer.WriteString(bufferToWrite)
+	if writeErr != nil {
+		return writeErr
+	}
+
+	return nil
 }

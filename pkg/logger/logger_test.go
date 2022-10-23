@@ -25,7 +25,7 @@ import (
 
 func TestJSONLogger(t *testing.T) {
 	buf := new(bytes.Buffer)
-	l, err := NewLogger(buf, true, true, t.Name(), "", "")
+	l, err := NewLogger(buf, true, true, t.Name(), "", "", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestJSONLogger(t *testing.T) {
 
 func TestSimpleLogger(t *testing.T) {
 	buf := new(bytes.Buffer)
-	l, err := NewLogger(buf, true, false, t.Name(), "", "")
+	l, err := NewLogger(buf, true, false, t.Name(), "", "", 1)
 	if err != nil {
 		t.Fatal(err)
 	}

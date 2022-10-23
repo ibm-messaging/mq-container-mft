@@ -1,14 +1,19 @@
-# IBM MQ Managed File Transfer Container
+# IBM MQ Managed File Transfer Agent in Container
 
 ## Overview
 IBM MQ Managed File Transfer transfers files between systems in a managed and auditable way, regardless of file size or the operating systems used. You can use Managed File Transfer to build a customized, scalable, and automated solution that enables you to manage, trust, and secure file transfers. Managed File Transfer eliminates costly redundancies, lowers maintenance costs, and maximizes your existing IT investments.
 
-Run IBM MQ Managed File Transfer agents in a container .
+Run IBM MQ Managed File Transfer agents in a container.
 
 See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 
+## What is new in this version
+This version of container image supports TLS secure connections to queue managers. You can now specify cipherspec environment variables as described below. The public keys must be mounted into the container at a specific path. See [here](docs/tls.md) for more details.
+
+Starting MQ Version 9.2.5, agents can write progress of transfers to a file in JSON format to agent's log directory. This version of agent container image can publish the contents of transfer logs to a logDNA server. Connection information of logDNA server can be supplied through environment variable **MFT_TLOG_PUBLISH_INFO**. The environment variable must point to JSON formatted file containing logDNA server connection details. The format of the JSON file is described [here](docs/tlogpublsh.md)
+
 ## Developer image
-Developer version of the MFT Agent container image is available in IBM Container Registry. Use the podman/docker command to pull the image.
+Developer version of the MFT Agent container image is available in IBM Container Registry `(icr.io/ibm-messaging/mqmft)`. Use podman/docker command to pull the image.
 
 `podman pull icr.io/ibm-messaging/mqmft`
 
@@ -31,6 +36,9 @@ Note that in order to use the image, it is necessary to accept the terms of the 
 - **MFT_LOG_LEVEL** - Optional - Level of information displayed. `info` and `verbose` are the supported values with `info` being default. Contents of agent's output0.log is displayed if MFT_LOG_LEVEL is set to `verbose`.
 - **MFT_AGENT_START_WAIT_TIME** - Optionl. An agent might take some time to start after fteStartAgent command is issued. This is the time, in seconds, the containor will wait for an agent to start. If an agent does not within the specified wait time, the container will end.
 - **MFT_MOUNT_PATH** - Optional. Environment variable pointing to path from where agent will read files or write to.
+- **MFT_COORD_QMGR_CIPHER** - Name of the CipherSpec to be used for securely connecting to coordination queue manager. 
+- **MFT_CMD_QMGR_CIPHER** - Name of the CipherSpec to be used for securely connecting to command queue manager. 
+- **MFT_AGENT_QMGR_CIPHER** -Name of the CipherSpec to be used for securely connecting to agent queue manager. 
 
 ### Location of agent configuration files
 

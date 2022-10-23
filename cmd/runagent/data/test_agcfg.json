@@ -1,0 +1,79 @@
+{
+	"waitTimeToStart":20,
+	"coordinationQMgr":{
+		"name":"SECUREQM",
+		"host":"10.254.16.17",
+		"port":1414,
+		"channel":"QS_SVRCONN",
+		"additionalProperties":{
+
+		}
+	},
+	"commandQMgr":{
+		"name":"SECUREQM",
+		"host":"10.254.16.17",
+		"port":1414,
+		"channel":"QS_SVRCONN",
+		"additionalProperties": {	
+		}
+	},
+	"agents":[{
+		"name":"BRIDGE",
+		"type":"BRIDGE",    
+		"deleteOnTermination":"true",
+		"cleanOnStart":"all",
+		"qmgrName":"QUICKSTART",
+		"qmgrHost":"10.254.16.19",
+		"qmgrPort":1414,
+		"qmgrChannel":"QS_SVRCONN",
+		"defaultServer" : "myFTPserver",
+		"maxActiveDestinationTransfers": 25,
+		"failTransferWhenCapacityReached":true,
+		"protocolServers": [{
+			"type":"SFTP",
+			"name":"newsftpserver",
+			"host":"10.17.68.52",
+			"platform":"UNIX",
+			"locale":"en-GB",
+			"listFormat":"UNIX",
+			"limitedWrite":false, 
+			"fileEncoding":"UTF8", 
+			"controlEncoding":"UTF8"
+		},{
+			"name":"myFTPserver",
+			"type":"FTP",
+			"host":"windows.hursley.ibm.com",
+			"port":1234, 
+			"platform":"windows",
+			"timeZone":"Europe/London",
+			"locale":"en_GB",
+			"fileEncoding":"UTF-8",
+			"listFormat":"unix",
+			"listFileRecentDateFormat":"unix",
+			"listFileOldDateFormat" :"unix",
+			"monthShortNames":"",
+			"limitedWrite":false,
+			"maxListFileNames": 100,
+			"maxListDirectoryLevels": 999999999,
+			"maxSessions": 60,
+			"socketTimeout" : 30,
+			"maxActiveDestinationTransfers" : 25,
+			"passiveMode":true,
+			"failTransferWhenCapacityReached": true
+		}, {
+			"name":"mySFTPserver",
+			"type":"SFTP",
+			"host":"windows.hursley.ibm.com",
+			"platform":"windows",
+			"timeZone":"Europe/London",
+			"locale":"en_GB",
+			"fileEncoding":"UTF-8",
+			"limitedWrite":"false",
+			"connectionTimeout":60
+		}],
+		"additionalProperties":{
+			"logCapture":true,
+			"enableQueueInputOutput":false
+		}
+	}]
+}

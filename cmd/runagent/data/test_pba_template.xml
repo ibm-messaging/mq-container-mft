@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tns:serverProperties xmlns:tns="http://wmqfte.ibm.com/ProtocolBridgeProperties" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://wmqfte.ibm.com/ProtocolBridgeProperties ProtocolBridgeProperties.xsd">
+  <tns:maxActiveDestinationTransfers value="25" />
+  <tns:failTransferWhenCapacityReached value="true" />
+  <tns:defaultServer name="myFTPserver" />
+  <tns:sftpServer name="newsftpserver" host="10.17.68.52" platform="UNIX" controlEncoding="UTF8" fileEncoding="UTF8" limitedWrite="false">
+    <tns:limits />
+  </tns:sftpServer>
+  <tns:ftpServer name="myFTPserver" host="windows.hursley.ibm.com" port="1234" platform="windows" timeZone="Europe/London" locale="en_GB" fileEncoding="UTF-8" listFormat="unix" listFileRecentDateFormat="unix" listFileOldDateFormat="unix" monthShortNames="" limitedWrite="false" passiveMode="true">
+    <tns:limits maxListFileNames="100" maxListDirectoryLevels="999999999" maxSessions="60" socketTimeout="30" maxActiveDestinationTransfers="25" />
+  </tns:ftpServer>
+  <tns:sftpServer name="mySFTPserver" host="windows.hursley.ibm.com" platform="windows" fileEncoding="UTF-8" limitedWrite="false">
+    <tns:limits />
+  </tns:sftpServer>
+</tns:serverProperties>

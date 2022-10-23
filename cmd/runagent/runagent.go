@@ -36,6 +36,12 @@ var logLevel int
 // Variable to track if command tracing is enabled or not
 var commandTracingEnabled bool = false
 
+// JSON configuration file path
+var jsonAgentConfigFilePath string
+
+// Agent name
+var agentNameGlobal string
+
 /**
 * Main entry point of the runagent program.
 *
@@ -45,7 +51,6 @@ var commandTracingEnabled bool = false
  */
 func main() {
 	var bfgDataPath string
-	var bfgConfigFilePath string
 	var allAgentConfig string
 	var e error
 
@@ -59,41 +64,54 @@ func main() {
 		if strings.EqualFold(logLevelStr, LOG_LEVEL_VERBOSE_TXT) {
 			// Verbose level logging.
 			logLevel = LOG_LEVEL_VERBOSE
-			utils.PrintLog(MFT_CONT_DIAGNOSTIC_LEVEL_0002)
-		} else if strings.EqualFold(logLevelStr, LOG_LEVEL_DIAG) {
-			logLevel = LOG_LEVEL_DIGANOSTIC
-			utils.PrintLog(MFT_CONT_DIAGNOSTIC_LEVEL_0003)
+			utils.PrintLog(utils.MFT_CONT_DIAGNOSTIC_LEVEL_0002)
 		} else {
 			// Any other level or unknown value, set the level to Info
 			if !strings.EqualFold(logLevelStr, LOG_LEVEL_INFO_TXT) {
-				utils.PrintLog(MFT_CONT_DIAGNOSTIC_LEVEL_0073)
+				utils.PrintLog(utils.MFT_CONT_DIAGNOSTIC_LEVEL_0073)
+			} else {
+				utils.PrintLog(utils.MFT_CONT_DIAGNOSTIC_LEVEL_0001)
 			}
 		}
 	} else {
-		utils.PrintLog(MFT_CONT_DIAGNOSTIC_LEVEL_0001)
-	}
-
-	// First check if license is accepted or not.
-	_, err := checkLicense()
-	if err != nil {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_LIC_ERROR_OCCUR_0074, err))
-		os.Exit(MFT_CONT_ERR_CODE_1)
+		utils.PrintLog(utils.MFT_CONT_DIAGNOSTIC_LEVEL_0001)
 	}
 
 	// Print container image details
 	printImageInfo()
 
+	// There should only be one instance of this process.
+	singleErr := verifySingleProcess()
+	if singleErr != nil {
+		utils.PrintLog(singleErr.Error())
+		os.Exit(MFT_CONT_ERR_CODE_24)
+	}
+
+	// First check if license is accepted or not.
+	accepted, err := checkLicense()
+	if err != nil {
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_LIC_ERROR_OCCUR_0074, err))
+		os.Exit(MFT_CONT_ERR_CODE_1)
+	}
+	// Exit if license == view
+	if !accepted {
+		os.Exit(MFT_CONT_SUCCESS_CODE_0)
+	}
+
 	// Determine we have the agent name specified in environment variable
 	agentNameEnv, agentNameSet := os.LookupEnv(MFT_AGENT_NAME)
 	if !agentNameSet {
-		utils.PrintLog(MFT_CONT_ENV_AGENT_NAME_NOT_SPECIFIED_0006)
+		utils.PrintLog(utils.MFT_CONT_ENV_AGENT_NAME_NOT_SPECIFIED_0006)
 		os.Exit(MFT_CONT_ERR_CODE_3)
 	}
 	agentNameEnv = strings.Trim(agentNameEnv, TEXT_TRIM)
+	utils.PrintLog(fmt.Sprintf(utils.MFT_AGENT_NAME_CONFIGURE, agentNameEnv))
 	if len(agentNameEnv) == 0 {
-		utils.PrintLog(MFT_CONT_ENV_AGENT_NAME_BLANK_0007)
+		utils.PrintLog(utils.MFT_CONT_ENV_AGENT_NAME_BLANK_0007)
 		os.Exit(MFT_CONT_ERR_CODE_4)
 	}
+	// Copy the name of agent
+	agentNameGlobal = agentNameEnv
 
 	// Time to wait for agent to start. Default wait time is 10 seconds
 	delayTimeStatusCheck := time.Duration(10) * time.Second
@@ -107,14 +125,22 @@ func main() {
 				delayTimeStatusCheck = time.Duration(waitTime) * time.Second
 			}
 		} else {
-			if logLevel == LOG_LEVEL_VERBOSE {
-				utils.PrintLog(MFT_CONT_ENV_AGENT_START_TIME_0008)
+			if logLevel >= LOG_LEVEL_VERBOSE {
+				utils.PrintLog(utils.MFT_CONT_ENV_AGENT_START_TIME_0008)
 			}
 		}
 	}
 
 	// Check if MFT command tracing is enabled
 	commandTracingEnabled = IsCommandTracingEnabled()
+
+	// Create directory for file transfers
+	errVol := utils.CreatePath(MOUNT_PATH_TRANSFERS)
+	if errVol != nil {
+		utils.PrintLog(errVol.Error())
+	} else {
+		utils.PrintLog("Transfer directory created")
+	}
 
 	// See if we have been given mount point for creating agent configuration and log directory.
 	bfgConfigMountPath, bfgCfgMountPathSet := os.LookupEnv(BFG_DATA)
@@ -124,7 +150,7 @@ func main() {
 			bfgDataPath = bfgConfigMountPath
 			// We have a path specified. Attempt to create the directory
 			// Ignore errors if directory already exists
-			err = utils.CreateDataPath(bfgDataPath)
+			err = utils.CreatePath(bfgDataPath)
 			// Exit the creation if an error occurs
 			if err != nil {
 				utils.PrintLog(fmt.Sprintf("%v", err))
@@ -132,9 +158,9 @@ func main() {
 			}
 		} else {
 			// Blank value was specified, hence use default
-			utils.PrintLog(MFT_CONT_ENV_BFG_DATA_BLANK_0009)
+			utils.PrintLog(utils.MFT_CONT_ENV_BFG_DATA_BLANK_0009)
 			bfgDataPath = utils.FIXED_BFG_DATAPATH
-			err = utils.CreateDataPath(bfgDataPath)
+			err = utils.CreatePath(bfgDataPath)
 			if err != nil {
 				os.Exit(MFT_CONT_ERR_CODE_6)
 			}
@@ -145,7 +171,7 @@ func main() {
 	} else {
 		// Make the default BFG_DATA path as /mnt/mftdata if BFG_DATA is not set.
 		bfgDataPath = utils.FIXED_BFG_DATAPATH
-		err = utils.CreateDataPath(bfgDataPath)
+		err = utils.CreatePath(bfgDataPath)
 		if err != nil {
 			os.Exit(MFT_CONT_ERR_CODE_7)
 		}
@@ -153,28 +179,30 @@ func main() {
 		// Set BFG_DATA environment variable so that we can run MFT commands.
 		os.Setenv(BFG_DATA, bfgDataPath)
 	}
-	utils.PrintLog(fmt.Sprintf(MFT_CONT_CONFIG_PATH_0010, bfgDataPath))
+	utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CONFIG_PATH_0010, bfgDataPath))
 
 	// Read agent configuration data from file specified in the environment
 	// variable MFT_AGENT_CONFIG_FILE.
 	bfgConfigFilePath, configFileSet := os.LookupEnv(MFT_AGENT_CONFIG_FILE)
 	if !configFileSet {
-		utils.PrintLog(MFT_CONT_ENV_AGNT_CFG_FILE_NOT_SPECIFIED_0011)
+		utils.PrintLog(utils.MFT_CONT_ENV_AGNT_CFG_FILE_NOT_SPECIFIED_0011)
 		os.Exit(MFT_CONT_ERR_CODE_8)
 	}
 	bfgConfigFilePath = strings.Trim(bfgConfigFilePath, TEXT_TRIM)
 	if bfgConfigFilePath == TEXT_BLANK {
-		utils.PrintLog(MFT_CONT_ENV_AGNT_CFG_FILE_BLANK_0012)
+		utils.PrintLog(utils.MFT_CONT_ENV_AGNT_CFG_FILE_BLANK_0012)
 		os.Exit(MFT_CONT_ERR_CODE_9)
 	}
 
+	// Copy the JSON configuration file path
+	jsonAgentConfigFilePath = bfgConfigFilePath
 	// Read the entire agent configuration data from JSON file. The configuration file
 	// may contain data for multiple agents. We will choose data for matching agent name
 	// specified in MFT_AGENT_NAME environment variable
 	allAgentConfig, e = utils.ReadConfigurationDataFromFile(bfgConfigFilePath)
 	if e != nil {
 		// Exit if we had any error when reading configuration file
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_FILE_READ_0013, bfgConfigFilePath, e))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_FILE_READ_0013, bfgConfigFilePath, e))
 		os.Exit(MFT_CONT_ERR_CODE_10)
 	}
 
@@ -182,7 +210,7 @@ func main() {
 	// are not available
 	errorCrd := ValidateCoordinationAttributes(allAgentConfig)
 	if errorCrd != nil {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_CORD_MISSING_ATTRIBS_0016, allAgentConfig, errorCrd))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_MISSING_ATTRIBS_0016, bfgConfigFilePath, errorCrd))
 		os.Exit(MFT_CONT_ERR_CODE_11)
 	}
 
@@ -190,8 +218,11 @@ func main() {
 	// not available
 	errorCmd := ValidateCommandAttributes(allAgentConfig)
 	if errorCmd != nil {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_CORD_MISSING_ATTRIBS_0016, allAgentConfig, errorCmd))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_MISSING_ATTRIBS_0016, bfgConfigFilePath, errorCmd))
 		os.Exit(MFT_CONT_ERR_CODE_12)
+	}
+	if logLevel >= LOG_LEVEL_VERBOSE {
+		utils.PrintLog(fmt.Sprintf("All configurations in %s file: %v", bfgConfigFilePath, allAgentConfig))
 	}
 
 	// We may have multiple agent configurations defined in the JSON file. Iterate through all
@@ -199,23 +230,40 @@ func main() {
 	var singleAgentConfig string
 	configurationFound := false
 	agentsJson := gjson.Get(allAgentConfig, "agents").Array()
+	// Return an error if no agent configuration is supplied
+	if len(agentsJson) == 0 {
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_NO_AGENT_CONFIG_SUPPLIED, bfgConfigFilePath))
+		os.Exit(MFT_CONT_ERR_CODE_23)
+	}
+
+	// Loop through the supplied JSON and identify configuration for agent name supplied
+	// via environment variable MFT_AGENT_NAME
 	for i := 0; i < len(agentsJson); i++ {
 		singleAgentConfig = agentsJson[i].String()
-		agentNameConfig := gjson.Get(singleAgentConfig, "name").String()
-		if strings.Contains(agentNameConfig, agentNameEnv) {
-			configurationFound = true
-			break
+		if logLevel >= LOG_LEVEL_VERBOSE {
+			utils.PrintLog(fmt.Sprintf(utils.MFT_AGENT_JSON_CONFIG, singleAgentConfig))
+		}
+		if gjson.Get(singleAgentConfig, "name").Exists() {
+			agentNameConfig := gjson.Get(singleAgentConfig, "name").String()
+			if logLevel >= LOG_LEVEL_VERBOSE {
+				utils.PrintLog(fmt.Sprintf(utils.MFT_AGENT_NAME_CONFIG_FILE, agentNameConfig))
+			}
+			agentNameConfig = strings.Trim(agentNameConfig, TEXT_TRIM)
+			if strings.EqualFold(agentNameConfig, agentNameEnv) {
+				configurationFound = true
+				break
+			}
 		}
 	}
 
 	// Exit if we did not find the configuration for specified agent
 	if !configurationFound {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_AGENT_CONFIG_MISSING_0019, agentNameEnv, bfgConfigFilePath))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_AGENT_CONFIG_MISSING_0019, agentNameEnv, bfgConfigFilePath))
 		os.Exit(MFT_CONT_ERR_CODE_13)
 	} else {
 		err := ValidateAgentAttributes(singleAgentConfig)
 		if err != nil {
-			utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_AGENT_CONFIG_ERROR_0023, bfgConfigFilePath, err))
+			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_AGENT_CONFIG_ERROR_0023, bfgConfigFilePath, err))
 			os.Exit(MFT_CONT_ERR_CODE_14)
 		}
 	}
@@ -226,21 +274,21 @@ func main() {
 	// Setup coordination configuration
 	coordinationCreated := SetupCoordination(allAgentConfig, bfgDataPath, agentNameEnv)
 	if !coordinationCreated {
-		utils.PrintLog(MFT_CONT_CORD_CFG_FAILED_0029)
+		utils.PrintLog(utils.MFT_CONT_CORD_CFG_FAILED_0029)
 		os.Exit(MFT_CONT_ERR_CODE_15)
 	}
 
 	// Setup command configuration
 	commandsCreated := SetupCommands(allAgentConfig, bfgDataPath, agentNameEnv)
 	if !commandsCreated {
-		utils.PrintLog(MFT_CONT_CMD_CFG_FAILED_0030)
+		utils.PrintLog(utils.MFT_CONT_CMD_CFG_FAILED_0030)
 		os.Exit(MFT_CONT_ERR_CODE_16)
 	}
 
 	// Create the specified agent configuration
 	setupAgentDone := SetupAgent(singleAgentConfig, bfgDataPath, coordinationQMgr)
 	if !setupAgentDone {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_CFG_FAILED_0031, agentNameEnv))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_CFG_FAILED_0031, agentNameEnv))
 		os.Exit(MFT_CONT_ERR_CODE_17)
 	}
 
@@ -250,25 +298,25 @@ func main() {
 	// Submit request to start the agent.
 	startAgentDone := StartAgent(agentNameEnv, coordinationQMgr)
 	if !startAgentDone {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_START_FAILED_0032, agentNameEnv))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_START_FAILED_0032, agentNameEnv))
 		os.Exit(MFT_CONT_ERR_CODE_18)
 	}
 
 	// Setup agent log mirroring.
 	var wg sync.WaitGroup
 	defer func() {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_WAIT_MIRROR_CMP_0035, agentNameEnv))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_WAIT_MIRROR_CMP_0035, agentNameEnv))
 		wg.Wait()
 	}()
 
 	ctxAgentLog, cancelMirrorAgentLog := context.WithCancel(context.Background())
 	defer func() {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_WAIT_MIRROR_STOP_0036, agentNameEnv))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_WAIT_MIRROR_STOP_0036, agentNameEnv))
 		cancelMirrorAgentLog()
 	}()
 
 	// Display the contents of agent's output0.log file on the console.
-	if logLevel == LOG_LEVEL_VERBOSE {
+	if logLevel >= LOG_LEVEL_VERBOSE {
 		agentLogPath := bfgDataPath + DIR_AGENT_LOGS + coordinationQMgr + DIR_AGENTS + agentNameEnv + "/logs/output0.log"
 		mirrorAgentLogs(ctxAgentLog, &wg, agentNameEnv, agentLogPath, "", "", LOG_TYPE_CONSOLE, -1)
 	}
@@ -278,16 +326,28 @@ func main() {
 	agentReady := PingAgent(coordinationQMgr, agentNameEnv, pingWaitTime)
 	if !agentReady {
 		//if agent not started yet, wait for some time and then reissue fteListAgents commad
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_NOT_STARTED_0033, agentNameEnv, delayTimeStatusCheck/time.Second))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_NOT_STARTED_0033, agentNameEnv, delayTimeStatusCheck/time.Second))
 		time.Sleep(delayTimeStatusCheck)
 		agentReady = PingAgent(coordinationQMgr, agentNameEnv, pingWaitTime)
 		// Agent has not started, exit.
 		if !agentReady {
-			if logLevel == LOG_LEVEL_INFO {
-				utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_FAILED_TO_START_0034, agentNameEnv))
+			if logLevel >= LOG_LEVEL_INFO {
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_FAILED_TO_START_0034, agentNameEnv))
 			}
 			os.Exit(MFT_CONT_ERR_CODE_21)
 		}
+	}
+
+	// Check if the agent is ready, by searching for BFGAG0059 event ID
+	// output0.log file
+	isReady, readyError := utils.IsAgentReady(bfgDataPath, agentNameEnv, coordinationQMgr)
+	if readyError != nil || !isReady {
+		if readyError != nil {
+			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_NOT_READY_ERROR, agentNameEnv, readyError))
+		}
+		// There was an error or agent is not ready, then exit
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_NOT_READY, agentNameEnv))
+		os.Exit(MFT_CONT_ERR_CODE_21)
 	}
 
 	// Mirror contents of capture log on the console
@@ -301,7 +361,18 @@ func main() {
 
 	// If agent status is READY or ACTIVE, then we are good.
 	if agentReady {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_STARTED_0038, agentNameEnv))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_STARTED_0038, agentNameEnv))
+		// Create resource monitor if asked for
+		if gjson.Get(singleAgentConfig, "resourceMonitors").Exists() {
+			result := gjson.Get(singleAgentConfig, "resourceMonitors")
+			result.ForEach(func(key, value gjson.Result) bool {
+				createResourceMonitor(coordinationQMgr, agentNameEnv,
+					gjson.Get(singleAgentConfig, "qmgrName").String(),
+					key.String(),
+					value.String())
+				return true // keep looping till end
+			})
+		}
 
 		// Setup a siganl handle and wait for till container is stopped.
 		signalControl := signalHandler(agentNameEnv, coordinationQMgr)
@@ -314,13 +385,13 @@ func main() {
 		if deleteAgentOnExit {
 			deleteAgent(coordinationQMgr, agentNameEnv)
 		} else {
-			utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_CFG_DELETED_0039, agentNameEnv))
+			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_CFG_DELETED_0039, agentNameEnv))
 		}
 
 		// Agent has ended. Return success
 		os.Exit(MFT_CONT_SUCCESS_CODE_0)
 	} else {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_START_FAILED_0040, agentNameEnv))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_START_FAILED_0040, agentNameEnv))
 		os.Exit(MFT_CONT_ERR_CODE_22)
 	}
 }
@@ -335,7 +406,7 @@ func setupMirrorCaptureLogs(ctxCaptureLog context.Context, wg *sync.WaitGroup, b
 			mirrorAgentLogs(ctxCaptureLog, wg, agentNameEnv, captureLogPath, "", "", LOG_TYPE_CONSOLE, -1)
 		} else {
 			if !strings.EqualFold(agentCaptureLogEnv, TEXT_NO) {
-				utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_CAPT_LOG_ERROR_0037, agentCaptureLogEnv))
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_CAPT_LOG_ERROR_0037, agentCaptureLogEnv))
 			}
 		}
 	}
@@ -365,7 +436,7 @@ func setupMirrorTransferLogs(ctxTransferLog context.Context, wg *sync.WaitGroup,
 			serverLogData, e := utils.ReadConfigurationDataFromFile(agentTransferLogEnv)
 			if e != nil {
 				// Exit if we had any error when reading configuration file
-				utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_FILE_READ_0013, agentTransferLogEnv, e))
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_FILE_READ_0013, agentTransferLogEnv, e))
 			} else {
 				// Check if the data can be bas64 decoded - as the data may have come from
 				// kubernetes secret
@@ -374,13 +445,13 @@ func setupMirrorTransferLogs(ctxTransferLog context.Context, wg *sync.WaitGroup,
 					// decode successful
 					serverLogData = serverLogDataDecoded
 				} else {
-					// Failed to decode, try parsing as is.
+					// Failed to decode, use it as it is.
 				}
 
 				// Is it a valid json
 				if !gjson.Valid(serverLogData) {
 					// Not valid. log a message to console and exit
-					utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_FILE_READ_0013, agentTransferLogEnv, e))
+					utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_FILE_READ_0013, agentTransferLogEnv, e))
 					return
 				}
 				if gjson.Get(serverLogData, KEY_TYPE).Exists() {
@@ -405,7 +476,7 @@ func setupMirrorTransferLogs(ctxTransferLog context.Context, wg *sync.WaitGroup,
 				}
 			}
 		} else {
-			utils.PrintLog(fmt.Sprintf(MFT_CONT_AGNT_TRANSFER_LOG_ERROR_0078, agentTransferLogEnv))
+			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_TRANSFER_LOG_ERROR_0078, agentTransferLogEnv))
 		}
 	}
 }
@@ -435,11 +506,11 @@ func printImageInfo() {
 	// running inside a known container type like Docker/Kube/Oci etc.
 	runtime, err := DetectRuntime()
 	if err != nil && err != ErrContainerRuntimeNotFound {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_RUNTM_ERROR_OCCUR_0075, err))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_RUNTM_ERROR_OCCUR_0075, err))
 		os.Exit(MFT_CONT_ERR_CODE_2)
 	} else {
 		// We are running in a container, so just print it on console
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_RUNTIME_NAME_0005, runtime))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_RUNTIME_NAME_0005, runtime))
 	}
 	utils.PrintLog(fmt.Sprintf("Base image: %s %s", os.Getenv("ENV_BASE_IMAGE_NAME"), os.Getenv("ENV_BASE_IMAGE_VERSION")))
 

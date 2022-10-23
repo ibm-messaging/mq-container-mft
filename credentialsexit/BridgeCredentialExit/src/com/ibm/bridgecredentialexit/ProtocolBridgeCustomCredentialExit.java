@@ -78,6 +78,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 	final private Map<String,CredentialsExt> credentialsMap = new HashMap<String, CredentialsExt>();
 	final private int ENCODED_PLAIN_TEXT = 0;
 	final private int ENCODED_BASE64 = 1;
+	private boolean enableDebugLogs = false;
 
 	/* (non-Javadoc)
 	 * @see com.ibm.wmqfte.exitroutine.api.ProtocolBridgeCredentialExit#initialize(java.util.Map)
@@ -95,6 +96,11 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 			return true;
 		}
 		
+		// Enable debug logs.
+		String enableDebugLogStr = System.getenv("ENABLE_PBA_CREDENTIAL_DEBUG_LOG");
+		if (enableDebugLogStr != null && enableDebugLogStr.trim().equals("true"))
+			enableDebugLogs = true;
+
 		// Trim the whitespaces if any.
 		propertiesFilePath = propertiesFilePath.trim();
 
@@ -130,29 +136,39 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 					jsonObj = new JSONObject(fileData.trim());
 					initialisationResult = processV2Credentials(jsonObj);
 				} catch(JSONException jex) {
-					System.out.println("Failed to load credentials in JSON format from file " +  propertiesFilePath + ". The file does not appear to contain credentials in valid JSON format. Agent will now attempt to decode credentials in V1 (key-value) format");
-					System.err.println("Exception details: " + jex);
+					if (enableDebugLogs) {
+						System.out.println("Failed to load credentials in JSON format from file " +  propertiesFilePath + ". The file does not appear to contain credentials in valid JSON format. Agent will now attempt to decode credentials in V1 (key-value) format");
+						System.err.println("Exception details: " + jex);
+					}
 
 					// we failed to parse the JSON data, Then this must be old style credential format.
 					try {
 						initialisationResult  = parseV1FormatCredentials(propertiesFilePath);
 					} catch (IOException e) {
 						System.err.println("Error loading credentials from file " + propertiesFilePath + " due to exception " + e);
-						System.err.println(e.getStackTrace());
+						if (enableDebugLogs) {
+							System.err.println(e.getStackTrace());
+						}
 					}
 				} catch(Exception ex) {
 					System.err.println("Failed to load credentials due to expection. " + ex);
-					System.err.println(ex.getStackTrace());
+					if (enableDebugLogs) {
+						System.err.println(ex.getStackTrace());
+					}
 				}
 			}
 		}
 		catch (FileNotFoundException ex) {
-			System.err.println("Unable to find the credentials file: " + propertiesFilePath);
-			System.err.println(ex.getStackTrace());
+			System.err.println("Credentials file " + propertiesFilePath + " not found.");
+			if (enableDebugLogs) {
+				System.err.println(ex.getStackTrace());
+			}
 		}
 		catch (Exception ex) {
-			System.err.println("Error initializing ProtocolBridgeCustomCredentialExit: " + ex);
-			System.err.println(ex.getStackTrace());
+			System.err.println("Failed to initialize custom ProtocolBridgeCustomCredentialExit. The error is: " + ex);
+			if (enableDebugLogs) {
+				System.err.println(ex.getStackTrace());
+			}
 		}
 
 		// Allow agent to come up even if there is an error
@@ -194,7 +210,6 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 				}
 			}
 		}
-
 		return initialized;
 	}
 
@@ -232,7 +247,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 				parsed = processV2FTPCredential(jsonObj);
 			}
 		} else {
-			System.out.println("Server type not found");
+			System.out.println("Invalid Server type: " + serverType);
 		}
 
 		return parsed;
@@ -301,7 +316,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		String decodedPrivateKey = null;
 		List <CredentialPrivateKey> privateKeys = new ArrayList<CredentialPrivateKey>();
 		// Private key will be in base64 encoded format. We must decode it now.
-		if(serverPrivateKey != null) {
+		if(serverPrivateKey != null && serverPrivateKey.trim().length() > 0) {
 			Base64.Decoder decoder = Base64.getDecoder();  
 			// Decode string  
 			decodedPrivateKey = new String(decoder.decode(serverPrivateKey));  						
@@ -309,7 +324,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		}
 
 		// Host key also must be in base64 encoding.
-		if (serverHostKey != null) {
+		if (serverHostKey != null && serverHostKey.trim().length() > 0) {
 			Base64.Decoder decoder = Base64.getDecoder();  
 			// Decode string  
 			serverHostKey = new String(decoder.decode(serverHostKey));  						
@@ -318,6 +333,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		Credentials credentials = null;
 		// If private key is not specified, then use UID/PWD combination.
 		if(privateKeys.size() == 0) {
+			writeDebugLog("Private key size 0 " + serverHostName + " " + requesterUserId + " " +  serverUserId + " " + serverPassword);
 			credentials = new Credentials( new CredentialUserId(serverUserId), new CredentialPassword(serverPassword));
 		} else {
 			// If server host key is not specified, then use private keys
@@ -330,7 +346,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 			// Set the password
 			credentials.setPassword(new CredentialPassword(serverPassword));
 		}
-
+		writeDebugLog("Credential key add to list " + serverHostName + " " + requesterUserId + " " +  serverUserId + " " + serverPassword);
 		// Add it to the list
 		credentialsMap.put(serverHostName, new CredentialsExt(requesterUserId, credentials));
 		return true;
@@ -437,7 +453,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 			parsed = true;
 		} else {
 			// Unknown encoding, don't do anything.
-			System.err.println("Unknown encoding ");
+			System.err.println("Unknown encoding " + encType);
 		}
 
 		return parsed;
@@ -480,13 +496,17 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 	@Override
 	public CredentialExitResult mapMQUserId(ProtocolServerEndPoint endPointAddress, String mqUserId) {
 		CredentialExitResult result = null;
+		writeDebugLog("Endpoint Host: " + endPointAddress.getHost() + " Name: " + endPointAddress.getName() + " " + mqUserId);
+
 		// Attempt to get the server credentials for the given mq user id
-		final CredentialsExt credentials = credentialsMap.get(endPointAddress.getName().trim());
+		final CredentialsExt credentials = credentialsMap.get(endPointAddress.getHost().trim());
 		if ( credentials == null) {
 			// No entry has been found so return no mapping found with no credentials
+			writeLog("Credentials for server" + endPointAddress.getHost()+ "not found ");
 			result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
 		}
 		else {
+			writeDebugLog("Requested Uid " + credentials.getRequesterId());
 			// We may need to match the given userId. So do that now.
 			if(mqUserId != null && credentials.getRequesterId() != null) {
 				// We may have wild cards.
@@ -496,24 +516,38 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 					Pattern p = Pattern.compile(requesterIdCred);
 					Matcher m = p.matcher(mqUserId);
 					if(m.matches()) {
+						writeDebugLog("Matching Uid found " + requesterIdCred);
 						result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED, credentials.getCredential());
 					} else {
 						// If the requester id is *, then match every id that is supplied
+						writeDebugLog("Matching Uid not found " + requesterIdCred);
 						if (credentials.getRequesterId().equalsIgnoreCase("*")) {
 							result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED, credentials.getCredential());
 						} else {
+							writeDebugLog("Not generic UID " + requesterIdCred);
 							result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
 						}
 					}
 				} catch (Exception ex) {
-					System.out.println(ex);
+					writeDebugLog(ex.toString());
 					result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
 				}
 			} else {
+				writeLog("Requester id and mq userid not matching ");
 				// Some credentials have been found so return success to the user along with the credentials
 				result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED, credentials.getCredential());
 			}
 		}
 		return result;
+	}
+
+	private void writeLog(String log) {
+		System.out.println(log);
+	}
+
+	// Write a debug log to agent's output0.log
+	private void writeDebugLog(String log) {
+		if (enableDebugLogs)
+			System.out.println(log);
 	}
 }

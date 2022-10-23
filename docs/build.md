@@ -17,13 +17,13 @@ This procedure works for building the MQ Managed File Transfer Redistributable p
 1. Clone the GitHub repository to local directory.
 2. Login to the Red Hat Registry: `podman login registry.redhat.io` using your Customer Portal credentials.
 3. Navigate to directory where `Dockerfile-agent` is located.
-4. Download **9.2.4.0-IBM-MQFA-Redist-LinuxX64.tar.gz** or higher from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into the current directory.
-5. Unpack the **9.2.4.0-IBM-MQFA-Redist-LinuxX64.tar.gz** to a temporay directory. Copy com.ibm.wmqfte.com.ibm.wmqfte.exitroutines.api.jar to credentialsexit/BridgeCredentialExit/thirdparty directory.
+4. Download **9.3.1.0-IBM-MQFA-Redist-LinuxX64.tar.gz** or higher from [IBM Fixcentral](https://www.ibm.com/support/fixcentral/) into the current directory.
+5. Unpack the **9.3.1.0-IBM-MQFA-Redist-LinuxX64.tar.gz** to a temporay directory. Copy com.ibm.wmqfte.com.ibm.wmqfte.exitroutines.api.jar to credentialsexit/BridgeCredentialExit/thirdparty directory.
 6. Download json-20210307.jar file from [Maven Repository](https://mvnrepository.com/artifact/org.json/json/20210307) and copy to credentialsexit/BridgeCredentialExit/thirdparty directory.
    **Note:** The redistributable MFT package must be present in same path as the **Dockerfile-agent** file.
 7. Run the following command to build container image
 
-   `podman build -f Dockerfile-agent -t mqmft:9.2.4 --build-arg ARG_MQMFT_REDIST_FILE=9.2.4.0-IBM-MQFA-Redist-LinuxX64.tar.gz`
+   `podman build -f Dockerfile-agent -t mqmft:9.3.1 --build-arg ARG_MQMFT_REDIST_FILE=9.3.1.0-IBM-MQFA-Redist-LinuxX64.tar.gz`
    
    You can replace the `9.2.4.0-IBM-MQFA-Redist-LinuxX64.tar.gz` with the version of the redistributable package of your choice.
 

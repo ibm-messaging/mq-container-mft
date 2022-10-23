@@ -44,7 +44,7 @@ func signalHandler(agentName string, coordinationQMgr string) chan int {
 		for {
 			select {
 			case sig := <-stopSignals:
-				utils.PrintLog(fmt.Sprintf(MFT_CONT_SIGNAL_RECD_0071, sig))
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_SIGNAL_RECD_0071, sig))
 				signal.Stop(reapSignals)
 				signal.Stop(stopSignals)
 				// #nosec G104
@@ -55,16 +55,16 @@ func signalHandler(agentName string, coordinationQMgr string) chan int {
 				// End the goroutine
 				return
 			case <-reapSignals:
-				if logLevel == LOG_LEVEL_DIGANOSTIC {
-					utils.PrintLog(MFT_CONT_SIGNAL_CHILD_0069)
+				if logLevel >= LOG_LEVEL_VERBOSE {
+					utils.PrintLog(utils.MFT_CONT_SIGNAL_CHILD_0069)
 				}
 				reapZombies()
 			case job := <-control:
 				switch {
 				case job == startReaping:
 					// Add SIGCHLD to the list of signals we're listening to
-					if logLevel == LOG_LEVEL_DIGANOSTIC {
-						utils.PrintLog(MFT_CONT_SIGNAL_LISTEN_0070)
+					if logLevel >= LOG_LEVEL_VERBOSE {
+						utils.PrintLog(utils.MFT_CONT_SIGNAL_LISTEN_0070)
 					}
 					signal.Notify(reapSignals, syscall.SIGCHLD)
 				case job == reapNow:
@@ -86,8 +86,8 @@ func reapZombies() {
 		if pid == 0 || err == unix.ECHILD {
 			return
 		}
-		if logLevel == LOG_LEVEL_DIGANOSTIC {
-			utils.PrintLog(fmt.Sprintf(MFT_CONT_REAPED_PID_0072, pid))
+		if logLevel >= LOG_LEVEL_VERBOSE {
+			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_REAPED_PID_0072, pid))
 		}
 	}
 }
@@ -98,7 +98,7 @@ func stopAgent(agentName string, coordinationQMgr string) {
 	// Get the path of MFT fteStopAgent command.
 	cmdStopAgntPath, lookPathErr := exec.LookPath("fteStopAgent")
 	if lookPathErr != nil {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_NOT_FOUND_0028, lookPathErr))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CMD_NOT_FOUND_0028, lookPathErr))
 		os.Exit(1)
 	}
 	cmdStopAgnt := &exec.Cmd{
@@ -116,7 +116,7 @@ func stopAgent(agentName string, coordinationQMgr string) {
 		utils.PrintLog(fmt.Sprintf("Command: %s\n", outb.String()))
 		utils.PrintLog(fmt.Sprintf("Error %s\n", errb.String()))
 	} else {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_AGENT_STOPPED_0068, agentName))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGENT_STOPPED_0068, agentName))
 	}
 }
 

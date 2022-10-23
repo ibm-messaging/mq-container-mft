@@ -63,19 +63,20 @@ const MFT_BRIDGE_PROPERTIES_FILE = "MFT_BRIDGE_PROPERTIES_FILE"
 // with "No" being the default.
 const MFT_TRACE_COMMANDS = "MFT_TRACE_COMMANDS"
 
-// Path where trace files are created. A mounted path can be provided for
-// for this. If not provided, the trace files will be written to current
-// working directory.
-const MFT_TRACE_COMMAND_PATH = "MFT_TRACE_COMMAND_PATH"
-
 // Environment variable pointing to path where files will be read from or written to
 const MFT_MOUNT_PATH = "MFT_MOUNT_PATH"
 
 // BFG_JVM_PROPERTIES
 const MFT_BFG_JVM_PROPERTIES = "BFG_JVM_PROPERTIES"
 
-// Configuration file containing details of logDNA server
-const MFT_AGENT_TRANSFER_LOG_PUBLISH_CONFIG_FILE = "MFT_AGENT_TRANSFER_LOG_PUBLISH_CONFIG_FILE"
+// Configuration file containing details of logDNA or similar server
+const MFT_AGENT_TRANSFER_LOG_PUBLISH_CONFIG_FILE = "MFT_TLOG_PUBLISH_INFO"
 
-// Resource monitor configuration file
-const MFT_MONITOR_CONFIG_FILE = "MFT_MONITOR_CONFIG_FILE"
+// Coordination queue manager cipherspec
+const MFT_COORD_QMGR_CIPHER = "MFT_COORD_QMGR_CIPHER"
+
+// Command queue manager cipherspec
+const MFT_CMD_QMGR_CIPHER = "MFT_CMD_QMGR_CIPHER"
+
+// Agent queue manager cipherspec
+const MFT_AGENT_QMGR_CIPHER = "MFT_AGENT_QMGR_CIPHER"

@@ -38,24 +38,23 @@ const PBA_CUSTOM_CRED_DEPEND_LIB = "/customexits/mqft/pbaexit/json-20210307.jar"
 // path will be local to container and will get removed when container ends
 const DEFAULT_MOUNT_PATH_FOR_TRANSFERS = "/mountpath/**"
 
+// Source and Destination path for transfers
+const MOUNT_PATH_TRANSFERS = "/mountpath"
+
 // Controls the amount of diagnostic logs displayed on the console.
 // Minimal diagnostic information. This is the default log level
 const LOG_LEVEL_INFO = 1
 
-// Verbose information
+// Detailed information
 const LOG_LEVEL_VERBOSE = 2
-
-// Diganostic information
-const LOG_LEVEL_DIGANOSTIC = 3
 
 // Supported agent types
 const AGENT_TYPE_STANDARD = "STANDARD"
 const AGENT_TYPE_BRIDGE = "BRIDGE"
 
 // Supported log levels
-const LOG_LEVEL_VERBOSE_TXT = "verbose"
-const LOG_LEVEL_DIAG = "diagnostics"
 const LOG_LEVEL_INFO_TXT = "info"
+const LOG_LEVEL_VERBOSE_TXT = "verbose"
 
 // log file types
 const LOG_TYPE_TRANSFER = "tlog"
@@ -79,6 +78,25 @@ const DIR_AGENTS = "/agents/"
 // License file path
 const DIR_LICENSE_FILES = "/opt/mqm/mqft/licences/"
 
+// Path used for storing keystores and truststores
+const KEYSTORES_PATH = "/run/keystores"
+
+// Coordination queue manager keystore file
+const COORD_QM_KEYSTORE = "coordkeystore.p12"
+const COORD_QM_TRUSTSTORE = "coordtruststore.p12"
+
+// Command queue manager keystore file
+const CMD_QM_KEYSTORE = "cmdkeystore.p12"
+const CMD_QM_TRUSTSTORE = "cmdtruststore.p12"
+
+// Agent queue manager keystore and trust file
+const AGENT_QM_KEYSTORE = "agentkeystore.p12"
+const AGENT_QM_TRUSTSTORE = "agenttruststore.p12"
+
+const coordinationQMCertPath = "/etc/mqmft/pki/coordination"
+const commandQMCertPath = "/etc/mqmft/pki/command"
+const agentQMCertPath = "/etc/mqmft/pki/agent"
+
 // Trim text
 const TEXT_TRIM = " "
 
@@ -86,6 +104,28 @@ const TEXT_TRIM = " "
 const TEXT_BLANK = ""
 const TEXT_YES = "yes"
 const TEXT_NO = "no"
+
+// Credential file names
+const MFT_CMD_CRED_SLASH = "/cmdcredentials.xml"
+const MFT_CORD_CRED_SLASH = "/coordcredentials.xml"
+const MFT_AGENT_CRED_SLASH = "/agentcredentials.xml"
+const MFT_USER_SANDBOX_SLASH = "/UserSandboxes.xml"
+
+// MFT config path
+const MFT_CONFIG_PATH_SUFFIX = "/mqft/config/"
+
+// MFT log path
+const MFT_LOG_PATH_SUFFIX = "/mqft/logs"
+
+// Agents
+const MFT_AGENTS_SLASH = "/agents/"
+const MFT_EXITS_SLASH = "/exits/"
+
+// command properties
+const MFT_CMD_PROPS_SLASH = "/command.properties"
+const MFT_CORD_PROPS_SLASH = "/coordination.properties"
+const MFT_AGENT_PROPS_SLASH = "/agent.properties"
+const MFT_PBA_PROPS_SLASH = "/ProtocolBridgeProperties.xml"
 
 // Error codes returned by runagent process
 const MFT_CONT_SUCCESS_CODE_0 = 0
@@ -111,3 +151,10 @@ const MFT_CONT_ERR_CODE_19 = 19
 const MFT_CONT_ERR_CODE_20 = 20
 const MFT_CONT_ERR_CODE_21 = 21
 const MFT_CONT_ERR_CODE_22 = 22
+const MFT_CONT_ERR_CODE_23 = 23
+const MFT_CONT_ERR_CODE_24 = 24
+
+// Data types used by ProtocolBridgeProperties.xml
+const DATA_TYPE_STRING = 1
+const DATA_TYPE_INT = 2
+const DATA_TYPE_BOOL = 3

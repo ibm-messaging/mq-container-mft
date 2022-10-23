@@ -21,10 +21,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/ibm-messaging/mq-container-mft/pkg/utils"
+	"github.com/subchen/go-xmldom"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 // Setup coordination configuration for agent.
@@ -34,7 +37,7 @@ func SetupCoordination(allAgentConfig string, bfgDataPath string, agentNameEnv s
 	var created bool = false
 	coordinationQueueManagerName := gjson.Get(allAgentConfig, "coordinationQMgr.name").String()
 	// Setup coordination configuration
-	utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_CORD_CONFIG_MSG_0024, coordinationQueueManagerName, agentNameEnv))
+	utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_CORD_CONFIG_MSG_0024, agentNameEnv, coordinationQueueManagerName))
 
 	// Get the path of MFT fteSetupCoordination command.
 	cmdCoordPath, lookPathErr := exec.LookPath("fteSetupCoordination")
@@ -83,58 +86,115 @@ func SetupCoordination(allAgentConfig string, bfgDataPath string, agentNameEnv s
 		cmdSetupCoord.Stdout = &outb
 		cmdSetupCoord.Stderr = &errb
 		if err := cmdSetupCoord.Run(); err != nil {
-			utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_ERROR_0042, outb.String(), errb.String()))
+			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CMD_ERROR_0042, outb.String(), errb.String()))
 		} else {
-			if logLevel == LOG_LEVEL_DIGANOSTIC {
-				utils.PrintLog(fmt.Sprintf("Command: %s", outb.String()))
+			if logLevel >= LOG_LEVEL_VERBOSE {
+				utils.PrintLog(fmt.Sprintf("Command output: %s", outb.String()))
 			}
 
 			// Update coordination properties file with additional attributes specified.
-			coordinationPropertiesFile := bfgDataPath + "/mqft/config/" + coordinationQueueManagerName + "/coordination.properties"
-			var coordCredFilePath string = TEXT_BLANK
-			// If a credentials file has been specified as environment variable, then set it here
-			credPath, credPathSet := os.LookupEnv(MFT_CREDENTIAL_FILE)
-			if credPathSet {
-				credPath = strings.Trim(credPath, TEXT_TRIM)
-				if credPath != TEXT_BLANK {
-					if utils.DoesFileExist(credPath) {
-						coordCredFilePath = credPath
-					} else {
-						utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_CORD_CONFIG_CRED_NOT_EXIST_0025, credPath))
-						return false
-					}
-				} else {
-					utils.PrintLog(MFT_CONT_CFG_CORD_CONFIG_CRED_IGNORED_0026)
-				}
-			} else {
-				if gjson.Get(allAgentConfig, "coordinationQMgr.qmgrCredentials").Exists() {
-					// Update coordination queue manager credentials file
-					// Configuration file has not been provided. Make an attempt to
-					// read UID/PWD from agent configuration JSON file and create
-					// the MQMFTCredentials file place it in agent's config directory.
-					// The credentials file will be encrypted using a fixed key.
-					coordCredFilePath = bfgDataPath + "/mqft/config/" + coordinationQueueManagerName + "/CoordCredentials.xml"
-					if SetupCredentials(coordCredFilePath, gjson.Get(allAgentConfig, "coordinationQMgr.qmgrCredentials").String(),
-						coordinationQueueManagerName) {
-						// Attempt to encrypt the credentials file with a fixed key
-						EncryptCredentialsFile(coordCredFilePath)
-					}
-				}
-			}
-			if logLevel == LOG_LEVEL_VERBOSE && len(coordCredFilePath) > 0 {
-				utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_CORD_CONFIG_CRED_PATH_0027, coordCredFilePath))
-			}
+			coordinationPropertiesFile := bfgDataPath + MFT_CONFIG_PATH_SUFFIX + coordinationQueueManagerName + MFT_CORD_PROPS_SLASH
+			// Coordination queue manager credentials file
+			var coordCredFilePath string = bfgDataPath + MFT_CONFIG_PATH_SUFFIX + coordinationQueueManagerName + MFT_CORD_CRED_SLASH
 
-			UpdateProperties(coordinationPropertiesFile, allAgentConfig, "coordinationQMgr.additionalProperties",
-				"coordinationQMgrAuthenticationCredentialsFile", coordCredFilePath)
-			utils.PrintLog(fmt.Sprintf(MFT_CONT_CORD_SETUP_COMP_0054, coordinationQueueManagerName))
-			created = true
+			// Start XML document for credentials file
+			credentialsDoc := InitializeCredentialsDocumentWriter()
+
+			// Configure TLS security
+			created, allAgentConfig = configTLSCoordination(allAgentConfig, credentialsDoc, coordCredFilePath)
+
+			if created {
+				// If a credentials file has been specified as environment variable, then set it here
+				if gjson.Get(allAgentConfig, "coordinationQMgr.qmgrCredentials").Exists() {
+					// Write coordination queue manager credentials
+					UpdateXmlWithQmgrCredentials(credentialsDoc, gjson.Get(allAgentConfig, "coordinationQMgr.qmgrCredentials").String(), coordinationQueueManagerName)
+				}
+
+				errSetCred := SetupCredentials(coordCredFilePath, credentialsDoc.XMLPretty())
+				if errSetCred == nil {
+					// Attempt to encrypt the credentials file with a fixed key
+					EncryptCredentialsFile(coordCredFilePath)
+					allAgentConfig, _ = sjson.Set(allAgentConfig, "coordinationQMgr.additionalProperties.coordinationQMgrAuthenticationCredentialsFile", coordCredFilePath)
+				} else {
+					utils.PrintLog(errSetCred.Error())
+				}
+
+				if logLevel >= LOG_LEVEL_VERBOSE && len(allAgentConfig) > 0 {
+					utils.PrintLog(fmt.Sprintf(utils.MFT_UPDATED_CONFIGURATION, allAgentConfig))
+				}
+
+				// Update coordination properties file
+				err := UpdateProperties(coordinationPropertiesFile, allAgentConfig, "coordinationQMgr.additionalProperties")
+				if err != nil {
+					utils.PrintLog(err.Error())
+				} else {
+					if logLevel >= LOG_LEVEL_VERBOSE && len(coordCredFilePath) > 0 {
+						utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_CORD_CONFIG_CRED_PATH_0027, coordCredFilePath))
+					}
+					utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CORD_SETUP_COMP_0054, coordinationQueueManagerName))
+					created = true
+				}
+			}
 		}
 	} else {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_NOT_FOUND_0028, lookPathErr))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CMD_NOT_FOUND_0028, lookPathErr))
 	}
 
 	return created
+}
+
+// Create keystore using certificate provided if available. We need cipher name
+// at least public key environment variable to be set.
+func configTLSCoordination(allAgentConfig string, credentialsDoc *xmldom.Document, coordCredFilePath string) (bool, string) {
+	var created bool
+
+	cipherName, cipherSet := os.LookupEnv(MFT_COORD_QMGR_CIPHER)
+	if cipherSet && len(strings.Trim(cipherName, TEXT_TRIM)) > 0 {
+		// Generate password for keystore
+		password := generateRandomPassword()
+		// See if we have public key file
+		publicKeyCertPath := getKeyFile(coordinationQMCertPath, ".crt")
+		if len(publicKeyCertPath) > 0 {
+			// Trust Keystore details - public key of queue manager
+			errCreateKeyStore := CreateKeyStore(KEYSTORES_PATH, COORD_QM_TRUSTSTORE, publicKeyCertPath, password)
+			if errCreateKeyStore == nil {
+				// Update coordination properties file
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "coordinationQMgr.additionalProperties.coordinationSslCipherSpec", cipherName)
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "coordinationQMgr.additionalProperties.coordinationSslTrustStore", filepath.Join(KEYSTORES_PATH, COORD_QM_TRUSTSTORE))
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "coordinationQMgr.additionalProperties.coordinationSslTrustStoreType", "pkcs12")
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "coordinationQMgr.additionalProperties.coordinationSslTrustStoreCredentialsFile", coordCredFilePath)
+				UpdateXmlWithKeyStoreCredentials(credentialsDoc, filepath.Join(KEYSTORES_PATH, COORD_QM_TRUSTSTORE), password)
+				created = true
+			} else {
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_KEYSTORE_CREATE_FAILED, COORD_QM_TRUSTSTORE, errCreateKeyStore.Error()))
+				created = false
+			}
+		}
+
+		// Do we have any private key
+		privateKeyCertPath := getKeyFile(coordinationQMCertPath, ".key")
+		if len(privateKeyCertPath) > 0 {
+			errCreateSslStore := CreateKeyStore(KEYSTORES_PATH, COORD_QM_KEYSTORE, privateKeyCertPath, password)
+			if errCreateSslStore == nil {
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "coordinationQMgr.additionalProperties.coordinationSslCipherSpec", cipherName)
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "coordinationQMgr.additionalProperties.coordinationSslKeyStore", filepath.Join(KEYSTORES_PATH, COORD_QM_KEYSTORE))
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "coordinationQMgr.additionalProperties.coordinationSslKeyStoreType", "pkcs12")
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "coordinationQMgr.additionalProperties.coordinationSslKeyStoreCredentialsFile", coordCredFilePath)
+				UpdateXmlWithKeyStoreCredentials(credentialsDoc, filepath.Join(KEYSTORES_PATH, COORD_QM_KEYSTORE), password)
+				created = true
+			} else {
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_KEYSTORE_CREATE_FAILED, COORD_QM_TRUSTSTORE, errCreateSslStore.Error()))
+				created = false
+			}
+		} else {
+			utils.PrintLog(utils.MFT_CONT_MTLS_NOT_CONFIGURED)
+			created = true
+		}
+	} else {
+		// TLS not enabled.
+		created = true
+	}
+	return created, allAgentConfig
 }
 
 // Validate attributes in JSON file.
@@ -142,13 +202,13 @@ func SetupCoordination(allAgentConfig string, bfgDataPath string, agentNameEnv s
 func ValidateCoordinationAttributes(jsonData string) error {
 	// Coordination queue manager is mandatory
 	if !gjson.Get(jsonData, "coordinationQMgr.name").Exists() {
-		err := errors.New(MFT_CONT_CFG_CORD_QM_NAME_MISSING_0014)
+		err := errors.New(utils.MFT_CONT_CFG_CORD_QM_NAME_MISSING_0014)
 		return err
 	}
 
 	// Coordination queue manager host is mandatory
 	if !gjson.Get(jsonData, "coordinationQMgr.host").Exists() {
-		err := errors.New(MFT_CONT_CFG_CORD_QM_HOST_MISSING_0015)
+		err := errors.New(utils.MFT_CONT_CFG_CORD_QM_HOST_MISSING_0015)
 		return err
 	}
 

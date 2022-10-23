@@ -15,10 +15,12 @@
 #
 
 ARG UBI_BASE_IMAGE=registry.redhat.io/ubi8/ubi-minimal
-ARG UBI_BASE_TAG=8.6-751
+ARG UBI_BASE_TAG=8.6-941
 ARG GO_TOOLSET_IMAGE=registry.redhat.io/ubi8/go-toolset
-ARG GO_TOOLSET_TAG=1.17.7-13
+ARG GO_TOOLSET_TAG=1.17.12-7
 ARG GO_WORKDIR=/opt/app-root/src/go/src/github.com/ibm-messaging/mq-container-mft
+ARG JDK_BASE_IMAGE=registry.redhat.io/ubi8/openjdk-8
+ARG JDK_BASE_TAG=1.14
 
 ###############################################################################
 # Build stage to build Go code
@@ -35,21 +37,24 @@ USER 0
 
 RUN git --version
 RUN go get -u github.com/tidwall/gjson \
+    && go get -u github.com/tidwall/sjson \
     && go get -u golang.org/x/sys/unix \
     && go get -u github.com/syndtr/gocapability/capability \
     && go get -u github.com/icza/backscanner \ 
  	&& go get -u golang.org/x/net \
 	&& go get -u github.com/spf13/pflag \
     && go get -u github.com/Jeffail/gabs \
-    && go get github.com/antchfx/xmlquery@v1.3.9
-	
+    && go get -u github.com/subchen/go-xmldom \
+    && go get -u github.com/shabbyrobe/xmlwriter \
+    && go get github.com/antchfx/xmlquery@v1.3.12
+
 # Create a directory where compiled golang programs will be copied
 RUN mkdir -p /run
 
 # Set golang working directory
 WORKDIR $GO_WORKDIR/
 
-# Copy golang source code for compilation	
+# Copy golang source code for compilation
 COPY go.mod go.sum ./
 COPY cmd ./cmd
 COPY pkg/ ./pkg
@@ -67,13 +72,13 @@ RUN go test -v ./cmd/runagent
 # Build IBM MQ MFT Protocol Bridge Credential custom exit
 ###############################################################################
 # Pull in the latest IBM JDK 8 to build Protocol Bridge Credential exit.
-FROM docker.io/ibmjava:8-sdk AS pbaexitbuilder
+FROM $JDK_BASE_IMAGE:$JDK_BASE_TAG AS pbaexitbuilder
 
 # Do everything as root. We will change the user at a later point
 USER 0
 
 RUN mkdir /credentialsexit
-COPY ./credentialsexit ./credentialsexit
+COPY ./credentialsexit /credentialsexit
 # You will need to download com.ibm.wmqfte.exitroutines.api.jar from IBM MQ 
 # Managed File Transfer Redistributable package and json-20210307.jar and 
 # place them in /credentialsexit/BridgeCredentialExit/thirdparty directory.
@@ -96,7 +101,13 @@ ARG ARG_MQMFT_BFG_DATA
 # Use a fixed path for BFG_DATA path. Agent configuration will always be created under 
 # this path. If using a persistent volume, then volume must be mounted to this path. 
 ENV BFG_DATA=/mnt/mftdata
-ENV CREDENTIALS_PATH=/mnt/credentials
+ENV KEYSTORE_PATH=/run/keystores
+
+# Envrionment variables passed
+ENV ENV_BASE_IMAGE_NAME="Red Hat Universal Base Image"
+ENV ENV_BASE_IMAGE_VERSION="8.6-902"
+ENV ENV_MQ_BUILD_LEVEL=$ARG_MQMFT_BUILD_LEVEL
+ENV ENV_MQ_VERSION=$ARG_MQMFT_VERSION
 
 # Use a fixed path for system and user preferences. This is to avoid "System preferences 
 # are unusable" exception. This path must be set via BFG_JVM_PROPERTIES environment variable
@@ -109,12 +120,12 @@ LABEL summary="IBM MQ Managed File Transfer Agent"
 LABEL description="Move files and messages"
 LABEL vendor="IBM"
 LABEL maintainer="IBM"
-LABEL distribution-scope="private"
+LABEL distribution-scope="Private"
 LABEL authoritative-source-url="https://www.ibm.com/software/passportadvantage/"
 LABEL url="https://www.ibm.com/products/mq/advanced"
 LABEL io.openshift.tags="mq managed file transfer"
 LABEL io.k8s.display-name="IBM MQ Managed File Transfer"
-LABEL io.k8s.description="Move files and messages"
+LABEL io.k8s.description="Moves files and messages"
 LABEL base-image=$UBI_BASE_IMAGE
 LABEL base-image-release=$UBI_BASE_TAG
 
@@ -138,6 +149,9 @@ RUN microdnf install bash \
   glibc-all-langpacks \
   && rm -rf /var/lib/apt/lists/* 
 
+# Remove postfix key as it causes twistlock scan to log a non-compliance
+# vulnerability
+RUN rm -f /etc/pki/tls/private/postfix.key
 # Add the Agent redistributable package
 RUN mkdir -p /opt/mqm/mqft \
   && mv /usr/local/$ARG_MQMFT_REDIST_FILE /opt/mqm/mqft \
@@ -155,7 +169,7 @@ COPY --from=gobuilder $GO_WORKDIR/run/mqfts /run/
 
 # Set permissions on programs so that they can be run by any user.
 RUN mkdir -p $BFG_DATA \
-    && mkdir -p $CREDENTIALS_PATH \
+    && mkdir -p $KEYSTORE_PATH \
     && mkdir -p /mountpath \
 	&& chmod -R guo+rwx /mountpath \
     && mkdir -p ${JAVA_PREFS_SYSTEM_DIR} \
@@ -163,7 +177,7 @@ RUN mkdir -p $BFG_DATA \
     && mkdir -p ${JAVA_PREFS_USER_DIR} \
 	&& chmod -R guo+rwx ${JAVA_PREFS_USER_DIR} \
     && chmod -R guo+rwx $BFG_DATA \
-    && chmod -R guo+rwx $CREDENTIALS_PATH \
+    && chmod -R guo+rwx $KEYSTORE_PATH \
     && chgrp -Rf root /run/runagent \
     && chmod -Rf guo+rwx /run/runagent \
     && chgrp -Rf root /run/agentalive \

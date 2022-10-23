@@ -16,11 +16,12 @@ limitations under the License.
 package main
 
 import (
-	"os"
-	"testing"
-	"io/ioutil"
-	"strings"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+	"testing"
+
 	"github.com/ibm-messaging/mq-container-mft/pkg/utils"
 )
 
@@ -29,20 +30,20 @@ import (
  */
 func TestReadConfigurationDataFromFile(t *testing.T) {
 	var jsonFileName string
-	
+
 	// Test valid JSON data.
-	var pathNames [] string = strings.Split(t.Name(), "/")
+	var pathNames []string = strings.Split(t.Name(), "/")
 	if len(pathNames) == 2 {
 		jsonFileName = pathNames[1]
 	} else {
 		jsonFileName = pathNames[0]
 	}
-	
+
 	validJson, err := ioutil.TempFile("", jsonFileName)
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	t.Log(validJson.Name())
 	defer os.Remove(validJson.Name())
 	validJsonF, err := os.OpenFile(validJson.Name(), os.O_WRONLY, 0700)
@@ -51,7 +52,7 @@ func TestReadConfigurationDataFromFile(t *testing.T) {
 	}
 	configDataValid := "{\"dataPath\":\"/mqmft/mftdata\",\"monitoringInterval\":300,\"displayAgentLogs\":true,\"displayLineCount\":50,\"waitTimeToStart\":10,\"coordinationQMgr\":{\"name\":\"QUICKSTART\",\"host\":\"10.254.0.4\",\"port\":1414,\"channel\":\"MFT_HA_CHN\"},\"commandsQMgr\":{\"name\":\"QUICKSTART\",\"host\":\"10.254.0.4\",\"port\":1414,\"channel\":\"MFT_HA_CHN\"},\"agent\":{\"name\":\"KXAGNT\",\"type\":\"STANDARD\",\"qmgrName\":\"QUICKSTART\",\"qmgrHost\":\"10.254.0.4\",\"qmgrPort\":1414,\"qmgrChannel\":\"MFT_HA_CHN\",\"credentialsFile\":\"/usr/local/bin/MQMFTCredentials.xml\",\"protocolBridge\":{\"credentialsFile\":\"/usr/local/bin/ProtocolBridgeCredentials.xml\",\"serverType\":\"SFTP\",\"serverHost\":\"9.199.144.110\",\"serverTimezone\":\"\",\"serverPlatform\":\"UNIX\",\"serverLocale\":\"en-US\",\"serverFileEncoding\":\"UTF-8\",\"serverPort\":22,\"serverTrustStoreFile\":\"\",\"serverLimitedWrite\":\"\",\"serverListFormat\":\"\",\"serverUserId\":\"root\",\"serverPassword\":\"Kitt@n0or\"},\"additionalProperties\":{\"enableQueueInputOutput\":\"true\"}}"
 	fmt.Fprintln(validJsonF, configDataValid)
-	
+
 	validJsonData, err := utils.ReadConfigurationDataFromFile(validJson.Name())
 	if err != nil {
 		t.Fatal(err)
@@ -64,14 +65,14 @@ func TestReadConfigurationDataFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	t.Log(invalidJson.Name())
 	defer os.Remove(invalidJson.Name())
 	invalidJsonF, err := os.OpenFile(invalidJson.Name(), os.O_WRONLY, 0700)
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	t.Log(validJson.Name())
 	defer os.Remove(invalidJson.Name())
 
@@ -105,22 +106,22 @@ func TestupdateAgentProperties(t *testing.T) {
 	// Write initial properties into file and close
 	fmt.Fprintln(agentPropsF, initialProps)
 	agentPropsF.Close()
-	
-	// Update the agent.properties file with data from configuration file
-	updateAgentProperties(agentProps.Name(), configDataValid, "additionalProperties", false)
-	
-	content, err := ioutil.ReadFile(agentProps.Name())
-    if err != nil {
-        t.Fatal(err)
-    }
 
-    // Convert []byte to string and print to screen
-    updatedProps := string(content)
-	
+	// Update the agent.properties file with data from configuration file
+	UpdateAgentProperties(agentProps.Name(), configDataValid, "additionalProperties", false)
+
+	content, err := ioutil.ReadFile(agentProps.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Convert []byte to string and print to screen
+	updatedProps := string(content)
+
 	// Now compare with template
-	if strings.EqualFold(updatedProps,compareTemplate) == true {
+	if strings.EqualFold(updatedProps, compareTemplate) == true {
 		t.Log("OK: Properties file updated as expected")
 	} else {
-        t.Fatal("Properties file not updated correctly")
+		t.Fatal("Properties file not updated correctly")
 	}
 }

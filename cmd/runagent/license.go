@@ -22,6 +22,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ibm-messaging/mq-container-mft/pkg/utils"
 )
 
 // resolveLicenseFile returns the file name of the MQ MFT license file, taking into
@@ -89,5 +91,5 @@ func checkLicense() (bool, error) {
 		fmt.Println(string(buf))
 		return false, nil
 	}
-	return false, errors.New(MFT_CONT_LICENES_NOT_ACCESSPTED_0004)
+	return false, errors.New(utils.MFT_CONT_LICENES_NOT_ACCESSPTED_0004)
 }

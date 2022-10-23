@@ -21,10 +21,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/ibm-messaging/mq-container-mft/pkg/utils"
+	"github.com/subchen/go-xmldom"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 // Calls fteSetupCommands to create command queue manager configuration.
@@ -32,7 +35,9 @@ func SetupCommands(allAgentConfig string, bfgDataPath string, agentName string) 
 	// Variables for Stdout and Stderr
 	var outb, errb bytes.Buffer
 	var created bool = false
-	utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_SETUP_STRT_0055, agentName))
+	commandQueueManager := gjson.Get(allAgentConfig, "commandQMgr.name").String()
+
+	utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CMD_SETUP_STRT_0055, agentName, commandQueueManager))
 
 	// Get the path of MFT fteSetupCommands command.
 	cmdCmdsPath, lookPathErr := exec.LookPath("fteSetupCommands")
@@ -42,11 +47,9 @@ func SetupCommands(allAgentConfig string, bfgDataPath string, agentName string) 
 			utils.PrintLog("Command queue manager name not provided")
 			return false
 		}
-		var commandQueueManager string
 		var port string
 		var channel string
 		var hostName string
-		commandQueueManager = gjson.Get(allAgentConfig, "commandQMgr.name").String()
 		if gjson.Get(allAgentConfig, "commandQMgr.host").Exists() {
 			hostName = gjson.Get(allAgentConfig, "commandQMgr.host").String()
 		} else {
@@ -88,64 +91,117 @@ func SetupCommands(allAgentConfig string, bfgDataPath string, agentName string) 
 		cmdSetupCmds.Stderr = &errb
 		// Execute the fteSetupCommands command. Log an error an exit in case of any error.
 		if err := cmdSetupCmds.Run(); err != nil {
-			utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_ERROR_0042, outb.String(), errb.String()))
+			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CMD_ERROR_0042, outb.String(), errb.String()))
 			os.Exit(1)
 		} else {
-			if logLevel == LOG_LEVEL_DIGANOSTIC {
-				utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_INFO_0043, outb.String()))
+			if logLevel >= LOG_LEVEL_VERBOSE {
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CMD_INFO_0043, outb.String()))
 			}
-			var cmdCredFilePath string = TEXT_BLANK
-			// If a credentials file has been specified as environment variable, then set it here
-			credPath, credPathSet := os.LookupEnv(MFT_CREDENTIAL_FILE)
-			if credPathSet {
-				credPath = strings.Trim(credPath, TEXT_TRIM)
-				if credPath != TEXT_BLANK {
-					if utils.DoesFileExist(credPath) {
-						cmdCredFilePath = credPath
-					} else {
-						utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_CORD_CONFIG_CRED_NOT_EXIST_0025, credPath))
-						return false
-					}
-				} else {
-					utils.PrintLog(fmt.Sprintf(MFT_CONT_CFG_CORD_CONFIG_CRED_IGNORED_0026))
-				}
+
+			coordinationQmgrName := gjson.Get(allAgentConfig, "coordinationQMgr.name").String()
+			// Start XML document for credentials file
+			credentialsDoc := InitializeCredentialsDocumentWriter()
+			cmdCredFilePath := bfgDataPath + MFT_CONFIG_PATH_SUFFIX + coordinationQmgrName + MFT_CMD_CRED_SLASH
+			// Configure TLS for command queue manager
+			created, allAgentConfig = configTLSCommand(allAgentConfig, credentialsDoc, cmdCredFilePath)
+
+			if gjson.Get(allAgentConfig, "commandQMgr.qmgrCredentials").Exists() {
+				// Write coordination queue manager credentials
+				UpdateXmlWithQmgrCredentials(credentialsDoc, gjson.Get(allAgentConfig, "commandQMgr.qmgrCredentials").String(), commandQueueManager)
+			}
+
+			errSetCred := SetupCredentials(cmdCredFilePath, credentialsDoc.XMLPretty())
+			if errSetCred == nil {
+				// Attempt to encrypt the credentials file with a fixed key
+				EncryptCredentialsFile(cmdCredFilePath)
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "commandQMgr.additionalProperties.connectionQMgrAuthenticationCredentialsFile", cmdCredFilePath)
 			} else {
-				if gjson.Get(allAgentConfig, "commandQMgr.qmgrCredentials").Exists() {
-					coordinationQmgrName := gjson.Get(allAgentConfig, "coordinationQMgr.name").String()
-					cmdCredFilePath = bfgDataPath + "/mqft/config/" + coordinationQmgrName + "/CmdCredentials.xml"
-					if SetupCredentials(cmdCredFilePath, gjson.Get(allAgentConfig, "commandQMgr.qmgrCredentials").String(), commandQueueManager) {
-						// Attempt to encrypt the credentials file with a fixed key
-						EncryptCredentialsFile(cmdCredFilePath)
-					}
-				}
+				utils.PrintLog(errSetCred.Error())
 			}
-			if logLevel == LOG_LEVEL_VERBOSE && len(cmdCredFilePath) > 0 {
-				utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_QMGR_CRED_PATH_0056, cmdCredFilePath))
+
+			if logLevel >= LOG_LEVEL_VERBOSE && len(cmdCredFilePath) > 0 {
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CMD_QMGR_CRED_PATH_0056, cmdCredFilePath))
+			}
+
+			if logLevel >= LOG_LEVEL_VERBOSE && len(allAgentConfig) > 0 {
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_UPDATED_CMD_CONFIG, allAgentConfig))
 			}
 
 			// Update command properties file with additional attributes specified.
-			commandsPropertiesFile := bfgDataPath + "/mqft/config/" + gjson.Get(allAgentConfig, "coordinationQMgr.name").String() + "/command.properties"
-			UpdateProperties(commandsPropertiesFile, allAgentConfig, "commandQMgr.additionalProperties",
-				"connectionQMgrAuthenticationCredentialsFile", cmdCredFilePath)
-			utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_SETUP_COMP_0057, commandQueueManager))
-			created = true
+			commandsPropertiesFile := bfgDataPath + MFT_CONFIG_PATH_SUFFIX + coordinationQmgrName + MFT_CMD_PROPS_SLASH
+			err := UpdateProperties(commandsPropertiesFile, allAgentConfig, "commandQMgr.additionalProperties")
+			if err != nil {
+				utils.PrintLog(err.Error())
+			} else {
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CMD_SETUP_COMP_0057, commandQueueManager))
+				created = true
+			}
 		}
 	} else {
-		utils.PrintLog(fmt.Sprintf(MFT_CONT_CMD_NOT_FOUND_0028, lookPathErr))
+		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CMD_NOT_FOUND_0028, lookPathErr))
 	}
 
 	return created
 }
 
+// Configure TLS for command queue manager
+func configTLSCommand(allAgentConfig string, credentialsDoc *xmldom.Document, cmdCredFilePath string) (bool, string) {
+	var created bool
+	// Create keystore using certificate provided if available.
+	cipherName, cipherSet := os.LookupEnv(MFT_CMD_QMGR_CIPHER)
+	if cipherSet && len(strings.Trim(cipherName, TEXT_TRIM)) > 0 {
+		password := generateRandomPassword()
+		// Search for .crt file in the predefined directory
+		publicKeyCertPath := getKeyFile(commandQMCertPath, ".crt")
+		if len(publicKeyCertPath) > 0 {
+			// Trust store - public key of command queue manager
+			errCreateKeyStore := CreateKeyStore(KEYSTORES_PATH, CMD_QM_TRUSTSTORE, publicKeyCertPath, password)
+			if errCreateKeyStore == nil {
+				// Update coordination properties file
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "commandQMgr.additionalProperties.connectionSslCipherSpec", cipherName)
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "commandQMgr.additionalProperties.connectionSslTrustStore", filepath.Join(KEYSTORES_PATH, CMD_QM_TRUSTSTORE))
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "commandQMgr.additionalProperties.connectionSslTrustStoreType", "pkcs12")
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "commandQMgr.additionalProperties.connectionSslTrustStoreCredentialsFile", cmdCredFilePath)
+				UpdateXmlWithKeyStoreCredentials(credentialsDoc, filepath.Join(KEYSTORES_PATH, CMD_QM_TRUSTSTORE), password)
+				created = true
+			} else {
+				utils.PrintLog(errCreateKeyStore.Error())
+			}
+		}
+
+		// Key store details - private key
+		privateKeyCertPath := getKeyFile(commandQMCertPath, ".key")
+		if len(privateKeyCertPath) > 0 {
+			errCreateSslStore := CreateKeyStore(KEYSTORES_PATH, CMD_QM_KEYSTORE, privateKeyCertPath, password)
+			if errCreateSslStore == nil {
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "commandQMgr.additionalProperties.connectionSslCipherSpec", cipherName)
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "commandQMgr.additionalProperties.connectionSslKeyStore", filepath.Join(KEYSTORES_PATH, CMD_QM_KEYSTORE))
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "commandQMgr.additionalProperties.connectionSslKeyStoreType", "pkcs12")
+				allAgentConfig, _ = sjson.Set(allAgentConfig, "commandQMgr.additionalProperties.connectionSslKeyStoreCredentialsFile", cmdCredFilePath)
+				UpdateXmlWithKeyStoreCredentials(credentialsDoc, filepath.Join(KEYSTORES_PATH, CMD_QM_KEYSTORE), password)
+				created = true
+			} else {
+				utils.PrintLog(errCreateSslStore.Error())
+				created = false
+			}
+		}
+	} else {
+		created = true
+	}
+
+	return created, allAgentConfig
+}
+
+// Validate the configuration for required command qmgr attributes.
 func ValidateCommandAttributes(jsonData string) error {
 	// Commands queue manager is mandatory
 	if !gjson.Get(jsonData, "commandQMgr.name").Exists() {
-		err := errors.New(MFT_CONT_CFG_CMD_QM_NAME_MISSING_0017)
+		err := errors.New(utils.MFT_CONT_CFG_CMD_QM_NAME_MISSING_0017)
 		return err
 	}
 	// Coordination queue manager host is mandatory
 	if !gjson.Get(jsonData, "commandQMgr.host").Exists() {
-		err := errors.New(MFT_CONT_CFG_CMD_QM_HOST_MISSING_0018)
+		err := errors.New(utils.MFT_CONT_CFG_CMD_QM_HOST_MISSING_0018)
 		return err
 	}
 
