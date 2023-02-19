@@ -1,5 +1,5 @@
 #
-#© Copyright IBM Corporation 2020, 2022
+#© Copyright IBM Corporation 2020, 2023
 #
 #Licensed under the Apache License, Version 2.0 (the "License");
 #you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
 #limitations under the License.
 #
 
-ARG UBI_BASE_IMAGE=registry.redhat.io/ubi8/ubi-minimal
-ARG UBI_BASE_TAG=8.6-941
-ARG GO_TOOLSET_IMAGE=registry.redhat.io/ubi8/go-toolset
-ARG GO_TOOLSET_TAG=1.17.12-7
+ARG UBI_BASE_IMAGE=registry.access.redhat.com/ubi8/ubi-minimal
+ARG UBI_BASE_TAG=8.7-1049
+ARG GO_TOOLSET_IMAGE=registry.access.redhat.com/ubi8/go-toolset
+ARG GO_TOOLSET_TAG=1.18.9-4
 ARG GO_WORKDIR=/opt/app-root/src/go/src/github.com/ibm-messaging/mq-container-mft
-ARG JDK_BASE_IMAGE=registry.redhat.io/ubi8/openjdk-8
+ARG JDK_BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-8
 ARG JDK_BASE_TAG=1.14
 
 ###############################################################################
@@ -36,17 +36,6 @@ ARG GO_WORKDIR
 USER 0
 
 RUN git --version
-RUN go get -u github.com/tidwall/gjson \
-    && go get -u github.com/tidwall/sjson \
-    && go get -u golang.org/x/sys/unix \
-    && go get -u github.com/syndtr/gocapability/capability \
-    && go get -u github.com/icza/backscanner \ 
- 	&& go get -u golang.org/x/net \
-	&& go get -u github.com/spf13/pflag \
-    && go get -u github.com/Jeffail/gabs \
-    && go get -u github.com/subchen/go-xmldom \
-    && go get -u github.com/shabbyrobe/xmlwriter \
-    && go get github.com/antchfx/xmlquery@v1.3.12
 
 # Create a directory where compiled golang programs will be copied
 RUN mkdir -p /run
@@ -105,7 +94,7 @@ ENV KEYSTORE_PATH=/run/keystores
 
 # Envrionment variables passed
 ENV ENV_BASE_IMAGE_NAME="Red Hat Universal Base Image"
-ENV ENV_BASE_IMAGE_VERSION="8.6-902"
+ENV ENV_BASE_IMAGE_VERSION=$UBI_BASE_TAG
 ENV ENV_MQ_BUILD_LEVEL=$ARG_MQMFT_BUILD_LEVEL
 ENV ENV_MQ_VERSION=$ARG_MQMFT_VERSION
 

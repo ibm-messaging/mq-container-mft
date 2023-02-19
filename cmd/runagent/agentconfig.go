@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2022, 2022
+© Copyright IBM Corporation 2022, 2023
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -118,7 +118,7 @@ func VerifyAgentStatus(coordinationQMgr string, agentName string) string {
 }
 
 // Calls fteCreateAgent/fteCreateBridgeAgent commands to setup agent configuration
-func SetupAgent(agentConfig string, bfgDataPath string, coordinationQMgr string) bool {
+func setupAgent(agentConfig string, bfgDataPath string, coordinationQMgr string) bool {
 	// Variables for Stdout and Stderr
 	var outb, errb bytes.Buffer
 	var created bool = false
@@ -292,7 +292,7 @@ func SetupAgent(agentConfig string, bfgDataPath string, coordinationQMgr string)
 				}
 
 				// Create credentials file for agent.
-				errorSetCred := SetupCredentials(agentCredFilePath, credentialsDoc.XMLPretty())
+				errorSetCred := setupCredentials(agentCredFilePath, credentialsDoc.XMLPretty())
 				if errorSetCred == nil {
 					// Attempt to encrypt the credentials file with a fixed key
 					EncryptCredentialsFile(agentCredFilePath)
@@ -307,21 +307,31 @@ func SetupAgent(agentConfig string, bfgDataPath string, coordinationQMgr string)
 
 				// Update UserSandbox XML file - valid only for STANDARD agents
 				if standardAgent {
-					errCusbox := CreateUserSandbox(bfgDataPath + MFT_CONFIG_PATH_SUFFIX + coordinationQMgr + MFT_AGENTS_SLASH + agentName + MFT_USER_SANDBOX_SLASH)
+					errCusbox := createUserSandbox(bfgDataPath + MFT_CONFIG_PATH_SUFFIX + coordinationQMgr + MFT_AGENTS_SLASH + agentName + MFT_USER_SANDBOX_SLASH)
 					if errCusbox != nil {
 						utils.PrintLog(errCusbox.Error())
 						created = false
+					} else {
+						if logLevel >= LOG_LEVEL_VERBOSE {
+							utils.PrintLog("User sandbox setup complete.")
+							created = true
+						}
 					}
 				} else {
 					// This is a bridge agent. We need to update the ProtocolBridgeProperties.xml file for all other servers specified
 					// in configuration JSON file.
 					created = updateProtocolBridgePropertiesFile(protocolBridgePropertiesFile, agentConfig)
+					if !created {
+						if logLevel >= LOG_LEVEL_VERBOSE {
+							utils.PrintLog("Failed to configure Bridge agent properties.")
+						}
+					}
 				}
 			}
 
 			if created {
 				// Update agent properties file with additional attributes specified.
-				created = UpdateAgentProperties(agentPropertiesFile, agentConfig, "additionalProperties", !standardAgent)
+				created = updateAgentProperties(agentPropertiesFile, agentConfig, "additionalProperties", !standardAgent)
 				if created {
 					// Tell user that agent has been configured.
 					utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_CREATED_0047, agentName))
@@ -571,7 +581,7 @@ func ValidateAgentAttributes(jsonData string) error {
 
 // Update agent.properties file with any additional properties specified in
 // configuration JSON file.
-func UpdateAgentProperties(propertiesFile string, agentConfig string, sectionName string, bridgeAgent bool) bool {
+func updateAgentProperties(propertiesFile string, agentConfig string, sectionName string, bridgeAgent bool) bool {
 	f, err := os.OpenFile(propertiesFile, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_ERR_OPN_FILE_0067, propertiesFile, err))
@@ -590,9 +600,14 @@ func UpdateAgentProperties(propertiesFile string, agentConfig string, sectionNam
 		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_ERR_UPDTING_FILE_0066, propertiesFile, err))
 	}
 
+	setUpUserSandbox := false
 	if gjson.Get(agentConfig, sectionName).Exists() {
 		result := gjson.Get(agentConfig, sectionName)
 		result.ForEach(func(key, value gjson.Result) bool {
+			// Set a flag to not setup userSandboxes if user has asked for
+			if strings.EqualFold(key.String(), "userSandboxes") && strings.EqualFold(value.String(), "false") {
+				setUpUserSandbox = false
+			}
 			if _, err := f.WriteString(key.String() + "=" + value.String() + "\n"); err != nil {
 				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_ERR_UPDTING_FILE_0066, propertiesFile, err))
 			}
@@ -614,9 +629,15 @@ func UpdateAgentProperties(propertiesFile string, agentConfig string, sectionNam
 			}
 		}
 	} else {
-		if _, err := f.WriteString("userSandboxes=true"); err != nil {
-			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_ERR_UPDTING_FILE_0066, propertiesFile, err))
+		// User sandbox is setup by default. But can be overridden by user
+		if setUpUserSandbox {
+			if _, err := f.WriteString("userSandboxes=true"); err != nil {
+				utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_ERR_UPDTING_FILE_0066, propertiesFile, err))
+			} else {
+				retVal = true
+			}
 		} else {
+			// Nothing to do.
 			retVal = true
 		}
 	}

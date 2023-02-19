@@ -108,7 +108,7 @@ func TestupdateAgentProperties(t *testing.T) {
 	agentPropsF.Close()
 
 	// Update the agent.properties file with data from configuration file
-	UpdateAgentProperties(agentProps.Name(), configDataValid, "additionalProperties", false)
+	updateAgentProperties(agentProps.Name(), configDataValid, "additionalProperties", false)
 
 	content, err := ioutil.ReadFile(agentProps.Name())
 	if err != nil {

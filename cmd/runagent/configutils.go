@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2022, 2022
+© Copyright IBM Corporation 2022, 2023
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -91,7 +91,7 @@ func GetCommandTracePath() string {
 }
 
 // Setup userSandBox configuration to restrict access to file system
-func CreateUserSandbox(sandboxXmlFileName string) error {
+func createUserSandbox(sandboxXmlFileName string) error {
 	var errCusbox error = nil
 
 	// Open existing UserSandboxes.xml file
@@ -134,20 +134,23 @@ func CreateUserSandbox(sandboxXmlFileName string) error {
 	sandBoxDoc.Root.SetAttributeValue("xsi:schemaLocation", "http://wmqfte.ibm.com/UserSandboxes UserSandboxes.xsd")
 	agentNode := sandBoxDoc.Root.CreateNode("tns:agent")
 	sandBoxNode := agentNode.CreateNode("tns:sandbox")
+	// Override sandbox user name and pattern.
 	sandBoxNode.SetAttributeValue("user", "^[a-zA-Z0-9]*$")
 	sandBoxNode.SetAttributeValue("userPattern", "regex")
+	// Read Sandbox Attributes
 	readNode := sandBoxNode.CreateNode("tns:read")
-	includeNode := readNode.CreateNode("tns:include")
-	includeNode.SetAttributeValue("name", transferRootPath)
-	includeNode = readNode.CreateNode("tns:include")
-	includeNode.SetAttributeValue("name", "*")
-	includeNode.SetAttributeValue("type", "queue")
+	includeNodeRead := readNode.CreateNode("tns:include")
+	includeNodeRead.SetAttributeValue("name", transferRootPath)
+	includeNodeReadQueue := readNode.CreateNode("tns:include")
+	includeNodeReadQueue.SetAttributeValue("name", "**")
+	includeNodeReadQueue.SetAttributeValue("type", "queue")
+	// Write Sandbox attributes
 	writeNode := sandBoxNode.CreateNode("tns:write")
-	includeNode = writeNode.CreateNode("tns:include")
-	includeNode.SetAttributeValue("name", transferRootPath)
-	includeNode = readNode.CreateNode("tns:include")
-	includeNode.SetAttributeValue("name", "*")
-	includeNode.SetAttributeValue("type", "queue")
+	includeWriteNode := writeNode.CreateNode("tns:include")
+	includeWriteNode.SetAttributeValue("name", transferRootPath)
+	includeWriteNodeQueue := writeNode.CreateNode("tns:include")
+	includeWriteNodeQueue.SetAttributeValue("name", "**")
+	includeWriteNodeQueue.SetAttributeValue("type", "queue")
 
 	if logLevel >= LOG_LEVEL_VERBOSE {
 		utils.PrintLog(sandBoxDoc.XMLPretty())
@@ -171,7 +174,7 @@ func CreateUserSandbox(sandboxXmlFileName string) error {
 * agent configuration file, like agentconfig.json. This method exepect the userid to
 * be in plain text while the password to be base64 encoded.
  */
-func SetupCredentials(mqmftCredentialsXmlFileName string, bufferCred string) error {
+func setupCredentials(mqmftCredentialsXmlFileName string, bufferCred string) error {
 	// Create an empty credentials file, truncate if one exists
 	mqmftCredentialsXmlFile, err := os.OpenFile(mqmftCredentialsXmlFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	// if we os.Open returns an error then handle it

@@ -27,7 +27,7 @@ func TestValidateCommandAttributesValidProperties(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	validated := ValidateCommandAttributes(allAgentConfig)
+	validated := validateCommandAttributes(allAgentConfig)
 	if validated != nil {
 		fmt.Printf("Command queue manager attributes validation failed. %v", validated)
 		t.Fail()
@@ -36,7 +36,7 @@ func TestValidateCommandAttributesValidProperties(t *testing.T) {
 
 func TestValidateCommandAttributesMissingQmgrName(t *testing.T) {
 	agentConfig := "{\"waitTimeToStart\":20,\"commandQMgr\":{\"host\":\"10.254.16.17\",	\"port\":1414,\"channel\":\"QS_SVRCONN\",\"additionalProperties\": {}}}"
-	validated := ValidateCommandAttributes(agentConfig)
+	validated := validateCommandAttributes(agentConfig)
 	if validated != nil {
 		t.Log("Command queue manager attributes validation failed.")
 	} else {
@@ -46,7 +46,7 @@ func TestValidateCommandAttributesMissingQmgrName(t *testing.T) {
 
 func TestValidateCommandAttributesMissingQmgrHostName(t *testing.T) {
 	agentConfig := "{\"waitTimeToStart\":20,\"commandQMgr\":{\"name\":\"SECUREQM\",	\"port\":1414,\"channel\":\"QS_SVRCONN\",\"additionalProperties\": {}}}"
-	validated := ValidateCommandAttributes(agentConfig)
+	validated := validateCommandAttributes(agentConfig)
 	if validated != nil {
 		t.Log("Command queue manager attributes validation failed.")
 	} else {
@@ -56,7 +56,7 @@ func TestValidateCommandAttributesMissingQmgrHostName(t *testing.T) {
 
 func TestValidateCommandAttributesMissingChannelName(t *testing.T) {
 	agentConfig := "{\"waitTimeToStart\":20,\"commandQMgr\":{\"name\":\"SECUREQM\",\"host\":\"10.254.16.17\",\"port\":1414,\"additionalProperties\": {}}}"
-	validated := ValidateCommandAttributes(agentConfig)
+	validated := validateCommandAttributes(agentConfig)
 	if validated == nil {
 		t.Log("Command queue manager attributes with missing channel name validation passed as expected.")
 	} else {

@@ -27,7 +27,7 @@ func TestValidateCoordinationAttributesValidProperties(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	validated := ValidateCommandAttributes(allAgentConfig)
+	validated := validateCommandAttributes(allAgentConfig)
 	if validated != nil {
 		fmt.Printf("Command queue manager attributes validation failed. %v", validated)
 		t.Fail()
@@ -37,7 +37,7 @@ func TestValidateCoordinationAttributesValidProperties(t *testing.T) {
 func TestValidateCoordinationAttributesMissingQmgrName(t *testing.T) {
 	agentConfig := "{\"waitTimeToStart\":20,\"coordinationQMgr\":{\"host\":\"10.254.16.17\", \"port\":1414,\"channel\":\"QS_SVRCONN\",\"additionalProperties\": {}}}"
 
-	validated := ValidateCoordinationAttributes(agentConfig)
+	validated := validateCoordinationAttributes(agentConfig)
 	if validated != nil {
 		t.Log("Coordination queue manager attributes validation failed as expected.")
 	} else {
@@ -48,7 +48,7 @@ func TestValidateCoordinationAttributesMissingQmgrName(t *testing.T) {
 func TestValidateCoordinationAttributesMissingQmgrHostName(t *testing.T) {
 	agentConfig := "{\"waitTimeToStart\":20,\"coordinationQMgr\":{\"name\":\"SECUREQM\", \"port\":1414,\"channel\":\"QS_SVRCONN\",\"additionalProperties\": {}}}"
 
-	validated := ValidateCoordinationAttributes(agentConfig)
+	validated := validateCoordinationAttributes(agentConfig)
 	if validated != nil {
 		t.Log("Coordination queue manager attributes validation failed as expected.")
 	} else {
@@ -58,7 +58,7 @@ func TestValidateCoordinationAttributesMissingQmgrHostName(t *testing.T) {
 func TestValidateCoordinationAttributesMissingChannelName(t *testing.T) {
 	agentConfig := "{\"waitTimeToStart\":20,\"coordinationQMgr\":{\"name\":\"SECUREQM\",\"host\":\"10.254.16.17\", \"port\":1414,\"additionalProperties\": {}}}"
 
-	validated := ValidateCoordinationAttributes(agentConfig)
+	validated := validateCoordinationAttributes(agentConfig)
 	if validated == nil {
 		t.Log("Coordination queue manager attributes with missing channel name validation passed as expected.")
 	} else {

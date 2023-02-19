@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2022, 2022
+© Copyright IBM Corporation 2022, 2023
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ func TestUpdateAgentProperties(t *testing.T) {
 
 func TestCreateUserSandbox(t *testing.T) {
 	userSandboxFile := "UserSandbox.xml"
-	userSBoxErr := CreateUserSandbox(userSandboxFile)
+	userSBoxErr := createUserSandbox(userSandboxFile)
 	if userSBoxErr == nil {
 		sandBoxContents, _ := utils.ReadConfigurationDataFromFile(userSandboxFile)
 		if strings.Contains(sandBoxContents, DEFAULT_MOUNT_PATH_FOR_TRANSFERS) {
@@ -93,7 +93,7 @@ func TestSetupCredentials(t *testing.T) {
 		"    <tns:qmgr name=\"CoordQueueMgr\" user=\"John\" mqUserId=\"John\" mqPassword=\"JohnsPassword\" />" +
 		"</tns:mqmftCredentials>"
 
-	setupCredErr := SetupCredentials(mqmftCredFile, credentialsXmlToWrite)
+	setupCredErr := setupCredentials(mqmftCredFile, credentialsXmlToWrite)
 	if setupCredErr != nil {
 		t.Log(setupCredErr.Error())
 		t.Fail()

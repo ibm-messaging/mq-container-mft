@@ -139,7 +139,7 @@ func main() {
 	if errVol != nil {
 		utils.PrintLog(errVol.Error())
 	} else {
-		utils.PrintLog("Transfer directory created")
+		utils.PrintLog(fmt.Sprintf("Transfer root directory '%s' created", MOUNT_PATH_TRANSFERS))
 	}
 
 	// See if we have been given mount point for creating agent configuration and log directory.
@@ -208,7 +208,7 @@ func main() {
 
 	// Validate coordination queue manager attributes. Throw an error if minimum attributes
 	// are not available
-	errorCrd := ValidateCoordinationAttributes(allAgentConfig)
+	errorCrd := validateCoordinationAttributes(allAgentConfig)
 	if errorCrd != nil {
 		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_MISSING_ATTRIBS_0016, bfgConfigFilePath, errorCrd))
 		os.Exit(MFT_CONT_ERR_CODE_11)
@@ -216,7 +216,7 @@ func main() {
 
 	// Validate command queue manager attributes. Throw an error if minimum attributes are
 	// not available
-	errorCmd := ValidateCommandAttributes(allAgentConfig)
+	errorCmd := validateCommandAttributes(allAgentConfig)
 	if errorCmd != nil {
 		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_MISSING_ATTRIBS_0016, bfgConfigFilePath, errorCmd))
 		os.Exit(MFT_CONT_ERR_CODE_12)
@@ -272,21 +272,21 @@ func main() {
 	coordinationQMgr := gjson.Get(allAgentConfig, "coordinationQMgr.name").String()
 
 	// Setup coordination configuration
-	coordinationCreated := SetupCoordination(allAgentConfig, bfgDataPath, agentNameEnv)
+	coordinationCreated := setupCoordination(allAgentConfig, bfgDataPath, agentNameEnv)
 	if !coordinationCreated {
 		utils.PrintLog(utils.MFT_CONT_CORD_CFG_FAILED_0029)
 		os.Exit(MFT_CONT_ERR_CODE_15)
 	}
 
 	// Setup command configuration
-	commandsCreated := SetupCommands(allAgentConfig, bfgDataPath, agentNameEnv)
+	commandsCreated := setupCommands(allAgentConfig, bfgDataPath, agentNameEnv)
 	if !commandsCreated {
 		utils.PrintLog(utils.MFT_CONT_CMD_CFG_FAILED_0030)
 		os.Exit(MFT_CONT_ERR_CODE_16)
 	}
 
 	// Create the specified agent configuration
-	setupAgentDone := SetupAgent(singleAgentConfig, bfgDataPath, coordinationQMgr)
+	setupAgentDone := setupAgent(singleAgentConfig, bfgDataPath, coordinationQMgr)
 	if !setupAgentDone {
 		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_CFG_FAILED_0031, agentNameEnv))
 		os.Exit(MFT_CONT_ERR_CODE_17)
@@ -362,17 +362,8 @@ func main() {
 	// If agent status is READY or ACTIVE, then we are good.
 	if agentReady {
 		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_STARTED_0038, agentNameEnv))
-		// Create resource monitor if asked for
-		if gjson.Get(singleAgentConfig, "resourceMonitors").Exists() {
-			result := gjson.Get(singleAgentConfig, "resourceMonitors")
-			result.ForEach(func(key, value gjson.Result) bool {
-				createResourceMonitor(coordinationQMgr, agentNameEnv,
-					gjson.Get(singleAgentConfig, "qmgrName").String(),
-					key.String(),
-					value.String())
-				return true // keep looping till end
-			})
-		}
+		// Execute any commands provided in the cmds file
+		postInit()
 
 		// Setup a siganl handle and wait for till container is stopped.
 		signalControl := signalHandler(agentNameEnv, coordinationQMgr)

@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2022, 2022
+© Copyright IBM Corporation 2022, 2023
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import (
 )
 
 // Calls fteSetupCommands to create command queue manager configuration.
-func SetupCommands(allAgentConfig string, bfgDataPath string, agentName string) bool {
+func setupCommands(allAgentConfig string, bfgDataPath string, agentName string) bool {
 	// Variables for Stdout and Stderr
 	var outb, errb bytes.Buffer
 	var created bool = false
@@ -110,7 +110,7 @@ func SetupCommands(allAgentConfig string, bfgDataPath string, agentName string) 
 				UpdateXmlWithQmgrCredentials(credentialsDoc, gjson.Get(allAgentConfig, "commandQMgr.qmgrCredentials").String(), commandQueueManager)
 			}
 
-			errSetCred := SetupCredentials(cmdCredFilePath, credentialsDoc.XMLPretty())
+			errSetCred := setupCredentials(cmdCredFilePath, credentialsDoc.XMLPretty())
 			if errSetCred == nil {
 				// Attempt to encrypt the credentials file with a fixed key
 				EncryptCredentialsFile(cmdCredFilePath)
@@ -193,7 +193,7 @@ func configTLSCommand(allAgentConfig string, credentialsDoc *xmldom.Document, cm
 }
 
 // Validate the configuration for required command qmgr attributes.
-func ValidateCommandAttributes(jsonData string) error {
+func validateCommandAttributes(jsonData string) error {
 	// Commands queue manager is mandatory
 	if !gjson.Get(jsonData, "commandQMgr.name").Exists() {
 		err := errors.New(utils.MFT_CONT_CFG_CMD_QM_NAME_MISSING_0017)

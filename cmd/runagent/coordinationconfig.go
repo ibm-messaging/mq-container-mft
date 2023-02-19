@@ -31,7 +31,7 @@ import (
 )
 
 // Setup coordination configuration for agent.
-func SetupCoordination(allAgentConfig string, bfgDataPath string, agentNameEnv string) bool {
+func setupCoordination(allAgentConfig string, bfgDataPath string, agentNameEnv string) bool {
 	// Variables for Stdout and Stderr
 	var outb, errb bytes.Buffer
 	var created bool = false
@@ -110,7 +110,7 @@ func SetupCoordination(allAgentConfig string, bfgDataPath string, agentNameEnv s
 					UpdateXmlWithQmgrCredentials(credentialsDoc, gjson.Get(allAgentConfig, "coordinationQMgr.qmgrCredentials").String(), coordinationQueueManagerName)
 				}
 
-				errSetCred := SetupCredentials(coordCredFilePath, credentialsDoc.XMLPretty())
+				errSetCred := setupCredentials(coordCredFilePath, credentialsDoc.XMLPretty())
 				if errSetCred == nil {
 					// Attempt to encrypt the credentials file with a fixed key
 					EncryptCredentialsFile(coordCredFilePath)
@@ -199,7 +199,7 @@ func configTLSCoordination(allAgentConfig string, credentialsDoc *xmldom.Documen
 
 // Validate attributes in JSON file.
 // Check if the configuration JSON contains all required attribtes
-func ValidateCoordinationAttributes(jsonData string) error {
+func validateCoordinationAttributes(jsonData string) error {
 	// Coordination queue manager is mandatory
 	if !gjson.Get(jsonData, "coordinationQMgr.name").Exists() {
 		err := errors.New(utils.MFT_CONT_CFG_CORD_QM_NAME_MISSING_0014)
