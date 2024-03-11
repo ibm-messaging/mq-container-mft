@@ -15,9 +15,9 @@
 #
 
 ARG UBI_BASE_IMAGE=registry.access.redhat.com/ubi8/ubi-minimal
-ARG UBI_BASE_TAG=8.7-1049
+ARG UBI_BASE_TAG=8.9-1108
 ARG GO_TOOLSET_IMAGE=registry.access.redhat.com/ubi8/go-toolset
-ARG GO_TOOLSET_TAG=1.18.9-4
+ARG GO_TOOLSET_TAG=1.20.10-10
 ARG GO_WORKDIR=/opt/app-root/src/go/src/github.com/ibm-messaging/mq-container-mft
 ARG JDK_BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-8
 ARG JDK_BASE_TAG=1.14
