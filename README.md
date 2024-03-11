@@ -8,6 +8,18 @@ Run IBM MQ Managed File Transfer agents in a container.
 See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 
 ## What is new in this version
+**9.3.5.0**
+- Container image built with 9.3.5.0 CD of IBM MQ Managed File Transfer Redistributable Image.
+- Fixes issues found in internal testing and by customers.
+
+**9.3.4.0**
+- Container image built with 9.3.4.0 CD of IBM MQ Managed File Transfer Redistributable Image.
+- Fixes issues found in internal testing and by customers.
+
+**9.3.3.0**
+- Container image built with 9.3.3.0 CD of IBM MQ Managed File Transfer Redistributable Image.
+- Fixes issues found in internal testing and by customers.
+
 **9.3.2.0**
 - Container image built with 9.3.2.0 CD of IBM MQ Managed File Transfer Redistributable Image.
 - Fixes issues found in internal testing and by customers.
@@ -15,7 +27,6 @@ See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 **9.3.1.0**
 This version of container image supports TLS secure connections to queue managers. You can now specify cipherspec environment variables as described below. The public keys must be mounted into the container at a specific path. See [here](docs/tls.md) for more details.
 
-Starting MQ Version 9.2.5, agents can write progress of transfers to a file in JSON format to agent's log directory. This version of agent container image can publish the contents of transfer logs to a logDNA server. Connection information of logDNA server can be supplied through environment variable **MFT_TLOG_PUBLISH_INFO**. The environment variable must point to JSON formatted file containing logDNA server connection details. The format of the JSON file is described [here](docs/tlogpublsh.md)
 
 ## Developer image
 Developer version of the MFT Agent container image is available in IBM Container Registry `(icr.io/ibm-messaging/mqmft)`. Use podman/docker command to pull the image.
@@ -95,4 +106,4 @@ Note: The IBM MQ Advanced for Developers license does not permit further distrib
 
 ## Copyright
 
-© Copyright IBM Corporation 2020, 2023
+© Copyright IBM Corporation 2020, 2024

@@ -50,9 +50,9 @@ COPY pkg/ ./pkg
 
 # Build the required go programs and copy them to /run directory
 RUN go build -ldflags "-X \"main.ImageCreated=$(date --iso-8601=seconds)\" -X \"main.ImageRevision=$IMAGE_REVISION\" -X \"main.ImageSource=$IMAGE_SOURCE\" -X \"main.ImageTag=$IMAGE_TAG\"" -o /run/runagent ./cmd/runagent/ \
-  && go build -o /run/agentalive ./cmd/agentalive/ \
-  && go build -o /run/agentready ./cmd/agentready/ \
-  && go build -o /run/mqfts ./cmd/mqfts/ 
+    && go build -o /run/agentalive ./cmd/agentalive/ \
+    && go build -o /run/agentready ./cmd/agentready/ \
+    && go build -o /run/mqfts ./cmd/mqfts/ 
 
 # Run unit tests
 RUN go test -v ./cmd/runagent
@@ -69,13 +69,13 @@ USER 0
 RUN mkdir /credentialsexit
 COPY ./credentialsexit /credentialsexit
 # You will need to download com.ibm.wmqfte.exitroutines.api.jar from IBM MQ 
-# Managed File Transfer Redistributable package and json-20210307.jar and 
+# Managed File Transfer Redistributable package and json-20240205.jar and 
 # place them in /credentialsexit/BridgeCredentialExit/thirdparty directory.
 # Although JDK 1.8 is used, compile it to run against Java 1.7 as the current
 # version MFT is compiled to run with Java 1.7.
 RUN mkdir -p /credentialsexit/BridgeCredentialExit/bin  \
     && javac -source 1.7 -target 1.7 -cp "/credentialsexit/BridgeCredentialExit/thirdparty/*" -d /credentialsexit/BridgeCredentialExit/bin /credentialsexit/BridgeCredentialExit/src/com/ibm/bridgecredentialexit/ProtocolBridgeCustomCredentialExit.java \
-	&& cd /credentialsexit/BridgeCredentialExit/bin \
+    && cd /credentialsexit/BridgeCredentialExit/bin \
     && jar cvf com.ibm.wmq.bridgecredentialexit.jar com
 
 ###############################################################################
@@ -126,28 +126,28 @@ COPY $ARG_MQMFT_REDIST_FILE /usr/local/$ARG_MQMFT_REDIST_FILE
 
 # Install additional packages
 RUN microdnf install bash \
-  wget \
-  file \
-  findutils \
-  glibc \
-  redhat-lsb-core \
-  util-linux-ng \  
-  sed \
-  tar \
-  util-linux \
-  glibc-all-langpacks \
-  && rm -rf /var/lib/apt/lists/* 
+    wget \
+    file \
+    findutils \
+    glibc \
+    redhat-lsb-core \
+    util-linux-ng \  
+    sed \
+    tar \
+    util-linux \
+    glibc-all-langpacks \
+    && rm -rf /var/lib/apt/lists/* 
 
 # Remove postfix key as it causes twistlock scan to log a non-compliance
 # vulnerability
 RUN rm -f /etc/pki/tls/private/postfix.key
 # Add the Agent redistributable package
 RUN mkdir -p /opt/mqm/mqft \
-  && mv /usr/local/$ARG_MQMFT_REDIST_FILE /opt/mqm/mqft \
-  && cd /opt/mqm/mqft \
-  && tar -xzf ./$ARG_MQMFT_REDIST_FILE \
-  && rm -f ./$ARG_MQMFT_REDIST_FILE \
-  && chown -R 1001:root /opt/mqm/*
+    && mv /usr/local/$ARG_MQMFT_REDIST_FILE /opt/mqm/mqft \
+    && cd /opt/mqm/mqft \
+    && tar -xzf ./$ARG_MQMFT_REDIST_FILE \
+    && rm -f ./$ARG_MQMFT_REDIST_FILE \
+    && chown -R 1001:root /opt/mqm/*
 
 
 # Copy go programs
@@ -160,28 +160,28 @@ COPY --from=gobuilder $GO_WORKDIR/run/mqfts /run/
 RUN mkdir -p $BFG_DATA \
     && mkdir -p $KEYSTORE_PATH \
     && mkdir -p /mountpath \
-	&& chmod -R guo+rwx /mountpath \
+    && chmod -R guo+rwx /mountpath \
     && mkdir -p ${JAVA_PREFS_SYSTEM_DIR} \
-	&& chmod -R guo+rwx ${JAVA_PREFS_SYSTEM_DIR} \
+    && chmod -R guo+rwx ${JAVA_PREFS_SYSTEM_DIR} \
     && mkdir -p ${JAVA_PREFS_USER_DIR} \
-	&& chmod -R guo+rwx ${JAVA_PREFS_USER_DIR} \
+    && chmod -R guo+rwx ${JAVA_PREFS_USER_DIR} \
     && chmod -R guo+rwx $BFG_DATA \
     && chmod -R guo+rwx $KEYSTORE_PATH \
     && chgrp -Rf root /run/runagent \
     && chmod -Rf guo+rwx /run/runagent \
     && chgrp -Rf root /run/agentalive \
-	&& chmod -Rf guo+rwx /run/agentalive \
+    && chmod -Rf guo+rwx /run/agentalive \
     && chgrp -Rf root /run/agentready \
-	&& chmod -Rf guo+rwx /run/agentready \
+    && chmod -Rf guo+rwx /run/agentready \
     && chgrp -Rf root /run/mqfts \
-	&& chmod -Rf guo+rwx /run/mqfts \
-	&& mkdir -p /customexits/mqft/pbaexit \
-	&& chmod -R guo+rwx /customexits/* \
-	&& chown -R 1001:root /customexits/*
+    && chmod -Rf guo+rwx /run/mqfts \
+    && mkdir -p /customexits/mqft/pbaexit \
+    && chmod -R guo+rwx /customexits/* \
+    && chown -R 1001:root /customexits/*
 
 # Copy the Bridge Credential Exit into container.
 COPY --from=pbaexitbuilder /credentialsexit/BridgeCredentialExit/bin/com.ibm.wmq.bridgecredentialexit.jar /customexits/mqft/pbaexit/com.ibm.wmq.bridgecredentialexit.jar
-COPY ./credentialsexit/BridgeCredentialExit/thirdparty/json-20210307.jar /customexits/mqft/pbaexit/json-20210307.jar
+COPY ./credentialsexit/BridgeCredentialExit/thirdparty/json-20240205.jar /customexits/mqft/pbaexit/json-20240205.jar
 
 # Set path so that we can run our programs
 ENV PATH=$PATH:/opt/mqm/mqft/bin:/opt/mqm/mqft/java/jre64/jre/bin:/opt/mqm/bin:/run
