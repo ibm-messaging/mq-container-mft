@@ -28,10 +28,10 @@ const PBA_CUSTOM_CRED_EXIT_NAME = "com.ibm.wmq.bridgecredentialexit.jar"
 const PBA_CUSTOM_CRED_EXIT = "/customexits/mqft/pbaexit/com.ibm.wmq.bridgecredentialexit.jar"
 
 // Third party jar used for reading JSON formatted data
-const PBA_CUSTOM_CRED_DEPEND_LIB_NAME = "json-20210307.jar"
+const PBA_CUSTOM_CRED_DEPEND_LIB_NAME = "org.json.jar"
 
 // Source path of third party JSON jar
-const PBA_CUSTOM_CRED_DEPEND_LIB = "/customexits/mqft/pbaexit/json-20210307.jar"
+const PBA_CUSTOM_CRED_DEPEND_LIB = "/customexits/mqft/pbaexit/org.json.jar"
 
 // Path where files will be written to or read from. If a external storage is mounted
 // to this path, then files will be written/read from the external storage otherwise

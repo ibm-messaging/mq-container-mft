@@ -245,7 +245,7 @@ func setupAgent(agentConfig string, bfgDataPath string, coordinationQMgr string)
 	}
 
 	// Ready to execute the command
-	if cmdSetup == true {
+	if cmdSetup {
 		// Reuse the same buffer
 		cmdCrtAgnt.Stdout = &outb
 		cmdCrtAgnt.Stderr = &errb

@@ -1,5 +1,5 @@
 #
-#© Copyright IBM Corporation 2020, 2023
+#© Copyright IBM Corporation 2020, 2024
 #
 #Licensed under the Apache License, Version 2.0 (the "License");
 #you may not use this file except in compliance with the License.
@@ -181,7 +181,7 @@ RUN mkdir -p $BFG_DATA \
 
 # Copy the Bridge Credential Exit into container.
 COPY --from=pbaexitbuilder /credentialsexit/BridgeCredentialExit/bin/com.ibm.wmq.bridgecredentialexit.jar /customexits/mqft/pbaexit/com.ibm.wmq.bridgecredentialexit.jar
-COPY ./credentialsexit/BridgeCredentialExit/thirdparty/json-20240205.jar /customexits/mqft/pbaexit/json-20240205.jar
+COPY ./credentialsexit/BridgeCredentialExit/thirdparty/json-20240205.jar /customexits/mqft/pbaexit/org.json.jar
 
 # Set path so that we can run our programs
 ENV PATH=$PATH:/opt/mqm/mqft/bin:/opt/mqm/mqft/java/jre64/jre/bin:/opt/mqm/bin:/run
