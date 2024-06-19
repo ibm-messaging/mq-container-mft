@@ -37,22 +37,27 @@ data:
   ProtocolBridgeCredentials.prop: sftp.server.com=sftpuid!0!SftpPassw0rd
 ```
 
-### JSON formatted Key value pairs in the following attributes
+### Supplying attributes as a JSON object.
+Parameters required by ProtocolBridgeAgent for connecting to SFTP server must be supplied through a JSON object. The following are the supported attributes. 
+
 - **serverHostName** - Host name or the IP address of the file server.
-- **transferRequesterId** - User Id to match with incoming transfer requests source agent. Transfer requests that don't match the user Id specified will be rejected by the destinatio agent. Specify '*' to match all user Ids. 
-- **serverType** - Type of the file server. SFTP, FTP and FTPS are supported values. Default is FTP.
+- **transferRequesterId** - User Id to match with incoming transfer requests source agent. Transfer requests that don't match the user Id specified will be rejected by the destinatio agent. Please note that in an OpenShift Cluster, agent container may running under a dynamically created user. Hence you may specify '*' to match all user Ids.
+- **serverType** - Type of the file server. SFTP and FTP are the supported values. Default is FTP.
 - **serverAssocName** - Name to associate.
-- **serverUserId** - User Id for connecting to file server.
-- **serverPassword** - Password for connecting to file server.
-- **serverHostKey** - Host key required for connecting to file server. Must be in Base64 encoded format.
-- **serverPrivateKey** - Private key required for connecting to file server. Must be in Base64 encoded format.
+- **serverUserId** - User Id for connecting to SFTP file server.
+- **serverHostKey** - Host key required for connecting to SFTP file server. Must be in Base64 encoded format.
+- **serverPrivateKey** - Private key required for connecting to SFTP file server. Must be in Base64 encoded format.
+- **serverPassword** - Password for the private key.
 
-Note: Specify one of **serverHostKey**/**serverPassword** or **serverHostKey**/**serverPrivateKey** combination.
-
-Example:
+An example configmap:
 
 ```
-{
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: pba-custom-cred-map
+data:
+  ProtocolBridgeCredentials.prop: {
  "servers": [
 	{
 	"serverHostName":"sftp.host.com",
@@ -60,18 +65,10 @@ Example:
 	"serverType": "SFTP",
 	"serverUserId": "sftpuserid",
 	"serverAssocName": "<sftpassconame>",
-	"serverPassword": "<sftppassword>",
-	"serverHostKey": "<host key>",
-	"serverPrivateKey": "<private key>"
-	},
-	{
-	"serverHostName":"ftpserver.com",
-	"transferRequesterId":"xferuserid",
-	"serverType": "FTP",
-	"serverUserId": "ftpuserid",
-	"serverPassword": "ftppassword",
+	"serverHostKey": "<base64 encoded host key>",
+	"serverPassword": "<password of private key>",
+	"serverPrivateKey": "<base64 encoded private key>"
 	}
 	]
 }
-
 ```

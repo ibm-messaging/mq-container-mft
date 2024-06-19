@@ -245,6 +245,14 @@ func DeleteDir(dirPath string) error {
 	return nil
 }
 
+func DeleteFile(filePath string) error {
+	err := os.Remove(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to delete directory - %s due to %v. Continuing", filePath, err)
+	}
+	return nil
+}
+
 // Is the given string a number
 func IsNumeric(s string) (bool, error) {
 	_, err := strconv.ParseInt(s, 10, 64)

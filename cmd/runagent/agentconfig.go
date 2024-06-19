@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2022, 2023
+© Copyright IBM Corporation 2022, 2024
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -831,11 +831,6 @@ func updateFTPServerAttributes(serverNode *xmldom.Node, serverJson string) {
 		value := gjson.Get(serverJson, "maxActiveDestinationTransfers").Int()
 		limits.SetAttributeValue("maxActiveDestinationTransfers", strconv.Itoa(int(value)))
 	}
-
-	/*if gjson.Get(serverJson, "failTransferWhenCapacityReached").Exists() {
-		value := gjson.Get(serverJson, "failTransferWhenCapacityReached").Bool()
-		limits.SetAttributeValue("failTransferWhenCapacityReached", strconv.FormatBool(value))
-	}*/
 }
 
 // Update SFTP specific attributes
@@ -868,6 +863,31 @@ func updateSFTPServerAttributes(serverNode *xmldom.Node, serverJson string) {
 	if gjson.Get(serverJson, "limitedWrite").Exists() {
 		value := gjson.Get(serverJson, "limitedWrite").Bool()
 		serverNode.SetAttributeValue("limitedWrite", strconv.FormatBool(value))
+	}
+
+	if gjson.Get(serverJson, "cipherList").Exists() {
+		value := gjson.Get(serverJson, "cipherList").String()
+		serverNode.SetAttributeValue("cipherList", value)
+	}
+
+	if gjson.Get(serverJson, "hostKeyCipherList").Exists() {
+		value := gjson.Get(serverJson, "hostKeyCipherList").String()
+		serverNode.SetAttributeValue("hostKeyCipherList", value)
+	}
+
+	if gjson.Get(serverJson, "keyExchangeCipherList").Exists() {
+		value := gjson.Get(serverJson, "keyExchangeCipherList").String()
+		serverNode.SetAttributeValue("keyExchangeCipherList", value)
+	}
+
+	if gjson.Get(serverJson, "MACCipherList").Exists() {
+		value := gjson.Get(serverJson, "MACCipherList").String()
+		serverNode.SetAttributeValue("MACCipherList", value)
+	}
+
+	if gjson.Get(serverJson, "fingerprintHash").Exists() {
+		value := gjson.Get(serverJson, "fingerprintHash").String()
+		serverNode.SetAttributeValue("fingerprintHash", value)
 	}
 
 	// Create limits section

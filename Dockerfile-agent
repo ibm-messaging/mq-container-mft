@@ -14,10 +14,10 @@
 #limitations under the License.
 #
 
-ARG UBI_BASE_IMAGE=registry.access.redhat.com/ubi8/ubi-minimal
-ARG UBI_BASE_TAG=8.9-1108
-ARG GO_TOOLSET_IMAGE=registry.access.redhat.com/ubi8/go-toolset
-ARG GO_TOOLSET_TAG=1.20.10-10
+ARG UBI_BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal
+ARG UBI_BASE_TAG=9.4-949.1714662671
+ARG GO_TOOLSET_IMAGE=registry.access.redhat.com/ubi9/go-toolset
+ARG GO_TOOLSET_TAG=1.21.9-1.1715774364
 ARG GO_WORKDIR=/opt/app-root/src/go/src/github.com/ibm-messaging/mq-container-mft
 ARG JDK_BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-8
 ARG JDK_BASE_TAG=1.14
@@ -35,7 +35,8 @@ ARG GO_WORKDIR
 # Do everything as root. We will change the user at a later point
 USER 0
 
-RUN git --version
+# Don't use Proxy when download packages
+RUN go env -w GOPROXY=direct
 
 # Create a directory where compiled golang programs will be copied
 RUN mkdir -p /run
@@ -69,12 +70,10 @@ USER 0
 RUN mkdir /credentialsexit
 COPY ./credentialsexit /credentialsexit
 # You will need to download com.ibm.wmqfte.exitroutines.api.jar from IBM MQ 
-# Managed File Transfer Redistributable package and json-20240205.jar and 
+# Managed File Transfer Redistributable package and json-20240303.jar and 
 # place them in /credentialsexit/BridgeCredentialExit/thirdparty directory.
-# Although JDK 1.8 is used, compile it to run against Java 1.7 as the current
-# version MFT is compiled to run with Java 1.7.
 RUN mkdir -p /credentialsexit/BridgeCredentialExit/bin  \
-    && javac -source 1.7 -target 1.7 -cp "/credentialsexit/BridgeCredentialExit/thirdparty/*" -d /credentialsexit/BridgeCredentialExit/bin /credentialsexit/BridgeCredentialExit/src/com/ibm/bridgecredentialexit/ProtocolBridgeCustomCredentialExit.java \
+    && javac -source 1.8 -target 1.8 -cp "/credentialsexit/BridgeCredentialExit/thirdparty/*" -d /credentialsexit/BridgeCredentialExit/bin /credentialsexit/BridgeCredentialExit/src/com/ibm/bridgecredentialexit/ProtocolBridgeCustomCredentialExit.java \
     && cd /credentialsexit/BridgeCredentialExit/bin \
     && jar cvf com.ibm.wmq.bridgecredentialexit.jar com
 
@@ -125,16 +124,24 @@ USER 0
 COPY $ARG_MQMFT_REDIST_FILE /usr/local/$ARG_MQMFT_REDIST_FILE
 
 # Install additional packages
-RUN microdnf install bash \
+RUN microdnf install -y bash \
+    bc \
+    ca-certificates \
+    gawk \
+    glibc-common \ 
+    grep \
+    ncurses-libs \
+    passwd \
+    procps-ng \
+    sed \
+    shadow-utils \
+    tar \
+    util-linux \
+    which \
     wget \
     file \
     findutils \
     glibc \
-    redhat-lsb-core \
-    util-linux-ng \  
-    sed \
-    tar \
-    util-linux \
     glibc-all-langpacks \
     && rm -rf /var/lib/apt/lists/* 
 
@@ -181,7 +188,7 @@ RUN mkdir -p $BFG_DATA \
 
 # Copy the Bridge Credential Exit into container.
 COPY --from=pbaexitbuilder /credentialsexit/BridgeCredentialExit/bin/com.ibm.wmq.bridgecredentialexit.jar /customexits/mqft/pbaexit/com.ibm.wmq.bridgecredentialexit.jar
-COPY ./credentialsexit/BridgeCredentialExit/thirdparty/json-20240205.jar /customexits/mqft/pbaexit/org.json.jar
+COPY ./credentialsexit/BridgeCredentialExit/thirdparty/json-20240303.jar /customexits/mqft/pbaexit/org.json.jar
 
 # Set path so that we can run our programs
 ENV PATH=$PATH:/opt/mqm/mqft/bin:/opt/mqm/mqft/java/jre64/jre/bin:/opt/mqm/bin:/run

@@ -3,28 +3,39 @@
 ## Overview
 IBM MQ Managed File Transfer transfers files between systems in a managed and auditable way, regardless of file size or the operating systems used. You can use Managed File Transfer to build a customized, scalable, and automated solution that enables you to manage, trust, and secure file transfers. Managed File Transfer eliminates costly redundancies, lowers maintenance costs, and maximizes your existing IT investments.
 
-Run IBM MQ Managed File Transfer agents in a container.
+This image allows you to run IBM MQ Managed File Transfer Agent in a container. The container image can be run using podman or docker runtimes or can be deployed in an OpenShift Cluster via a Deployment yaml. With this container image, you can run both standard and protocol bridge type of agents. The protocol bridge agent supports connections to FTP and SFTP servers.
 
 See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 
-## What is new in this version
-**9.3.5.0**
+## What is new in IBM MQ MFT Agent Container 9.4.0.0?
+
+This version of the container image has the following updates:
+
+- Built using the IBM MQ Managed File Transfer 9.4.0.0 LTS Redistributable binaries.
+- Container image is built using ubi9 minimal RedHat Linux image as the base image.
+- The bridge agent now supports usage of SSH Private Keys for connecting to SFTP Servers. 
+  The SSH private key and host key must be Base 64 encoded. SSH Private key can be supplied through an OpenShift configMap or a secret. See [here](docs/custompbacred.md) for more details.
+- Fixes issues found in internal testing and by customers.
+
+**Earlier versions of container images**
+
+**MQ 9.3.5.0**
 - Container image built with 9.3.5.0 CD of IBM MQ Managed File Transfer Redistributable Image.
 - Fixes issues found in internal testing and by customers.
 
-**9.3.4.0**
+**MQ 9.3.4.0**
 - Container image built with 9.3.4.0 CD of IBM MQ Managed File Transfer Redistributable Image.
 - Fixes issues found in internal testing and by customers.
 
-**9.3.3.0**
+**MQ 9.3.3.0**
 - Container image built with 9.3.3.0 CD of IBM MQ Managed File Transfer Redistributable Image.
 - Fixes issues found in internal testing and by customers.
 
-**9.3.2.0**
+**MQ 9.3.2.0**
 - Container image built with 9.3.2.0 CD of IBM MQ Managed File Transfer Redistributable Image.
 - Fixes issues found in internal testing and by customers.
 
-**9.3.1.0**
+**MQ 9.3.1.0**
 This version of container image supports TLS secure connections to queue managers. You can now specify cipherspec environment variables as described below. The public keys must be mounted into the container at a specific path. See [here](docs/tls.md) for more details.
 
 
@@ -66,10 +77,9 @@ See the instructions [here](docs/build.md) to build your own agent container ima
 ### Lab 
 Step-by-step [guide](lab/README.md) to using agent container.
 
-### Limitations
-1) Private key and trust stores are not yet supported for Protocol Bridge Agents. Hence only a userid and password combination must be used for connecting to FTP/SFTP/FTPS servers.
-
 ## Issues and contributions
+For issues relating specifically to the container image, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mft-cloud/issues). If you do submit a Pull Request related to this container image, please indicate in the Pull Request that you accept and agree to be bound by the terms of the [IBM Contributor License Agreement](CLA.md).
+
 ### Known issues
 
 When using secure connections to queue manager, agent running in a container may log the following warning messages to console or agent's output0.log. Container will continue to run though.

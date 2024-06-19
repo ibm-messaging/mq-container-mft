@@ -6,7 +6,7 @@ package main
 * Log Capture parse utility
 *
 ************************************************************************
-* © Copyright IBM Corporation 2021, 2022
+* © Copyright IBM Corporation 2021, 2024
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -314,7 +315,7 @@ func displayTransferStatus(logFile string) {
 			// Split the line on '!' and then parse to get the latest status
 			tokens := strings.SplitAfterN(string(line), "!", 3)
 			if len(tokens) > 1 {
-				parseAndDisplay(tokens[2], displayTransferType)
+				parseXml(tokens[2], displayTransferType)
 				if displayCount > 0 {
 					if counter == displayCount {
 						// Displayed required number of records. Exit
@@ -322,14 +323,18 @@ func displayTransferStatus(logFile string) {
 					}
 				}
 			} // Number of tokens more
-		} else {
-
-		} // If line contains SYSTEM.FTE/Log
+		}
 	} // For loop
 
+	keys := make([]string, 0, len(transferIdMap))
+	for k := range transferIdMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	// We have got full list of transfer status. Now display them
-	for key, value := range transferIdMap {
-		fmt.Printf("%s\t%s\n", key, value)
+	for _, k := range keys {
+		fmt.Printf("%s\t%s\n", k, transferIdMap[k])
 	}
 }
 
@@ -723,12 +728,12 @@ func getFormattedTime(timeValue string) time.Time {
 }
 
 /*
- * Parse the Transfer XML and display status of transfer in a list format.
- * @param xmlMessage - Transfer XML message.
- * @param displayTransferType - Type of transfers to display like failed only
-                                or partial transfer etc
+  - Parse the Transfer XML and display status of transfer in a list format.
+  - @param xmlMessage - Transfer XML message.
+  - @param displayTransferType - Type of transfers to display like failed only
+    or partial transfer etc
 */
-func parseAndDisplay(xmlMessage string, displayTransferType int) {
+func parseXml(xmlMessage string, displayTransferType int) {
 	replacedXml := strings.ReplaceAll(xmlMessage, "\\", "/")
 	// Create an parsed XML document
 	doc, err := xmlquery.Parse(strings.NewReader(replacedXml))
@@ -808,14 +813,15 @@ func parseAndDisplay(xmlMessage string, displayTransferType int) {
 				} else {
 					statusText = action.InnerText()
 				}
-				_, exists := transferIdMap[transaction.SelectAttr("ID")]
+				transferIdMap[transaction.SelectAttr("ID")] = statusText
+				/*_, exists := transferIdMap[transaction.SelectAttr("ID")]
 				if exists {
 					// Overwrite the current state
 					delete(transferIdMap, transaction.SelectAttr("ID"))
 					transferIdMap[transaction.SelectAttr("ID")] = statusText
 				} else {
 					transferIdMap[transaction.SelectAttr("ID")] = statusText
-				}
+				}*/
 			}
 		}
 	}

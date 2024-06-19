@@ -38,7 +38,6 @@ import (
  */
 var eventLog *logger.Logger
 
-
 func logTerminationf(format string, args ...interface{}) {
 	logTermination(fmt.Sprintf(format, args...))
 }
@@ -523,6 +522,7 @@ func processLogMessage(msg string) (map[string]interface{}, error) {
 	// Replace all double quotes with an escape character so that JSON marshalling
 	// does not run into problems.
 	escapedMsg := strings.Replace(msg, "\"", "\\\"", -1)
+	escapedMsg = strings.Replace(escapedMsg, "\\*", "\\\\*", -1)
 	// Make a JSON message that contains only one attribute - a single line from
 	// output0.log file. Also replace all single quote with double quotes
 	jsonMsg := "{\"message\":\"" + escapedMsg + "\"}"

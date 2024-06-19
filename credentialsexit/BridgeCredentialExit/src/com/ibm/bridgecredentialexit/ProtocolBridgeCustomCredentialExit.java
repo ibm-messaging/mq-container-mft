@@ -1,5 +1,5 @@
 /**
- Copyright IBM Corporation 2020, 2021
+ Copyright IBM Corporation 2020, 2024
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Enumeration;
@@ -53,7 +52,7 @@ import org.json.*;
  * in a simple text file or JSON file.
  * 
  */
-public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredentialExit2{
+public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredentialExit2 {
 
 	// Internal utility class
 	private class CredentialsExt {
@@ -75,44 +74,46 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 	}
 
 	// The map that holds mq user ID to serverUserId and serverPassword mappings
-	final private Map<String,CredentialsExt> credentialsMap = new HashMap<String, CredentialsExt>();
+	final private Map<String, CredentialsExt> credentialsMap = new HashMap<String, CredentialsExt>();
 	final private int ENCODED_PLAIN_TEXT = 0;
 	final private int ENCODED_BASE64 = 1;
 	private boolean enableDebugLogs = false;
 
-	/* (non-Javadoc)
-	 * @see com.ibm.wmqfte.exitroutine.api.ProtocolBridgeCredentialExit#initialize(java.util.Map)
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.ibm.wmqfte.exitroutine.api.ProtocolBridgeCredentialExit#initialize(java.
+	 * util.Map)
 	 */
 	@Override
 	public boolean initialize(Map<String, String> bridgeProperties) {
 		// Get the path of the mq user ID mapping properties file
 		String propertiesFilePath = bridgeProperties.get("protocolBridgeCredentialConfiguration");
-
 		if (propertiesFilePath == null || propertiesFilePath.trim().length() == 0) {
-			// The properties file path has not been specified. Output an error and return false
+			// The properties file path has not been specified. Output an error and return
+			// false
 			System.err.println("Error initializing custom bridge credentials exit.");
-			System.err.println("The location of the mqUserID mapping properties file has not been specified in the protocolBridgeCredentialConfiguration property");
+			System.err.println(
+					"The location of the mqUserID mapping properties file has not been specified in the protocolBridgeCredentialConfiguration property");
 			// Allow agent to come up even if there is an error
 			return true;
 		}
-		
+
 		// Enable debug logs.
 		String enableDebugLogStr = System.getenv("ENABLE_PBA_CREDENTIAL_DEBUG_LOG");
 		if (enableDebugLogStr != null && enableDebugLogStr.trim().equals("true"))
 			enableDebugLogs = true;
 
-		// Trim the whitespaces if any.
+		// Trim the whitespace if any.
 		propertiesFilePath = propertiesFilePath.trim();
 
 		// Do some cleanup
-		if(!credentialsMap.isEmpty()) {
+		if (!credentialsMap.isEmpty()) {
 			credentialsMap.clear();
 		}
-		
-		// Flag to indicate whether the exit has been successfully initialized or not
-		boolean initialisationResult = false;
-		String fileData = null;
 
+		String fileData = null;
 		try {
 			File propFile = new File(propertiesFilePath.trim());
 			Path path = propFile.toPath();
@@ -128,46 +129,55 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 			reader.close();
 			fileData = sb.toString();
 
+			// The contents of fileData may be base64 encoded, make an attempt to decode
+			try {
+				Base64.Decoder decoder = Base64.getDecoder();
+				fileData = new String(decoder.decode(fileData), "UTF-8");
+			} catch (IllegalArgumentException ex) {
+				writeLog("Failed to decode credential data. The data may not be base64 encoded");
+				writeDebugLog(ex.getLocalizedMessage());
+			}
+
 			// Now parse the data
 			if (fileData != null) {
+				writeDebugLog(fileData);
 				JSONObject jsonObj = null;
+				fileData = fileData.trim();
 				// First check if the data we got is in JSON format
 				try {
-					jsonObj = new JSONObject(fileData.trim());
-					initialisationResult = processV2Credentials(jsonObj);
-				} catch(JSONException jex) {
-					if (enableDebugLogs) {
-						System.out.println("Failed to load credentials in JSON format from file " +  propertiesFilePath + ". The file does not appear to contain credentials in valid JSON format. Agent will now attempt to decode credentials in V1 (key-value) format");
-						System.err.println("Exception details: " + jex);
-					}
-
-					// we failed to parse the JSON data, Then this must be old style credential format.
+					jsonObj = new JSONObject(fileData);
+					processV2Credentials(jsonObj);
+				} catch (JSONException jex) {
+					writeLog("Failed to load credentials in JSON format from file " + propertiesFilePath
+							+ ". The file does not appear to contain credentials in valid JSON format. Agent will now attempt to decode credentials in V1 (key-value) format");
+					writeDebugLog("Exception details: " + jex);
+					// we failed to parse the JSON data, Then this must be old style credential
+					// format.
 					try {
-						initialisationResult  = parseV1FormatCredentials(propertiesFilePath);
+						parseV1FormatCredentials(propertiesFilePath);
 					} catch (IOException e) {
-						System.err.println("Error loading credentials from file " + propertiesFilePath + " due to exception " + e);
+						writeLog(
+								"Error loading credentials from file " + propertiesFilePath + " due to exception " + e);
 						if (enableDebugLogs) {
-							System.err.println(e.getStackTrace());
+							e.printStackTrace();
 						}
 					}
-				} catch(Exception ex) {
-					System.err.println("Failed to load credentials due to expection. " + ex);
+				} catch (Exception ex) {
+					writeLog("Failed to load credentials due to expection. " + ex);
 					if (enableDebugLogs) {
 						System.err.println(ex.getStackTrace());
 					}
 				}
 			}
-		}
-		catch (FileNotFoundException ex) {
-			System.err.println("Credentials file " + propertiesFilePath + " not found.");
+		} catch (FileNotFoundException ex) {
+			writeLog("Credentials file " + propertiesFilePath + " not found.");
 			if (enableDebugLogs) {
-				System.err.println(ex.getStackTrace());
+				ex.printStackTrace();
 			}
-		}
-		catch (Exception ex) {
-			System.err.println("Failed to initialize custom ProtocolBridgeCustomCredentialExit. The error is: " + ex);
+		} catch (Exception ex) {
+			writeLog("Failed to initialize custom ProtocolBridgeCustomCredentialExit. The error is: " + ex);
 			if (enableDebugLogs) {
-				System.err.println(ex.getStackTrace());
+				ex.printStackTrace();
 			}
 		}
 
@@ -177,6 +187,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 
 	/**
 	 * Read v1 style formatted credentials
+	 * 
 	 * @param propertiesFilePath
 	 * @throws IOException
 	 */
@@ -184,7 +195,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		boolean initialized = false;
 		final Properties mappingProperties = new Properties();
 		// Open and load the properties from the properties file
-		final File propertiesFile = new File (propertiesFilePath);
+		final File propertiesFile = new File(propertiesFilePath);
 		FileInputStream inputStream = null;
 
 		// Create a file input stream to the file
@@ -192,18 +203,20 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		// Load the properties from the file
 		mappingProperties.load(inputStream);
 
-		// Populate the map of Server Host names to server credentials from the properties
+		// Populate the map of Server Host names to server credentials from the
+		// properties
 		final Enumeration<?> propertyNames = mappingProperties.propertyNames();
-		while ( propertyNames.hasMoreElements()) {
+		while (propertyNames.hasMoreElements()) {
 			final Object serverHostName = propertyNames.nextElement();
-			if (serverHostName instanceof String ) {
-				final String serverHostNameTrim = ((String)serverHostName).trim();
-				// Get the value and split into serverUserId and serverPassword 
+			if (serverHostName instanceof String) {
+				final String serverHostNameTrim = ((String) serverHostName).trim();
+				// Get the value and split into serverUserId and serverPassword
 				final String value = mappingProperties.getProperty(serverHostNameTrim);
 				// UID and PWD Credentials will be separated using '!' character.
 				final StringTokenizer valueTokenizer = new StringTokenizer(value, "!");
 
-				// Check if we have server type defined as the first token. If present then process accordingly
+				// Check if we have server type defined as the first token. If present then
+				// process accordingly
 				// If not defined, then assume FTP as the default.
 				if (valueTokenizer.hasMoreTokens()) {
 					initialized = processV1FTPCredential(serverHostNameTrim, valueTokenizer);
@@ -215,6 +228,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 
 	/**
 	 * Process multiple V2 formatted Server credentials
+	 * 
 	 * @param serverHostName
 	 * @param valueTokenizer
 	 */
@@ -222,7 +236,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		boolean parsed = false;
 
 		JSONArray servers = jsonObj.getJSONArray("servers");
-		for(int index = 0; index < servers.length(); index++) {
+		for (int index = 0; index < servers.length(); index++) {
 			JSONObject obj = servers.getJSONObject(index);
 			parsed = processV2Credential(obj);
 		}
@@ -232,22 +246,23 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 
 	/**
 	 * Parse single V2 formatted credentials
+	 * 
 	 * @param jsonObj
 	 * @return
 	 */
 	private boolean processV2Credential(JSONObject jsonObj) {
 		boolean parsed = false;
 		String serverType = jsonObj.getString("serverType");
-		if(serverType != null) {
-			if(serverType.equalsIgnoreCase("SFTP")) {
+		if (serverType != null) {
+			if (serverType.equalsIgnoreCase("SFTP")) {
 				parsed = processV2SFTPCredentials(jsonObj);
-			} else if(serverType.equalsIgnoreCase("FTPS")) {
+			} else if (serverType.equalsIgnoreCase("FTPS")) {
 
-			} else if(serverType.equalsIgnoreCase("FTP")) {
+			} else if (serverType.equalsIgnoreCase("FTP")) {
 				parsed = processV2FTPCredential(jsonObj);
 			}
 		} else {
-			System.out.println("Invalid Server type: " + serverType);
+			writeLog("Invalid Server type: " + serverType);
 		}
 
 		return parsed;
@@ -255,6 +270,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 
 	/**
 	 * Process SFTP Credentials
+	 * 
 	 * @param jsonObj
 	 * @return
 	 */
@@ -266,89 +282,102 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		String serverPassword = null;
 		String serverPrivateKey = null;
 		String requesterUserId = null;
-		
+
 		try {
 			serverHostName = jsonObj.getString("serverHostName");
 		} catch (Exception ex) {
-			System.err.println("Credentials does not have the mandatory attribute 'serverHostName' specified. Agent will not be able to communicate with protocol server.");
+			writeDebugLog(
+					"Credentials does not have the mandatory attribute 'serverHostName' specified. Agent will not be able to communicate with protocol server.");
+			ex.printStackTrace();
 			return false;
 		}
 
 		try {
 			serverUserId = jsonObj.getString("serverUserId");
-		}catch(Exception ex) {
-			System.err.println("Credentials does not have the mandatory attribute 'serverUserId' specified. Agent will not be able to communicate with protocol server.");
+		} catch (Exception ex) {
+			writeLog(
+					"Credentials does not have the mandatory attribute 'serverUserId' specified. Agent will not be able to communicate with protocol server.");
+			ex.printStackTrace();
 			return false;
 		}
 
 		try {
 			serverPassword = jsonObj.getString("serverPassword");
-		}catch(Exception ex) {
-			System.err.println("Credentials does not have the mandatory attribute 'serverPassword' specified. Agent will not be able to communicate with protocol server.");
+		} catch (Exception ex) {
+			writeLog(
+					"Credentials does not have the mandatory attribute 'serverPassword' specified. Agent will not be able to communicate with protocol server.");
+			ex.printStackTrace();
 			return false;
 		}
 
 		try {
 			requesterUserId = jsonObj.getString("transferRequesterId");
-		}catch (Exception ex) {
+		} catch (Exception ex) {
+			ex.printStackTrace();
 			requesterUserId = "*";
 		}
 
 		try {
 			serverAssocName = jsonObj.getString("serverAssocName");
-		}catch (Exception ex) {
+		} catch (Exception ex) {
+			ex.printStackTrace();
 			// Ignore if it's not found.
 			serverAssocName = "dummyAssocName";
 		}
 
 		try {
 			serverPrivateKey = jsonObj.getString("serverPrivateKey");
-		}catch (Exception ex) {
-			// Not found, ignore
+		} catch (Exception ex) {
+			writeLog("Failed to read servers private key. " + ex.getMessage());
+			ex.printStackTrace();
 		}
 
 		try {
 			serverHostKey = jsonObj.getString("serverHostKey");
-		}catch (Exception ex) {
-			// Not found, ignore
+		} catch (Exception ex) {
+			writeLog("Failed to read server's host key. " + ex.getMessage());
+			ex.printStackTrace();
 		}
 
 		String decodedPrivateKey = null;
-		List <CredentialPrivateKey> privateKeys = new ArrayList<CredentialPrivateKey>();
+		List<CredentialPrivateKey> privateKeys = new ArrayList<CredentialPrivateKey>();
+
 		// Private key will be in base64 encoded format. We must decode it now.
-		if(serverPrivateKey != null && serverPrivateKey.trim().length() > 0) {
-			Base64.Decoder decoder = Base64.getDecoder();  
-			// Decode string  
-			decodedPrivateKey = new String(decoder.decode(serverPrivateKey));  						
-			privateKeys.add(new CredentialPrivateKey(serverAssocName, decodedPrivateKey));
+		if (serverPrivateKey != null && serverPrivateKey.trim().length() > 0) {
+			Base64.Decoder decoder = Base64.getDecoder();
+			// Decode private key
+			decodedPrivateKey = new String(decoder.decode(serverPrivateKey));
+			decodedPrivateKey = decodedPrivateKey.replaceAll("\r\n", "\n");
+			decodedPrivateKey = decodedPrivateKey.replaceFirst("^[\n\t ]*", "").replaceAll("\n[\t ]*", "\n")
+					.replaceAll("[\t ]*\n", "\n");
+			writeDebugLog(decodedPrivateKey);
+			CredentialPrivateKey cpk = new CredentialPrivateKey(serverAssocName, decodedPrivateKey,
+					new CredentialPassword(serverPassword));
+			privateKeys.add(cpk);
+		} else {
+			writeLog("A private key for the server was not provided. Can't continue.");
+			return false;
 		}
 
 		// Host key also must be in base64 encoding.
 		if (serverHostKey != null && serverHostKey.trim().length() > 0) {
-			Base64.Decoder decoder = Base64.getDecoder();  
-			// Decode string  
-			serverHostKey = new String(decoder.decode(serverHostKey));  						
+			Base64.Decoder decoder = Base64.getDecoder();
+			// Decode string
+			serverHostKey = new String(decoder.decode(serverHostKey));
+			writeDebugLog(serverHostKey);
+		} else {
+			writeLog("A host key for the server was not provided. Can't continue.");
+			return false;
 		}
 
 		Credentials credentials = null;
-		// If private key is not specified, then use UID/PWD combination.
-		if(privateKeys.size() == 0) {
-			writeDebugLog("Private key size 0 " + serverHostName + " " + requesterUserId + " " +  serverUserId + " " + serverPassword);
-			credentials = new Credentials( new CredentialUserId(serverUserId), new CredentialPassword(serverPassword));
-		} else {
-			// If server host key is not specified, then use private keys
-			if(serverHostKey == null || serverHostKey.isEmpty()) {
-				credentials = new Credentials( new CredentialUserId(serverUserId), privateKeys);
-			} else {
-				credentials = new Credentials( new CredentialUserId(serverUserId), privateKeys, new CredentialHostKey(serverHostKey));
-			}
-
-			// Set the password
-			credentials.setPassword(new CredentialPassword(serverPassword));
-		}
-		writeDebugLog("Credential key add to list " + serverHostName + " " + requesterUserId + " " +  serverUserId + " " + serverPassword);
-		// Add it to the list
+		writeDebugLog("Creating credentials with userid, hostkey, password and private key");
+		credentials = new Credentials(new CredentialUserId(serverUserId), privateKeys,
+				new CredentialHostKey(serverHostKey));
+		// Add it to the list of credentials
 		credentialsMap.put(serverHostName, new CredentialsExt(requesterUserId, credentials));
+		writeLog("Credential information for host" + serverHostName + " processed successfully.");
+
 		return true;
 	}
 
@@ -359,37 +388,39 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		String requesterUserId = jsonObj.getString("transferRequesterId");
 		String serverPassword = jsonObj.getString("serverPassword");
 
-		if(serverHostName == null || serverHostName.trim().isEmpty()) {
+		if (serverHostName == null || serverHostName.trim().isEmpty()) {
 			valid = false;
 		}
 
-		if(valid) {
-			if(serverUserId == null || serverUserId.trim().isEmpty()) {
+		if (valid) {
+			if (serverUserId == null || serverUserId.trim().isEmpty()) {
 				valid = false;
 			}
 		}
 
 		if (valid) {
-			if(serverPassword == null || serverPassword.trim().isEmpty()) {
+			if (serverPassword == null || serverPassword.trim().isEmpty()) {
 				valid = false;
 			}
 		}
 
-		if(valid) {
-			if(requesterUserId == null || requesterUserId.trim().isEmpty()) {
+		if (valid) {
+			if (requesterUserId == null || requesterUserId.trim().isEmpty()) {
 				valid = true;
 				requesterUserId = "*";
 			}
 		}
 
-		if(valid) {
+		if (valid) {
 			try {
 				// Create a Credential object from the serverUserId and serverPassword
-				final Credentials credentials = new Credentials(new CredentialUserId(serverUserId), new CredentialPassword(serverPassword));
+				final Credentials credentials = new Credentials(new CredentialUserId(serverUserId),
+						new CredentialPassword(serverPassword));
 				// Insert the credentials into the map
-				credentialsMap.put(serverHostName, new CredentialsExt(requesterUserId, credentials));			
-			} catch(Exception ex) {
-				System.out.println("Failed to create credentials due to exception: " + ex);
+				credentialsMap.put(serverHostName, new CredentialsExt(requesterUserId, credentials));
+			} catch (Exception ex) {
+				writeLog("Failed to create credentials due to exception: " + ex);
+				ex.printStackTrace();
 				valid = false;
 			}
 		}
@@ -399,6 +430,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 
 	/**
 	 * Process FTP credentials.
+	 * 
 	 * @param serverHostName
 	 * @param valueTokenizer
 	 */
@@ -407,6 +439,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		String serverUserId = "";
 		String serverPassword = "";
 		String encryptionType = "";
+		writeLog("Checking FTP Credentials entry " + serverHostName + " " + serverUserId + " " + serverPassword);
 
 		// Server user id
 		if (valueTokenizer.hasMoreTokens()) {
@@ -422,8 +455,9 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		int encType = ENCODED_PLAIN_TEXT;
 		try {
 			encType = Integer.parseInt(encryptionType);
-		} catch(Exception e) {
-			System.err.println(e);
+		} catch (Exception e) {
+			writeLog(e.getMessage());
+			e.printStackTrace();
 		}
 
 		// Server password.
@@ -431,123 +465,161 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 			serverPassword = valueTokenizer.nextToken().trim();
 		}
 
-		// If it is base64 encoded. 
-		if(encType == ENCODED_BASE64) {
+		// If it is base64 encoded.
+		if (encType == ENCODED_BASE64) {
 			// Password is base64 encoded. So decode it.
 			try {
 				byte[] base64decodedBytes = Base64.getDecoder().decode(serverPassword);
 				serverPassword = new String(base64decodedBytes, "utf-8");
 				// Create a Credential object from the serverUserId and serverPassword
-				final Credentials credentials = new Credentials(new CredentialUserId(serverUserId), new CredentialPassword(serverPassword));
+				final Credentials credentials = new Credentials(new CredentialUserId(serverUserId),
+						new CredentialPassword(serverPassword));
 				// Insert the credentials into the map
 				credentialsMap.put(serverHostName, new CredentialsExt(".*", credentials));
 				parsed = true;
 			} catch (UnsupportedEncodingException e) {
-				System.err.println(e);
+				writeLog(e.getMessage());
+				e.printStackTrace();
 			}
-		} else if(encType == ENCODED_PLAIN_TEXT) {
+		} else if (encType == ENCODED_PLAIN_TEXT) {
 			// It's a plain text password
-			final Credentials credentials = new Credentials(new CredentialUserId(serverUserId), new CredentialPassword(serverPassword));
+			writeLog("Checking FTP Credentials " + serverHostName + " " + serverUserId + " " + serverPassword);
+			final Credentials credentials = new Credentials(new CredentialUserId(serverUserId),
+					new CredentialPassword(serverPassword));
 			// Insert the credentials into the map
 			credentialsMap.put(serverHostName, new CredentialsExt(".*", credentials));
 			parsed = true;
 		} else {
 			// Unknown encoding, don't do anything.
-			System.err.println("Unknown encoding " + encType);
+			writeLog("Unknown encoding " + encType);
 		}
 
 		return parsed;
 	}
 
-
-	/* (non-Javadoc)
-	 * @see com.ibm.wmqfte.exitroutine.api.ProtocolBridgeCredentialExit#mapMQUserId(java.lang.String)
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.ibm.wmqfte.exitroutine.api.ProtocolBridgeCredentialExit#mapMQUserId(java.
+	 * lang.String)
 	 */
 	@Override
 	public CredentialExitResult mapMQUserId(String mqUserId) {
 		CredentialExitResult result = null;
 		// Attempt to get the server credentials for the given mq user id
 		final CredentialsExt credentials = credentialsMap.get(mqUserId.trim());
-		if ( credentials == null) {
+		writeDebugLog("mapMQUserId" + mqUserId);
+		if (credentials == null) {
 			// No entry has been found so return no mapping found with no credentials
+			writeLog("No credentials found for user " + mqUserId);
 			result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
-		}
-		else {
-			// Some credentials have been found so return success to the user along with the credentials
-			result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED, credentials.getCredential());
+		} else {
+			// Some credentials have been found so return success to the user along with the
+			// credentials
+			writeDebugLog("Credentials found for user " + mqUserId);
+			result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED,
+					credentials.getCredential());
 		}
 		return result;
 	}
 
-	/* (non-Javadoc)
-	 * @see com.ibm.wmqfte.exitroutine.api.ProtocolBridgeCredentialExit#shutdown(java.util.Map)
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.ibm.wmqfte.exitroutine.api.ProtocolBridgeCredentialExit#shutdown(java.
+	 * util.Map)
 	 */
 	@Override
 	public void shutdown(Map<String, String> arg0) {
 		// Do some cleanup
-		if(!credentialsMap.isEmpty()) {
+		if (!credentialsMap.isEmpty()) {
 			credentialsMap.clear();
 		}
 	}
 
-	/* (non-Javadoc)
-	 * @see com.ibm.wmqfte.exitroutine.api.ProtocolBridgeCredentialExit2#mapMQUserId(com.ibm.wmqfte.exitroutine.api.ProtocolServerEndPoint, java.lang.String)
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * com.ibm.wmqfte.exitroutine.api.ProtocolBridgeCredentialExit2#mapMQUserId(com.
+	 * ibm.wmqfte.exitroutine.api.ProtocolServerEndPoint, java.lang.String)
 	 */
 	@Override
 	public CredentialExitResult mapMQUserId(ProtocolServerEndPoint endPointAddress, String mqUserId) {
 		CredentialExitResult result = null;
-		writeDebugLog("Endpoint Host: " + endPointAddress.getHost() + " Name: " + endPointAddress.getName() + " " + mqUserId);
+		writeDebugLog(
+				"mapMQUserId - entry: Endpoint Host: " + endPointAddress.getHost() + " Name: "
+						+ endPointAddress.getName() + " " + mqUserId);
 
 		// Attempt to get the server credentials for the given mq user id
 		final CredentialsExt credentials = credentialsMap.get(endPointAddress.getHost().trim());
-		if ( credentials == null) {
+		if (credentials == null) {
 			// No entry has been found so return no mapping found with no credentials
-			writeLog("Credentials for server" + endPointAddress.getHost()+ "not found ");
+			writeLog("Credentials for server " + endPointAddress.getHost() + " not found.");
 			result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
-		}
-		else {
+		} else {
 			writeDebugLog("Requested Uid " + credentials.getRequesterId());
 			// We may need to match the given userId. So do that now.
-			if(mqUserId != null && credentials.getRequesterId() != null) {
+			if (mqUserId != null && credentials.getRequesterId() != null) {
 				// We may have wild cards.
 				try {
 					String requesterIdCred = credentials.getRequesterId();
-					requesterIdCred = requesterIdCred.replaceAll("\\*", "\\\\*");
-					Pattern p = Pattern.compile(requesterIdCred);
-					Matcher m = p.matcher(mqUserId);
-					if(m.matches()) {
-						writeDebugLog("Matching Uid found " + requesterIdCred);
-						result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED, credentials.getCredential());
+					Pattern p = null;
+					Matcher m = null;
+					try {
+						requesterIdCred = requesterIdCred.replaceAll("\\*", "\\\\*");
+						p = Pattern.compile(requesterIdCred);
+						m = p.matcher(mqUserId);
+					} catch (Exception ex) {
+						writeLog("Failed to parse transfer requester user id.");
+					}
+					if (m.matches()) {
+						writeDebugLog("Matching Uid found ");
+						result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED,
+								credentials.getCredential());
 					} else {
 						// If the requester id is *, then match every id that is supplied
-						writeDebugLog("Matching Uid not found " + requesterIdCred);
-						if (credentials.getRequesterId().equalsIgnoreCase("*")) {
-							result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED, credentials.getCredential());
+						writeDebugLog("Matching Uid not found. Determining credentials for generic userId *");
+						if (credentials.getRequesterId().equalsIgnoreCase("*")
+								|| credentials.getRequesterId().equalsIgnoreCase(".*")) {
+							Credentials crd = credentials.getCredential();
+							List<CredentialPrivateKey> pkey = crd.getPrivateKey();
+							String strPkey = pkey.get(0).getKey();
+							result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED,
+									credentials.getCredential());
+
+							writeDebugLog("Returning credentials for a generic user *");
 						} else {
-							writeDebugLog("Not generic UID " + requesterIdCred);
+							writeLog("Credentials for user " + mqUserId + " not found.");
 							result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
 						}
 					}
 				} catch (Exception ex) {
-					writeDebugLog(ex.toString());
+					writeLog("An error occurred while processing credential information. The exception is: "
+							+ ex.toString());
 					result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
 				}
 			} else {
-				writeLog("Requester id and mq userid not matching ");
-				// Some credentials have been found so return success to the user along with the credentials
-				result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED, credentials.getCredential());
+				// writeDebugLog("Requester id and mq userid not matching");
+				// Some credentials have been found so return success to the user along with the
+				// credentials
+				result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED,
+						credentials.getCredential());
 			}
 		}
+		writeDebugLog("mapMQUserId - exit");
 		return result;
 	}
 
 	private void writeLog(String log) {
-		System.out.println(log);
+		System.out.println("PBACUSTEXIT: " + log);
 	}
 
 	// Write a debug log to agent's output0.log
 	private void writeDebugLog(String log) {
 		if (enableDebugLogs)
-			System.out.println(log);
+			System.out.println("PBACUSTEXIT: " + log);
 	}
 }
