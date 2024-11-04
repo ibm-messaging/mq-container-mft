@@ -1,7 +1,0 @@
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: pba-custom-cred-map
-  namespace: mqmft
-data:
-  ProtocolBridgeCredentials.prop: 10.17.4.48=sftpuser!1!H0neycomb

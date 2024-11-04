@@ -60,7 +60,7 @@ func main() {
 	logLevelStr, logLevelSet := os.LookupEnv(MFT_LOG_LEVEL)
 	if logLevelSet {
 		// Trim the value specified.
-		logLevelStr = strings.Trim(logLevelStr, TEXT_TRIM)
+		logLevelStr = strings.TrimSpace(logLevelStr)
 		if strings.EqualFold(logLevelStr, LOG_LEVEL_VERBOSE_TXT) {
 			// Verbose level logging.
 			logLevel = LOG_LEVEL_VERBOSE
@@ -104,7 +104,7 @@ func main() {
 		utils.PrintLog(utils.MFT_CONT_ENV_AGENT_NAME_NOT_SPECIFIED_0006)
 		os.Exit(MFT_CONT_ERR_CODE_3)
 	}
-	agentNameEnv = strings.Trim(agentNameEnv, TEXT_TRIM)
+	agentNameEnv = strings.TrimSpace(agentNameEnv)
 	utils.PrintLog(fmt.Sprintf(utils.MFT_AGENT_NAME_CONFIGURE, agentNameEnv))
 	if len(agentNameEnv) == 0 {
 		utils.PrintLog(utils.MFT_CONT_ENV_AGENT_NAME_BLANK_0007)
@@ -145,7 +145,7 @@ func main() {
 	// See if we have been given mount point for creating agent configuration and log directory.
 	bfgConfigMountPath, bfgCfgMountPathSet := os.LookupEnv(BFG_DATA)
 	if bfgCfgMountPathSet {
-		bfgConfigMountPath = strings.Trim(bfgConfigMountPath, TEXT_TRIM)
+		bfgConfigMountPath = strings.TrimSpace(bfgConfigMountPath)
 		if len(bfgConfigMountPath) > 0 {
 			bfgDataPath = bfgConfigMountPath
 			// We have a path specified. Attempt to create the directory
@@ -185,13 +185,18 @@ func main() {
 	// variable MFT_AGENT_CONFIG_FILE.
 	bfgConfigFilePath, configFileSet := os.LookupEnv(MFT_AGENT_CONFIG_FILE)
 	if !configFileSet {
-		utils.PrintLog(utils.MFT_CONT_ENV_AGNT_CFG_FILE_NOT_SPECIFIED_0011)
-		os.Exit(MFT_CONT_ERR_CODE_8)
-	}
-	bfgConfigFilePath = strings.Trim(bfgConfigFilePath, TEXT_TRIM)
-	if bfgConfigFilePath == TEXT_BLANK {
-		utils.PrintLog(utils.MFT_CONT_ENV_AGNT_CFG_FILE_BLANK_0012)
-		os.Exit(MFT_CONT_ERR_CODE_9)
+		// MFT_AGENT_CONFIG_FILE environment variable not specified. Looking for
+		// config.json file in /run/mqmft directory.
+		msg := fmt.Sprintf(utils.MFT_ENV_AGNT_CFG_FILE_NOT_SPECIFIED, utils.MFT_DEFAULT_CONFIG_JSON)
+		utils.PrintLog(msg)
+		// Assign the default config filename, so that rest of the processing goes on.
+		bfgConfigFilePath = utils.MFT_DEFAULT_CONFIG_JSON
+	} else {
+		bfgConfigFilePath = strings.TrimSpace(bfgConfigFilePath)
+		if bfgConfigFilePath == TEXT_BLANK {
+			utils.PrintLog(utils.MFT_CONT_ENV_AGNT_CFG_FILE_BLANK_0012)
+			os.Exit(MFT_CONT_ERR_CODE_9)
+		}
 	}
 
 	// Copy the JSON configuration file path
@@ -248,7 +253,7 @@ func main() {
 			if logLevel >= LOG_LEVEL_VERBOSE {
 				utils.PrintLog(fmt.Sprintf(utils.MFT_AGENT_NAME_CONFIG_FILE, agentNameConfig))
 			}
-			agentNameConfig = strings.Trim(agentNameConfig, TEXT_TRIM)
+			agentNameConfig = strings.TrimSpace(agentNameConfig)
 			if strings.EqualFold(agentNameConfig, agentNameEnv) {
 				configurationFound = true
 				break
@@ -266,6 +271,18 @@ func main() {
 			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CFG_AGENT_CONFIG_ERROR_0023, bfgConfigFilePath, err))
 			os.Exit(MFT_CONT_ERR_CODE_14)
 		}
+	}
+
+	// Get any JVM properties specified in environment variable BFG_JVM_PROPERTIES and append the default
+	// options.
+	defaultJvmProps := " -Djava.util.prefs.systemRoot=/jprefs/.java/.systemPrefs -Djava.util.prefs.userRoot=/jprefs/.java/.userPrefs"
+	bfgJvmProps, bfgJvmPropsSet := os.LookupEnv(MFT_BFG_JVM_PROPERTIES)
+	if bfgJvmPropsSet {
+		bfgJvmProps = strings.TrimSpace(bfgJvmProps)
+		bfgJvmProps += defaultJvmProps
+		os.Setenv(MFT_BFG_JVM_PROPERTIES, bfgJvmProps)
+	} else {
+		os.Setenv(MFT_BFG_JVM_PROPERTIES, defaultJvmProps)
 	}
 
 	// Cache the coordination queue manager name
@@ -422,7 +439,7 @@ func setupMirrorTransferLogs(ctxTransferLog context.Context, wg *sync.WaitGroup,
 	coordinationQMgr string, agentNameEnv string) {
 	agentTransferLogEnv, agentTransferLogEnvSet := os.LookupEnv(MFT_AGENT_TRANSFER_LOG_PUBLISH_CONFIG_FILE)
 	if agentTransferLogEnvSet {
-		if !strings.EqualFold(strings.Trim(agentTransferLogEnv, TEXT_TRIM), TEXT_BLANK) {
+		if !strings.EqualFold(strings.TrimSpace(agentTransferLogEnv), TEXT_BLANK) {
 			// Read the URL and Injestion key from the given JSON file.
 			serverLogData, e := utils.ReadConfigurationDataFromFile(agentTransferLogEnv)
 			if e != nil {
@@ -435,8 +452,6 @@ func setupMirrorTransferLogs(ctxTransferLog context.Context, wg *sync.WaitGroup,
 				if decoded != nil {
 					// decode successful
 					serverLogData = serverLogDataDecoded
-				} else {
-					// Failed to decode, use it as it is.
 				}
 
 				// Is it a valid json

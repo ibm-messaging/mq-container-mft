@@ -64,8 +64,18 @@ func main() {
 	 */
 	bfgConfigFilePath, bfgConfigFilePathSet := os.LookupEnv("MFT_AGENT_CONFIG_FILE")
 	if !bfgConfigFilePathSet {
-		utils.PrintLog(utils.AGENT_ALIV_ENV_AGENT_CFG_FILE_NOT_SET_4002)
-		os.Exit(AGENT_ALIV_EXIT_CODE_2)
+		// MFT_AGENT_CONFIG_FILE environment variable not specified. Looking for
+		// config.json file in /run/mqmft directory.
+		msg := fmt.Sprintf(utils.MFT_ENV_AGNT_CFG_FILE_NOT_SPECIFIED, utils.MFT_DEFAULT_CONFIG_JSON)
+		utils.PrintLog(msg)
+		// Assign the default config filename, so that rest of the processing goes on.
+		bfgConfigFilePath = utils.MFT_DEFAULT_CONFIG_JSON
+	} else {
+		bfgConfigFilePath = strings.TrimSpace(bfgConfigFilePath)
+		if bfgConfigFilePath == "" {
+			utils.PrintLog(utils.MFT_CONT_ENV_AGNT_CFG_FILE_BLANK_0012)
+			os.Exit(AGENT_ALIV_EXIT_CODE_2)
+		}
 	}
 
 	// Read agent configuration data from JSON file.

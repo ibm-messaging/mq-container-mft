@@ -1,0 +1,14 @@
+{
+    "servers": [
+        {
+            "serverHostName": "172.17.0.3",
+            "transferRequesterId": "*",
+            "serverType": "SFTP",
+            "serverUserId": "sftpuser",
+            "serverAssocName": "mftassoc1",
+            "serverHostKey": "Base64 encoded host key",
+            "serverPrivateKey": "Base64 server private key",
+            "serverPassword": "Password for the private key"
+        }
+    ]
+}

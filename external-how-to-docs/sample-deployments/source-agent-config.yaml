@@ -1,0 +1,8 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: src-agent-config
+  namespace: ibm-mqmft
+data:
+  srcagent.json: > 
+    "{"waitTimeToStart":20,"coordinationQMgr":{"name":"MFTQM","host":"mftqm-ibm-mq.ibm-mqmft.svc.cluster.local","port":1414,"channel":"QS_SVRCONN","additionalProperties":{}},"commandQMgr":{"name":"MFTQM","host":"mftqm-ibm-mq.ibm-mqmft.svc.cluster.local","port":1414,"channel":"QS_SVRCONN","additionalProperties":{}},"agents":[{"name":"SRC","deleteOnTermination":"true","type":"STANDARD","qmgrName":"MFTQM","qmgrHost":"mftqm-ibm-mq.ibm-mqmft.svc.cluster.local","qmgrPort":1414,"qmgrChannel":"QS_SVRCONN","additionalProperties":{"enableQueueInputOutput":"true","trace":"all","logCapture":"true"}}]}"

@@ -149,7 +149,7 @@ func configTLSCommand(allAgentConfig string, credentialsDoc *xmldom.Document, cm
 	var created bool
 	// Create keystore using certificate provided if available.
 	cipherName, cipherSet := os.LookupEnv(MFT_CMD_QMGR_CIPHER)
-	if cipherSet && len(strings.Trim(cipherName, TEXT_TRIM)) > 0 {
+	if cipherSet && len(strings.TrimSpace(cipherName)) > 0 {
 		password := generateRandomPassword()
 		// Search for .crt file in the predefined directory
 		publicKeyCertPath := getKeyFile(commandQMCertPath, ".crt")

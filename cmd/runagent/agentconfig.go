@@ -131,7 +131,7 @@ func setupAgent(agentConfig string, bfgDataPath string, coordinationQMgr string)
 	// Get the type of the agent from configuration file. Assume type as STANDARD
 	// if not specified or an invalid type was specified.
 	if gjson.Get(agentConfig, "type").Exists() {
-		agentType = strings.ToUpper(strings.Trim(gjson.Get(agentConfig, "type").String(), TEXT_TRIM))
+		agentType = strings.ToUpper(strings.TrimSpace(gjson.Get(agentConfig, "type").String()))
 		if !strings.EqualFold(agentType, AGENT_TYPE_STANDARD) && !strings.EqualFold(agentType, AGENT_TYPE_BRIDGE) {
 			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_INVALID_TYPE_0045, agentType, AGENT_TYPE_STANDARD))
 			agentType = AGENT_TYPE_STANDARD
@@ -347,7 +347,7 @@ func configTLSAgent(agentConfig string, credentialsDoc *xmldom.Document, agentCr
 
 	// Create keystore using certificate provided if available.
 	cipherName, cipherSet := os.LookupEnv(MFT_AGENT_QMGR_CIPHER)
-	if cipherSet && len(strings.Trim(cipherName, TEXT_TRIM)) > 0 {
+	if cipherSet && len(strings.TrimSpace(cipherName)) > 0 {
 		password := generateRandomPassword()
 		publicKeyFile := getKeyFile(agentQMCertPath, ".crt")
 		if len(publicKeyFile) > 0 {
@@ -395,7 +395,7 @@ func updateBridgeParameters(bridgeProperties string, params []string) bool {
 	}
 
 	serverName := gjson.Get(bridgeProperties, "name")
-	if serverName.Exists() && len(strings.Trim(serverName.String(), TEXT_TRIM)) > 0 {
+	if serverName.Exists() && len(strings.TrimSpace(serverName.String())) > 0 {
 		value = true
 	}
 

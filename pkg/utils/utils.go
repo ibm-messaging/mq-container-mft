@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2020, 2021
+© Copyright IBM Corporation 2020, 2024
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,11 @@ import (
 	"github.com/icza/backscanner"
 )
 
+// Default mountpath where MFT Configuration will be created.
 const FIXED_BFG_DATAPATH = "/mnt/mftdata"
+
+// Default agent configuration json file
+const MFT_DEFAULT_CONFIG_JSON = "/run/mqmft/config.json"
 
 // Read configuration data from json file
 func ReadConfigurationDataFromFile(configFile string) (string, error) {

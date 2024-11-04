@@ -70,7 +70,7 @@ func IsCommandTracingEnabled() bool {
 	var commandTraceEnabled bool = false
 	enableCommandTrace, enableCommandTraceSet := os.LookupEnv(MFT_TRACE_COMMANDS)
 	if enableCommandTraceSet {
-		enableCommandTrace = strings.ToLower(strings.Trim(enableCommandTrace, TEXT_TRIM))
+		enableCommandTrace = strings.ToLower(strings.TrimSpace(enableCommandTrace))
 		if strings.EqualFold(enableCommandTrace, TEXT_YES) {
 			commandTraceEnabled = true
 		}
@@ -81,8 +81,8 @@ func IsCommandTracingEnabled() bool {
 // Return command trace path
 func GetCommandTracePath() string {
 	commandTracePath, commandTracePathSet := os.LookupEnv(BFG_DATA)
-	if commandTracePathSet && strings.Trim(commandTracePath, TEXT_TRIM) != TEXT_BLANK {
-		commandTracePath += strings.Trim(commandTracePath, TEXT_TRIM) + "/cmdtrace/"
+	if commandTracePathSet && strings.TrimSpace(commandTracePath) != TEXT_BLANK {
+		commandTracePath += strings.TrimSpace(commandTracePath) + "/cmdtrace/"
 		// Create command trace path if it does not exist.
 		utils.CreatePath(commandTracePath)
 		return commandTracePath
@@ -111,7 +111,7 @@ func createUserSandbox(sandboxXmlFileName string) error {
 	var transferRootPath string = DEFAULT_MOUNT_PATH_FOR_TRANSFERS
 	mountPathEnv, mountPathEnvSet := os.LookupEnv(MFT_MOUNT_PATH)
 	if mountPathEnvSet {
-		mountPathEnv = strings.Trim(mountPathEnv, TEXT_TRIM)
+		mountPathEnv = strings.TrimSpace(mountPathEnv)
 		if len(mountPathEnv) > 0 {
 			//If the supplied path does not have /** suffix, then add it
 			if !strings.HasSuffix(mountPathEnv, "/**") {
@@ -211,8 +211,8 @@ func UpdateXmlWithQmgrCredentials(xmlWriter *xmldom.Document, configData string,
 
 	if gjson.Get(configData, "mqUserId").Exists() &&
 		gjson.Get(configData, "mqPassword").Exists() {
-		mqUserId = strings.Trim(gjson.Get(configData, "mqUserId").String(), TEXT_TRIM)
-		mqPassword = strings.Trim(gjson.Get(configData, "mqPassword").String(), TEXT_TRIM)
+		mqUserId = strings.TrimSpace(gjson.Get(configData, "mqUserId").String())
+		mqPassword = strings.TrimSpace(gjson.Get(configData, "mqPassword").String())
 
 		if len(mqUserId) > 0 && len(mqPassword) > 0 {
 			// Decode the password from base64 format

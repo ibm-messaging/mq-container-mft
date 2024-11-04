@@ -29,7 +29,7 @@ This document describes the steps for using IBM MQ Managed File Transfer (MFT) i
 	
 	   `oc create secret docker-registry ibm-entitlement-key --docker-username=cp --docker-password=<entitlement key> --docker-server=cp.icr.io --namespace=<project name>`
 	
-	3) Next step is to install IBM MQ Operator and create a queue manager. So head to https://www.ibm.com/support/knowledgecenter/SSFKSJ_9.2.0/com.ibm.mq.ctr.doc/ctr_installing_ui.htm for instructions
+	3) Next step is to install IBM MQ Operator and create a queue manager. So head to https://www.ibm.com/support/knowledgecenter/SSFKSJ_9.4.0/com.ibm.mq.ctr.doc/ctr_installing_ui.htm for instructions
 
 7) Agent requires number of queue manager objects to be created before an agent can be configured and started. The following steps describe the required queue manager configuration. 
 

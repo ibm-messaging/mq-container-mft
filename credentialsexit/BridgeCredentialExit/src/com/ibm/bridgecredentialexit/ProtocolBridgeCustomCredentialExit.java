@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -376,7 +377,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 				new CredentialHostKey(serverHostKey));
 		// Add it to the list of credentials
 		credentialsMap.put(serverHostName, new CredentialsExt(requesterUserId, credentials));
-		writeLog("Credential information for host" + serverHostName + " processed successfully.");
+		writeLog("Credential information for host - " + serverHostName + " processed successfully.");
 
 		return true;
 	}
@@ -552,6 +553,12 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		writeDebugLog(
 				"mapMQUserId - entry: Endpoint Host: " + endPointAddress.getHost() + " Name: "
 						+ endPointAddress.getName() + " " + mqUserId);
+		if (enableDebugLogs) {
+			writeLog("Entries in cache: " + credentialsMap.size());
+			for (String key : credentialsMap.keySet()) {
+				writeLog("Host: " + key + " Details: " + credentialsMap.get(key));
+			}
+		}
 
 		// Attempt to get the server credentials for the given mq user id
 		final CredentialsExt credentials = credentialsMap.get(endPointAddress.getHost().trim());

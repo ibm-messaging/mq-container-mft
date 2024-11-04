@@ -1,0 +1,44 @@
+{
+    "waitTimeToStart": 20,
+    "coordinationQMgr": {
+        "name": "MFTQM",
+        "host": "172.17.0.1",
+        "port": 1414,
+        "channel": "QS_SVRCONN",
+        "additionalProperties": {},
+        "qmgrCredentials": {
+            "mqUserId": "app",
+            "mqPassword": "passw0rd"
+        }
+    },
+    "commandQMgr": {
+        "name": "MFTQM",
+        "host": "172.17.0.1",
+        "port": 1414,
+        "channel": "QS_SVRCONN",
+        "additionalProperties": {},
+        "qmgrCredentials": {
+            "mqUserId": "app",
+            "mqPassword": "passw0rd"
+        }
+    },
+    "agents": [
+        {
+            "name": "SRC",
+            "deleteOnTermination": "true",
+            "type": "STANDARD",
+            "qmgrName": "MFTQM",
+            "qmgrHost": "172.17.0.1",
+            "qmgrPort": 1414,
+            "qmgrChannel": "QS_SVRCONN",
+            "qmgrCredentials": {
+                "mqUserId": "app",
+                "mqPassword": "passw0rd"
+            },
+            "additionalProperties": {
+                "enableQueueInputOutput": "true",
+                "logCapture": "true"
+            }
+        }
+    ]
+}

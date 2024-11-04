@@ -49,16 +49,6 @@ const MFT_AGENT_ENABLE_TRACE = "MFT_AGENT_ENABLE_TRACE"
 // are the supported values with "No" being the default.
 const MFT_AGENT_DISPLAY_CAPTURE_LOG = "MFT_AGENT_DISPLAY_CAPTURE_LOG"
 
-// Path of the credential file to use for connecting to queue manager
-const MFT_CREDENTIAL_FILE = "MFT_CREDENTIAL_FILE"
-
-// Path of the protocol bridge credentials file used for connecting to
-// protocol servers.
-const MFT_BRIDGE_CREDENTIAL_FILE = "MFT_BRIDGE_CREDENTIAL_FILE"
-
-// Bridge properties file
-const MFT_BRIDGE_PROPERTIES_FILE = "MFT_BRIDGE_PROPERTIES_FILE"
-
 // Enable tracing of MFT commands. "Yes" and "No" are the supported values
 // with "No" being the default.
 const MFT_TRACE_COMMANDS = "MFT_TRACE_COMMANDS"

@@ -69,11 +69,11 @@ func postInit() {
 // if it is a valid MFT command
 func processCommand(cmdFilePath string) {
 	cmdFile, err := os.OpenFile(cmdFilePath, os.O_RDONLY, 0)
-	defer cmdFile.Close()
 	if err != nil {
 		utils.PrintLog(fmt.Sprintf("Error occurred while opening file %s. The error is %v", cmdFilePath, err))
 		return
 	}
+	defer cmdFile.Close()
 
 	utils.PrintLog(fmt.Sprintf("Processing commands from file %s", cmdFilePath))
 
