@@ -97,9 +97,6 @@ const coordinationQMCertPath = "/etc/mqmft/pki/coordination"
 const commandQMCertPath = "/etc/mqmft/pki/command"
 const agentQMCertPath = "/etc/mqmft/pki/agent"
 
-// Trim text
-const TEXT_TRIM = " "
-
 // Blank
 const TEXT_BLANK = ""
 const TEXT_YES = "yes"

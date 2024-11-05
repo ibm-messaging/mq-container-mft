@@ -149,7 +149,7 @@ func configTLSCoordination(allAgentConfig string, credentialsDoc *xmldom.Documen
 	var created bool
 
 	cipherName, cipherSet := os.LookupEnv(MFT_COORD_QMGR_CIPHER)
-	if cipherSet && len(strings.Trim(cipherName, TEXT_TRIM)) > 0 {
+	if cipherSet && len(strings.TrimSpace(cipherName)) > 0 {
 		// Generate password for keystore
 		password := generateRandomPassword()
 		// See if we have public key file

@@ -1,0 +1,8 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: pba-custom-cred
+  namespace: ibm-mqmft
+data:
+  bridge.json: >
+    {"servers": [{"serverHostName": "172.17.0.3","transferRequesterId": "*","serverType": "SFTP","serverUserId": "sftpuser","serverAssocName": "mftassoc1","serverPassword": "passw0rd","serverHostKey": "<your host key>","serverPrivateKey": "<your private key>"}]}

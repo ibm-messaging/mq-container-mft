@@ -1,0 +1,70 @@
+{
+    "waitTimeToStart": 20,
+    "coordinationQMgr": {
+        "name": "MFTQM",
+        "host": "172.17.0.1",
+        "port": 1414,
+        "channel": "QS_SVRCONN",
+        "additionalProperties": {},
+        "qmgrCredentials": {
+            "mqUserId": "app",
+            "mqPassword": "passw0rd"
+        }
+    },
+    "commandQMgr": {
+        "name": "MFTQM",
+        "host": "172.17.0.1",
+        "port": 1414,
+        "channel": "QS_SVRCONN",
+        "additionalProperties": {},
+        "qmgrCredentials": {
+            "mqUserId": "app",
+            "mqPassword": "passw0rd"
+        }
+    },
+    "agents": [
+        {
+            "name": "BRIDGE",
+            "type": "BRIDGE",
+            "deleteOnTermination": true,
+            "cleanOnStart": "all",
+            "qmgrName": "MFTQM",
+            "qmgrHost": "172.17.0.1",
+            "qmgrPort": 1414,
+            "qmgrChannel": "QS_SVRCONN",
+            "defaultServer": "172.17.0.3",
+            "maxActiveDestinationTransfers": 25,
+            "failTransferWhenCapacityReached": true,
+            "protocolServers": [
+                {
+                    "name": "172.17.0.3",
+                    "type": "SFTP",
+                    "host": "172.17.0.3",
+                    "port": 22,
+                    "platform": "unix",
+                    "timeZone": "Europe/London",
+                    "locale": "en_GB",
+                    "fileEncoding": "UTF-8",
+                    "listFormat": "unix",
+                    "limitedWrite": false,
+                    "maxListFileNames": 100,
+                    "maxListDirectoryLevels": 10,
+                    "maxSessions": 60,
+                    "socketTimeout": 30,
+                    "maxActiveDestinationTransfers": 25,
+                    "passiveMode": "true"
+                }
+            ],
+            "additionalProperties": {
+                "logCapture": true,
+                "enableQueueInputOutput": false,
+                "agentLog": "on",
+                "protocolBridgeCredentialConfiguration": "/mnt/credentials/bridgeagentcrede.json"
+            },
+            "qmgrCredentials": {
+                "mqUserId": "app",
+                "mqPassword": "passw0rd"
+            }
+        }
+    ]
+}

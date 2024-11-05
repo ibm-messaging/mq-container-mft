@@ -63,7 +63,6 @@ An example json is here:
          "mqPassword":"bXlwYXNzdzByZA==",
       },
       "additionalProperties" : {
-         "coordinationQMgrStandby":"9.20.20.20(1414)"
       }
    },
    "commandsQMgr":{
@@ -72,7 +71,6 @@ An example json is here:
       "port":1414,
       "channel":"MFT_CMD_CHN",
       "additionalProperties" : {
-         "connectionQMgrStandby":"9.20.20.20(1414)"
       },
       "qmgrCredentials" : {
          "mqUserId":"JohnDover",

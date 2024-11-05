@@ -7,17 +7,25 @@ This image allows you to run IBM MQ Managed File Transfer Agent in a container. 
 
 See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 
-## What is new in IBM MQ MFT Agent Container 9.4.0.0?
+## What is new in IBM MQ MFT Agent Container 9.4.1.0?
 
+This version of the container image has the following updates:
+
+- Built using the IBM MQ Managed File Transfer 9.4.1.0 LTS Redistributable binaries.
+- Container image is built using ubi9 minimal RedHat Linux image as the base image.
+- Fixes issues found in internal testing and by customers.
+
+
+**Earlier versions of container images**
+
+## IBM MQ 9.4.0.0?
 This version of the container image has the following updates:
 
 - Built using the IBM MQ Managed File Transfer 9.4.0.0 LTS Redistributable binaries.
 - Container image is built using ubi9 minimal RedHat Linux image as the base image.
 - The bridge agent now supports usage of SSH Private Keys for connecting to SFTP Servers. 
-  The SSH private key and host key must be Base 64 encoded. SSH Private key can be supplied through an OpenShift configMap or a secret. See [here](docs/custompbacred.md) for more details.
+  The SSH private key and host key must be Base 64 encoded. SSH Private key can be supplied through an OpenShift configMap or a secret. See [here](external-how-to-docs/custompbacred.md) for more details.
 - Fixes issues found in internal testing and by customers.
-
-**Earlier versions of container images**
 
 **MQ 9.3.5.0**
 - Container image built with 9.3.5.0 CD of IBM MQ Managed File Transfer Redistributable Image.
@@ -47,9 +55,9 @@ Developer version of the MFT Agent container image is available in IBM Container
 
 ## Usage
 
-See [here](docs/usage-podman.md) for details on how to run the image container with Podman runtime. 
+See [here](external-how-to-docs/usage-podman.md) for details on how to run the image container with Podman runtime. 
 
-See [here](docs/usage-ocp.md) for details on how to deploy the image in an OpenShift Container Platform.
+See [here](external-how-to-docs/usage-ocp.md) for details on how to deploy the image in an OpenShift Container Platform.
 
 
 Note that in order to use the image, it is necessary to accept the terms of the [IBM MQ license](#license).
@@ -72,7 +80,7 @@ Note that in order to use the image, it is necessary to accept the terms of the 
 Agent in the container will create agent configuration and log files under the fixed directory `/mnt/mftdata`. This folder can be on a persistent volume as well, in which case the volume must be mounted as `/mnt/mftdata` mount point in to the container
 
 ### Building your own container image
-See the instructions [here](docs/build.md) to build your own agent container image.
+See the instructions [here](external-how-to-docs/build.md) to build your own agent container image.
 
 ### Lab 
 Step-by-step [guide](lab/README.md) to using agent container.

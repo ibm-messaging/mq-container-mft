@@ -1,0 +1,30 @@
+apiVersion: mq.ibm.com/v1beta1
+kind: QueueManager
+metadata:
+  name: mftqm
+  namespace: ibm-mqmft
+spec:
+  license:
+    accept: true
+    license: L-JTPV-KYG8TF
+    use: Production
+  queueManager:
+    name: MFTQM
+    mqsc:
+    - configMap:
+        name: agent-qm-configmap
+        items:
+        - agentcfg.mqsc
+    storage:
+      queueManager:
+        type: persistent-claim
+  template:
+    pod:
+      containers:
+        - env:
+            - name: MQSNOAUT
+              value: 'yes'
+          name: qmgr
+  version: 9.4.0.0-r1
+  web:
+    enabled: false

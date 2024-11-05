@@ -118,6 +118,7 @@ const MFT_AGENT_NAME_CONFIG_FILE = "Name of the agent found in configuration fil
 const MFT_UPDATED_CONFIGURATION = "Updated coordination configuration - %v."
 const MFT_PBA_HOST_AND_TYPE_NOT_FOUND = "Protocol server host name and type not supplied in the configuration file %s. Configuration will not be updated."
 const MFT_FAILED_PERMISSION_KEYSTORE = "Error occurred while setting persmission to keystore %v. The error is %v."
+const MFT_ENV_AGNT_CFG_FILE_NOT_SPECIFIED = "MFT_AGENT_CONFIG_FILE environment variable has not specified. Container will attempt to load agent configuration from file %s."
 
 const AGENT_REDY_ENV_AGENT_NAME_NOT_SET_3001 = "IBMFT3001E: MFT_AGENT_NAME environment variable not specified."
 const AGENT_REDY_ENV_AGENT_CFG_FILE_NOT_SET_3002 = "IBMFT3002E: MFT_AGENT_CONFIG_FILE environment variable not specified."

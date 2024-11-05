@@ -1,0 +1,73 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: source-agent
+  namespace: ibm-mqmft
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: source-agent
+  template:
+    metadata:
+      labels:
+        app: source-agent
+        deploymentconfig: source-agent
+    spec:
+      volumes:
+        - name: src-agent-config-map
+          configMap:
+            name: src-agent-config
+            defaultMode: 420
+        - name: source-volume
+          persistentVolumeClaim:
+            claimName: pvc-source
+      containers:
+        - resources: {}
+          readinessProbe:
+            exec:
+              command:
+                - agentready
+            initialDelaySeconds: 15
+            timeoutSeconds: 3
+            periodSeconds: 30
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /mnt/termination-log
+          name: src
+          livenessProbe:
+            exec:
+              command:
+                - agentalive
+            initialDelaySeconds: 90
+            timeoutSeconds: 5
+            periodSeconds: 90
+            successThreshold: 1
+            failureThreshold: 3
+          env:
+            - name: MFT_AGENT_NAME
+              value: SRC
+            - name: LICENSE
+              value: accept
+            - name: MFT_AGENT_CONFIG_FILE
+              value: /mqmftcfg/agentconfig/srcagent.json
+            - name: MFT_MOUNT_PATH
+              value: /mountpath
+            - name: MFT_AGENT_DISPLAY_CAPTURE_LOG
+              value: "yes"
+            - name: BFG_JVM_PROPERTIES
+              value: -Djava.util.prefs.systemRoot=/jprefs/.java/.systemPrefs -Djava.util.prefs.userRoot=/jprefs/.java/.userPrefs
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: src-agent-config-map
+              mountPath: /mqmftcfg/agentconfig
+            - name: source-volume
+              mountPath: /mountpath
+          terminationMessagePolicy: File
+          image: >-
+              icr.io/ibm-messaging/mqmft:latest
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler

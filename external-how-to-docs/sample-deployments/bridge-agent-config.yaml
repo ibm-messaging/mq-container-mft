@@ -1,0 +1,8 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: pba-config
+  namespace: ibm-mqmft
+data:
+  bridge.json: >
+    {"waitTimeToStart":20,"coordinationQMgr":{"name":"MFTQM","host":"mftqm-ibm-mq.ibm-mqmft.svc.cluster.local","port":1414,"channel":"QS_SVRCONN","additionalProperties":{}},"commandQMgr":{"name":"MFTQM","host":"mftqm-ibm-mq.ibm-mqmft.svc.cluster.local","port":1414,"channel":"QS_SVRCONN","additionalProperties":{}},"agents":[{"name":"BRIDGE","type":"BRIDGE","deleteOnTermination":true,"cleanOnStart":"all","qmgrName":"MFTQM","qmgrHost":"mftqm-ibm-mq.ibm-mqmft.svc.cluster.local","qmgrPort":1414,"qmgrChannel":"QS_SVRCONN",    "defaultServer":"9.20.120.105","maxActiveDestinationTransfers":25,"failTransferWhenCapacityReached":true,"protocolServers":[{"name":"9.20.120.105","type":"SFTP","host":"9.20.120.105","port":22,"platform":"unix","timeZone":"Europe/London","locale":"en_GB","fileEncoding":"UTF-8","listFormat":"unix","limitedWrite":false,"maxListFileNames":100,"maxListDirectoryLevels":10,"maxSessions":60,"socketTimeout":30,"maxActiveDestinationTransfers":25,"passiveMode":"true"}],"additionalProperties":{"logCapture":true,"enableQueueInputOutput":false,"agentLog":"on","protocolBridgeCredentialConfiguration":"/mnt/credentials/ProtocolBridgeCredentials.prop"}}]}
