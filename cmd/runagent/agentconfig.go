@@ -618,7 +618,7 @@ func updateAgentProperties(propertiesFile string, agentConfig string, sectionNam
 	retVal := false
 	// If this is a bridge agent, then configure custom exit
 	if bridgeAgent {
-		if _, err := f.WriteString("protocolBridgeCredentialExitClasses=com.ibm.wmq.bridgecredentialexit.ProtocolBridgeCustomCredentialExit\n"); err != nil {
+		if _, err := f.WriteString("protocolBridgeCredentialExitClasses=com.ibm.bridgecredentialexit.ProtocolBridgeCustomCredentialExit\n"); err != nil {
 			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_ERR_UPDTING_FILE_0066, propertiesFile, err))
 		} else {
 			// enableQueueInputOutput property is not valid for bridge agent

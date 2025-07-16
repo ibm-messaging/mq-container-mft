@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
  */
-package com.ibm.wmq.bridgecredentialexit;
+package com.ibm.bridgecredentialexit;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -30,21 +30,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.json.*;
 
 import com.ibm.wmqfte.exitroutine.api.CredentialExitResult;
 import com.ibm.wmqfte.exitroutine.api.CredentialExitResultCode;
 import com.ibm.wmqfte.exitroutine.api.CredentialHostKey;
 import com.ibm.wmqfte.exitroutine.api.CredentialPassword;
+import com.ibm.wmqfte.exitroutine.api.CredentialPrivateKey;
 import com.ibm.wmqfte.exitroutine.api.CredentialUserId;
 import com.ibm.wmqfte.exitroutine.api.Credentials;
 import com.ibm.wmqfte.exitroutine.api.ProtocolBridgeCredentialExit2;
 import com.ibm.wmqfte.exitroutine.api.ProtocolServerEndPoint;
-import com.ibm.wmqfte.exitroutine.api.CredentialPrivateKey;
-import org.json.*;
 
 /**
  * A IBM MQ Managed File Transfer Protocol Bridge Custom Credential Exit.
@@ -79,6 +79,11 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 	final private int ENCODED_PLAIN_TEXT = 0;
 	final private int ENCODED_BASE64 = 1;
 	private boolean enableDebugLogs = false;
+	/**
+	 * Some SFTP servers require either private key or password but not both. To
+	 * support this specific option, environment variable
+	 */
+	private boolean sftpEitherPrivateKeyOrPassword = false;
 
 	/*
 	 * (non-Javadoc)
@@ -105,6 +110,11 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		String enableDebugLogStr = System.getenv("ENABLE_PBA_CREDENTIAL_DEBUG_LOG");
 		if (enableDebugLogStr != null && enableDebugLogStr.trim().equals("true"))
 			enableDebugLogs = true;
+
+		// Either PrivateKey or Password but not both
+		String privateKeyOrPasswordStr = System.getenv("SFTP_EITHER_PRIVATEKEY_OR_PASSWORD");
+		if (privateKeyOrPasswordStr != null && privateKeyOrPasswordStr.trim().equals("true"))
+			sftpEitherPrivateKeyOrPassword = true;
 
 		// Trim the whitespace if any.
 		propertiesFilePath = propertiesFilePath.trim();
@@ -284,6 +294,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		String serverPrivateKey = null;
 		String requesterUserId = null;
 
+		// Required attribute - SFTP Server host name or IP Address
 		try {
 			serverHostName = jsonObj.getString("serverHostName");
 		} catch (Exception ex) {
@@ -293,6 +304,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 			return false;
 		}
 
+		// Required attribute - User Id needed to connect to SFTP Server
 		try {
 			serverUserId = jsonObj.getString("serverUserId");
 		} catch (Exception ex) {
@@ -302,39 +314,64 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 			return false;
 		}
 
+		// Optional attribute - password.
 		try {
-			serverPassword = jsonObj.getString("serverPassword");
+			serverPassword = jsonObj.optString("serverPassword", null);
 		} catch (Exception ex) {
-			writeLog(
-					"Credentials does not have the mandatory attribute 'serverPassword' specified. Agent will not be able to communicate with protocol server.");
+			writeLog("An error occurred while attempting to read serverPassword. The error is: " + ex.getMessage());
 			ex.printStackTrace();
+		}
+
+		// Optional attribute - privateKey.
+		try {
+			serverPrivateKey = jsonObj.optString("serverPrivateKey", null);
+		} catch (Exception ex) {
+			writeLog("Failed to read servers private key. The error is: " + ex.getMessage());
+			ex.printStackTrace();
+		}
+
+		if ((serverPassword == null || serverPassword.trim().isEmpty())
+				&& (serverPrivateKey == null || serverPrivateKey.trim().isEmpty())) {
+			writeLog("Neither serverPassword nor serverPrivateKey is provided. One is required.");
 			return false;
 		}
 
+		// Some SFTP server require either password or private key for authentication
+		// while some require both to be provided. If SFTP requires either of private
+		// key or password but both have been specified, log a message and return an
+		// error. This behavior is controlled by environment variable
+		// SFTP_EITHER_PRIVATEKEY_OR_PASSWORD
+		if (sftpEitherPrivateKeyOrPassword && serverPassword != null && serverPrivateKey != null) {
+			writeLog("Both serverPassword and serverPrivateKey are provided. Only one is allowed.");
+			return false;
+		}
+
+		// Optional attribute - name of the user submitting the transfer request. Use
+		// wildcard '*' if one is not provided
 		try {
-			requesterUserId = jsonObj.getString("transferRequesterId");
+			requesterUserId = jsonObj.optString("transferRequesterId", "*");
 		} catch (Exception ex) {
+			writeLog("An error occured while retrieving transferRequestId. Default '*'' is used. The error is: "
+					+ ex.getMessage());
 			ex.printStackTrace();
 			requesterUserId = "*";
 		}
 
+		// Optional attribute - AssocName describing what the private key is for.
 		try {
-			serverAssocName = jsonObj.getString("serverAssocName");
+			serverAssocName = jsonObj.optString("serverAssocName", "dummyAssocName");
 		} catch (Exception ex) {
+			writeLog(
+					"An error occured while retrieving serverAssocName. Default 'dummyAssocName' is used. The error is: "
+							+ ex.getMessage());
 			ex.printStackTrace();
-			// Ignore if it's not found.
 			serverAssocName = "dummyAssocName";
 		}
 
+		// Optional attribute - hostkey for the SFTP server. Many SFTP servers require
+		// this attribute.
 		try {
-			serverPrivateKey = jsonObj.getString("serverPrivateKey");
-		} catch (Exception ex) {
-			writeLog("Failed to read servers private key. " + ex.getMessage());
-			ex.printStackTrace();
-		}
-
-		try {
-			serverHostKey = jsonObj.getString("serverHostKey");
+			serverHostKey = jsonObj.optString("serverHostKey", null);
 		} catch (Exception ex) {
 			writeLog("Failed to read server's host key. " + ex.getMessage());
 			ex.printStackTrace();
@@ -344,7 +381,7 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 		List<CredentialPrivateKey> privateKeys = new ArrayList<CredentialPrivateKey>();
 
 		// Private key will be in base64 encoded format. We must decode it now.
-		if (serverPrivateKey != null && serverPrivateKey.trim().length() > 0) {
+		if (serverPrivateKey != null && !serverPrivateKey.trim().isEmpty()) {
 			Base64.Decoder decoder = Base64.getDecoder();
 			// Decode private key
 			decodedPrivateKey = new String(decoder.decode(serverPrivateKey));
@@ -352,29 +389,38 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 			decodedPrivateKey = decodedPrivateKey.replaceFirst("^[\n\t ]*", "").replaceAll("\n[\t ]*", "\n")
 					.replaceAll("[\t ]*\n", "\n");
 			writeDebugLog(decodedPrivateKey);
-			CredentialPrivateKey cpk = new CredentialPrivateKey(serverAssocName, decodedPrivateKey,
-					new CredentialPassword(serverPassword));
-			privateKeys.add(cpk);
-		} else {
-			writeLog("A private key for the server was not provided. Can't continue.");
+			if (serverPassword != null) {
+				CredentialPrivateKey cpk = new CredentialPrivateKey(serverAssocName, decodedPrivateKey,
+						new CredentialPassword(serverPassword));
+				privateKeys.add(cpk);
+			} else {
+				// No password was provided
+				CredentialPrivateKey cpk = new CredentialPrivateKey(serverAssocName, decodedPrivateKey);
+				privateKeys.add(cpk);
+			}
+		} else if (serverPrivateKey == null && serverPassword == null) {
+			writeLog("A private key or password for the server was not provided. Can't continue.");
 			return false;
 		}
 
-		// Host key also must be in base64 encoding.
-		if (serverHostKey != null && serverHostKey.trim().length() > 0) {
+		// Host key if provided must be in base64 encoding.
+		if (serverHostKey != null && !serverHostKey.trim().isEmpty()) {
 			Base64.Decoder decoder = Base64.getDecoder();
-			// Decode string
+			// Decode the server hostkey
 			serverHostKey = new String(decoder.decode(serverHostKey));
 			writeDebugLog(serverHostKey);
-		} else {
-			writeLog("A host key for the server was not provided. Can't continue.");
-			return false;
 		}
 
 		Credentials credentials = null;
-		writeDebugLog("Creating credentials with userid, hostkey, password and private key");
-		credentials = new Credentials(new CredentialUserId(serverUserId), privateKeys,
-				new CredentialHostKey(serverHostKey));
+		if (serverPassword != null && privateKeys.size() > 0 && serverHostKey != null) {
+			writeDebugLog("Creating credentials with userid, hostkey, password and private key");
+			credentials = new Credentials(new CredentialUserId(serverUserId), privateKeys,
+					new CredentialHostKey(serverHostKey));
+		} else if (serverPassword != null && privateKeys.size() == 0) {
+			writeDebugLog("Creating credentials with userid and password. Private key is not provided");
+			credentials = new Credentials(new CredentialUserId(serverUserId), new CredentialPassword(serverPassword));
+		}
+
 		// Add it to the list of credentials
 		credentialsMap.put(serverHostName, new CredentialsExt(requesterUserId, credentials));
 		writeLog("Credential information for host - " + serverHostName + " processed successfully.");
@@ -583,33 +629,31 @@ public class ProtocolBridgeCustomCredentialExit implements ProtocolBridgeCredent
 						writeLog("Failed to parse transfer requester user id.");
 					}
 					if (m.matches()) {
-						writeDebugLog("Matching Uid found ");
+						writeDebugLog("Matching Uid found - " + requesterIdCred);
 						result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED,
 								credentials.getCredential());
 					} else {
 						// If the requester id is *, then match every id that is supplied
-						writeDebugLog("Matching Uid not found. Determining credentials for generic userId *");
+						writeDebugLog("Matching Uid " + requesterIdCred
+								+ "not found. Determining credentials for generic userId *");
 						if (credentials.getRequesterId().equalsIgnoreCase("*")
 								|| credentials.getRequesterId().equalsIgnoreCase(".*")) {
-							Credentials crd = credentials.getCredential();
-							List<CredentialPrivateKey> pkey = crd.getPrivateKey();
-							String strPkey = pkey.get(0).getKey();
 							result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED,
 									credentials.getCredential());
-
-							writeDebugLog("Returning credentials for a generic user *");
+							writeDebugLog("Returning credentials for a generic user *" + result);
 						} else {
 							writeLog("Credentials for user " + mqUserId + " not found.");
 							result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
 						}
 					}
 				} catch (Exception ex) {
-					writeLog("An error occurred while processing credential information. The exception is: "
-							+ ex.toString());
+					writeLog("An error occurred while processing credential information. The error is: "
+							+ ex.getMessage());
+					ex.printStackTrace();
 					result = new CredentialExitResult(CredentialExitResultCode.NO_MAPPING_FOUND, null);
 				}
 			} else {
-				// writeDebugLog("Requester id and mq userid not matching");
+				writeLog("Requester id and mq userid not matching");
 				// Some credentials have been found so return success to the user along with the
 				// credentials
 				result = new CredentialExitResult(CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED,

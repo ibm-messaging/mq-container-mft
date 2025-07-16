@@ -67,8 +67,6 @@ spec:
               value=/mnt/mftdata
 			- name: MFT_AGENT_CONFIG_FILE <- Name of environment variable containing the name of the JSON file containing information required to cofingure an agent. The JSON file must reside in a ConfigMap 
               value: /mqmftcfg/agentconfig/mqmftcfg.json <- Path of the JSON file containing agent definitions 
-			- name: MFT_BRIDGE_CREDENTIAL_FILE <- Required for BRIDGE agent only. Name of the environment variable that points to path of a file containing credential information for connecting to SFTP/FTP/FTPS file server. The file can reside either in a configMap or secret.
-              value: /mqmftbridgecred/agentcreds/ProtocolBridgeCredentials.prop <- Path of the file containing bridge credential information
           - name: MFT_LOG_LEVEL Optional. Controls the amount of debug information displayed while deploying the container. Default is "info"
             value="verbose"
           - name: MFT_TRACE_COMMAND Optional. Enable tracing of MFT commands. Default is "no".
