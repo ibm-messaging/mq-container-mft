@@ -32,12 +32,14 @@ set +ex
 # sftp server. The values for "serverHostKey" and "serverPrivateKey" keys must be
 # base64 encoded, otherwise bridge agent will fail to connect to SFTP server.
 
+MQ_IMAGE=icr.io/ibm-messaging/mq:latest
+MQ_MFT_IMAGE=icr.io/ibm-messaging/mqmft:latest
 
 # Get MQ images first.
-podman pull icr.io/ibm-messaging/mq:latest
+podman pull $MQ_IMAGE
 
 # Get MFT container image
-podman pull icr.io/ibm-messaging/mqmft:latest
+#podman pull $MQ_MFT_IMAGE
 
 # Stop if queue manager container is already running
 podman stop mftqm
@@ -64,6 +66,9 @@ printf "passw0rd" | podman secret create mqAppPassword -
 # Start the MQ Container with container name mftqm
 podman run --secret mqAdminPassword,type=mount,mode=0777 --secret mqAppPassword,type=mount,mode=0777 --env LICENSE=accept --env MQ_QMGR_NAME=MFTQM --publish 1414:1414 --publish 9443:9443 --detach --name mftqm icr.io/ibm-messaging/mq:latest
 
+# Wait for a while for queue manager to come up
+sleep 15
+
 # Copy queue manager configuration file for MFT and execute it to create MFT configuration. 
 # You may have do chmod 777 ./qmconfig.mqsc so that other users are able to execute inside the container
 podman cp ./qmconfig.mqsc mftqm:/run
@@ -77,8 +82,8 @@ podman exec -it mftqm /bin/bash -c "runmqsc MFTQM < /run/qmconfig.mqsc"
 podman exec -it mftqm /bin/bash -c "/run/setauth.sh"
 
 # Run a standard agent. The agent configuration JSON file in the current directory is mounted into the container.
-podman run --volume "${PWD}":/mftagentcfg/agentcfg --env BFG_JVM_PROPERTIES="-Djava.util.prefs.systemRoot=/jprefs/.java/.systemPrefs -Djava.util.prefs.userRoot=/jprefs/.java/.userPrefs" --env LICENSE=accept --env MFT_AGENT_NAME=SRC --env MFT_AGENT_CONFIG_FILE=/mftagentcfg/agentcfg/sourceagentconfig.json --detach --name srcagent icr.io/ibm-messaging/mqmft:latest
+podman run --volume "${PWD}":/mftagentcfg/agentcfg --env BFG_JVM_PROPERTIES="-Djava.util.prefs.systemRoot=/jprefs/.java/.systemPrefs -Djava.util.prefs.userRoot=/jprefs/.java/.userPrefs" --env LICENSE=accept --env MFT_AGENT_NAME=SRC --env MFT_AGENT_CONFIG_FILE=/mftagentcfg/agentcfg/sourceagentconfig.json --detach --name srcagent $MQ_MFT_IMAGE
 
 # Run a bridge agent. The agent configuration JSON file and credential files in the current directory is mounted into the container.
-podman run --volume "${PWD}":/mftagentcfg/agentcfg --volume "${PWD}":/mnt/credentials --env BFG_JVM_PROPERTIES="-Djava.util.prefs.systemRoot=/jprefs/.java/.systemPrefs -Djava.util.prefs.userRoot=/jprefs/.java/.userPrefs" --env LICENSE=accept --env MFT_AGENT_NAME=BRIDGE --env MFT_AGENT_CONFIG_FILE=/mftagentcfg/agentcfg/bridgeagentconfig.json --detach --name bridgeagent icr.io/ibm-messaging/mqmft:latest
+podman run --volume "${PWD}":/mftagentcfg/agentcfg --volume "${PWD}":/mnt/credentials --env BFG_JVM_PROPERTIES="-Djava.util.prefs.systemRoot=/jprefs/.java/.systemPrefs -Djava.util.prefs.userRoot=/jprefs/.java/.userPrefs" --env LICENSE=accept --env MFT_AGENT_NAME=BRIDGE --env MFT_AGENT_CONFIG_FILE=/mftagentcfg/agentcfg/bridgeagentconfig.json --detach --name bridgeagent $MQ_MFT_IMAGE
 

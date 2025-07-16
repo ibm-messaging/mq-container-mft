@@ -1,5 +1,5 @@
 # Agent configuration file
-Agent is created and started during container creation time. The information required for creation of agent, like the agent name, coordination queue manager, agent queue manager etc must be provided via a json file located on a mount point. The path of the json file must be passed as a value to **MFT_AGENT_CONFIG_FILE** environment variable. 
+IBM MQ Managed File Transfer agent is created and started during container creation time. The information required for creation of agent, like the agent name, coordination queue manager, agent queue manager etc., must be provided via a json file located on a mount point. The path of the json file must be passed as a value to **MFT_AGENT_CONFIG_FILE** environment variable. 
 
 The configuration file can contain attributes for multiple agents. However all agents will be created under the same cooridation queue manager.
 

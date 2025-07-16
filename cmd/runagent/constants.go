@@ -22,10 +22,10 @@ package main
 const PBA_CUSTOM_CRED_EXIT_SRC_PATH = "/customexits"
 
 // Name of the PBA custom credentials exit
-const PBA_CUSTOM_CRED_EXIT_NAME = "com.ibm.wmq.bridgecredentialexit.jar"
+const PBA_CUSTOM_CRED_EXIT_NAME = "com.ibm.bridgecredentialexit.jar"
 
 // Complete path of PBA custom credentials exit
-const PBA_CUSTOM_CRED_EXIT = "/customexits/mqft/pbaexit/com.ibm.wmq.bridgecredentialexit.jar"
+const PBA_CUSTOM_CRED_EXIT = "/customexits/mqft/pbaexit/com.ibm.bridgecredentialexit.jar"
 
 // Third party jar used for reading JSON formatted data
 const PBA_CUSTOM_CRED_DEPEND_LIB_NAME = "org.json.jar"

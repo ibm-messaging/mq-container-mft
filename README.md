@@ -7,6 +7,25 @@ This image allows you to run IBM MQ Managed File Transfer Agent in a container. 
 
 See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 
+## What is new in IBM MQ MFT Agent Container 9.4.3.0?
+
+This version of the container image has the following updates:
+
+- Built using the IBM MQ Managed File Transfer 9.4.3.0 LTS Redistributable binaries.
+- Container image is built using ubi9 minimal RedHat Linux image as the base image.
+- Fixes issues found in internal testing and by customers.
+
+
+**Earlier versions of container images**
+
+## What is new in IBM MQ MFT Agent Container 9.4.2.0?
+
+This version of the container image has the following updates:
+
+- Built using the IBM MQ Managed File Transfer 9.4.2.0 LTS Redistributable binaries.
+- Container image is built using ubi9 minimal RedHat Linux image as the base image.
+- Fixes issues found in internal testing and by customers.
+
 ## What is new in IBM MQ MFT Agent Container 9.4.1.0?
 
 This version of the container image has the following updates:
@@ -14,9 +33,6 @@ This version of the container image has the following updates:
 - Built using the IBM MQ Managed File Transfer 9.4.1.0 LTS Redistributable binaries.
 - Container image is built using ubi9 minimal RedHat Linux image as the base image.
 - Fixes issues found in internal testing and by customers.
-
-
-**Earlier versions of container images**
 
 ## IBM MQ 9.4.0.0?
 This version of the container image has the following updates:
