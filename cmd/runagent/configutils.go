@@ -35,10 +35,12 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+
+
 // Update coordination and command properties file with any additional properties specified in
 // configuration JSON file.
 func UpdateProperties(propertiesFile string, agentConfig string, sectionName string) error {
-	f, err := os.OpenFile(propertiesFile, os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(propertiesFile, os.O_APPEND|os.O_WRONLY, 0600) //Git 106 fix: Restricting file permission
 	if err != nil {
 		errorMsg := fmt.Sprintf(utils.MFT_CONT_ERR_OPN_FILE_0067, propertiesFile, err)
 		return errors.New(errorMsg)
@@ -95,7 +97,7 @@ func createUserSandbox(sandboxXmlFileName string) error {
 	var errCusbox error = nil
 
 	// Open existing UserSandboxes.xml file
-	userSandBoxXmlFile, err := os.OpenFile(sandboxXmlFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	userSandBoxXmlFile, err := os.OpenFile(sandboxXmlFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)  //Git 106 fix: Restricting file permission
 	// if we os.Open returns an error then handle it
 	if err != nil {
 		errorMsg := fmt.Sprintf(utils.MFT_CONT_ERR_OPN_SNDBOX_FILE_0065, sandboxXmlFileName, err)
@@ -176,7 +178,7 @@ func createUserSandbox(sandboxXmlFileName string) error {
  */
 func setupCredentials(mqmftCredentialsXmlFileName string, bufferCred string) error {
 	// Create an empty credentials file, truncate if one exists
-	mqmftCredentialsXmlFile, err := os.OpenFile(mqmftCredentialsXmlFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	mqmftCredentialsXmlFile, err := os.OpenFile(mqmftCredentialsXmlFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600) //Git 106 fix: Restricting file permission
 	// if we os.Open returns an error then handle it
 	if err != nil {
 		errorMsg := fmt.Sprintf(utils.MFT_CONT_ERR_OPN_CRED_FILE_0064, mqmftCredentialsXmlFileName, err)
@@ -197,6 +199,7 @@ func setupCredentials(mqmftCredentialsXmlFileName string, bufferCred string) err
 
 	return nil
 }
+
 
 /**
 * Update XML data with credentials of queue manager
@@ -251,7 +254,21 @@ func UpdateXmlWithQmgrCredentials(xmlWriter *xmldom.Document, configData string,
 			utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_CRED_NOT_AVAIL_0061, qmName))
 		}
 	}
+
+	//Git 106 fix: Scrubbing sensitive data
+	zeroString(&mqPassword)
+    zeroString(&plainTextPassword)
+
 	return errReturn
+}
+
+//Git 106 fix: Function to scrub sensitive data
+func zeroString(s *string) {
+    b := []byte(*s)
+    for i := range b {
+        b[i] = 0
+    }
+    *s = ""
 }
 
 /**
@@ -340,7 +357,7 @@ func Base64Decode(encodedText string) (string, error) {
 
 	// Decoding successful.
 	return string(data), nil
-}
+} 
 
 /**
 * Process connection security attributes

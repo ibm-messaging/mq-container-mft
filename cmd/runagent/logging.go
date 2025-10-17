@@ -48,7 +48,7 @@ func logTermination(args ...interface{}) {
 	// Write the message to the termination log.  This is not the default place
 	// that Kubernetes will look for termination information.
 	eventLog.Debugf("Writing termination message: %v", msg)
-	err := ioutil.WriteFile("/run/termination-log", []byte(msg), 0660)
+	err := ioutil.WriteFile("/run/termination-log", []byte(msg), 0600) //Git 106 fix: Restricting file permission
 	if err != nil {
 		eventLog.Debug(err)
 	}
@@ -487,7 +487,7 @@ func configureLogger(name string, logUrl string, logKey string, logType string, 
 			if err != nil {
 				eventLog.Printf("Failed to process log message - %v", err)
 			} else {
-				eventLog.Printf(formatJSON(obj))
+				eventLog.Println(formatJSON(obj))
 			}
 			return true
 		}, nil
@@ -503,7 +503,7 @@ func configureLogger(name string, logUrl string, logKey string, logType string, 
 			if err != nil {
 				eventLog.Printf("Failed to process log message - %v", err)
 			} else {
-				eventLog.Printf(formatBasic(obj))
+				eventLog.Println(formatBasic(obj))
 			}
 			return true
 		}, nil

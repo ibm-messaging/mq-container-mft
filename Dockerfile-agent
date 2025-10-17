@@ -15,11 +15,11 @@
 #
 
 ARG UBI_BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal
-ARG UBI_BASE_TAG=9.6-1749489516
+ARG UBI_BASE_TAG=9.6-1758184547
 
 ARG GO_TOOLSET_IMAGE=registry.access.redhat.com/ubi9/go-toolset
-ARG GO_TOOLSET_TAG=1.23.9-1749636489
-ARG GO_TOOLCHAIN_VERSION=go1.23.9+auto
+ARG GO_TOOLSET_TAG=1.24.6-1758501173
+ARG GO_TOOLCHAIN_VERSION=go1.24.6+auto
 
 ARG GO_WORKDIR=/opt/app-root/src/go/src/github.com/ibm-messaging/mq-container-mft
 ARG JDK_BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-8
@@ -86,8 +86,15 @@ RUN mkdir -p /credentialsexit/BridgeCredentialExit/bin  \
 FROM $UBI_BASE_IMAGE:$UBI_BASE_TAG AS mqmft
 
 # Set environment variables so that any shell scripts can make use of them
+ARG ARG_MQMFT_REDIST_ARCHIVE_URL
+ARG ARG_MQMFT_DEV_BUILD
 ARG ARG_MQMFT_REDIST_FILE
+ARG ARG_MQMFT_DELIVERY_REGISTRY_HOSTNAME
+ARG ARG_MQMFT_DELIVERY_REGISTRY_USER
+ARG ARG_MQMFT_DELIVERY_REGISTRY_CREDENTIAL
 ARG ARG_MQMFT_BFG_DATA
+ARG ARG_MQMFT_BUILD_LEVEL
+ARG ARG_MQMFT_VERSION
 
 # Use a fixed path for BFG_DATA path. Agent configuration will always be created under 
 # this path. If using a persistent volume, then volume must be mounted to this path. 
@@ -123,6 +130,9 @@ LABEL base-image-release=$UBI_BASE_TAG
 # Do everything as root. We will change the user at a later point
 USER 0
 
+# This script unpack MQMFT Redistributable Package to /opt/mqm/mqft
+COPY install-mqmft.sh /usr/local/bin/install-mqmft.sh
+
 # Copy the MQMFT Redistributable Package to temporary directory in the container
 COPY $ARG_MQMFT_REDIST_FILE /tmp/$ARG_MQMFT_REDIST_FILE
 
@@ -144,19 +154,14 @@ RUN microdnf install -y bash \
     file \
     findutils \
     glibc \
-    && rm -rf /var/lib/apt/lists/* 
-
-# Remove postfix key as it causes twistlock scan to log a non-compliance
-# vulnerability
-RUN rm -f /etc/pki/tls/private/postfix.key
-# Add the Agent redistributable package
-RUN mkdir -p /opt/mqm/mqft \
-    && mv /tmp/$ARG_MQMFT_REDIST_FILE /opt/mqm/mqft \
-    && cd /opt/mqm/mqft \
-    && tar -xzf ./$ARG_MQMFT_REDIST_FILE \
-    && rm -f ./$ARG_MQMFT_REDIST_FILE \
-    && chown -R 1001:root /opt/mqm/*
-
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /opt/mqm/mqft \
+    && chmod a+x /usr/local/bin/install-mqmft.sh \
+    && sleep 1 \
+    && install-mqmft.sh $ARG_MQMFT_REDIST_FILE $ENV_BASE_IMAGE_VERSION $ARG_MQMFT_BUILD_LEVEL $ARG_MQMFT_VERSION \
+    && chown -R 1001:root /opt/mqm/* \
+    && rm -f /usr/local/bin/install-mqmft.sh \
+    && rm -f /etc/pki/tls/private/postfix.key
 
 # Copy go programs
 COPY --from=gobuilder $GO_WORKDIR/run/runagent /run/
@@ -190,6 +195,12 @@ RUN mkdir -p $BFG_DATA \
 # Copy the Bridge Credential Exit into container.
 COPY --from=pbaexitbuilder /credentialsexit/BridgeCredentialExit/bin/com.ibm.bridgecredentialexit.jar /customexits/mqft/pbaexit/com.ibm.bridgecredentialexit.jar
 COPY ./credentialsexit/BridgeCredentialExit/thirdparty/json-20250517.jar /customexits/mqft/pbaexit/org.json.jar
+
+# Copy Developer license files to /opt/mqm/mqft/licenses directory
+COPY ./licenses/UTF8/LA* /opt/mqm/mqft/licences/
+# Copy the license and notices to root of the container.
+COPY ./licenses/UTF8/non_ibm_license /non_ibm_license.txt
+COPY ./licenses/UTF8/notices /notices.txt
 
 # Set path so that we can run our programs
 ENV PATH=$PATH:/opt/mqm/mqft/bin:/opt/mqm/mqft/java/jre64/jre/bin:/opt/mqm/bin:/run

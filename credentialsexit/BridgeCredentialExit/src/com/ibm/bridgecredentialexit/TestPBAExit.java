@@ -136,6 +136,7 @@ public class TestPBAExit {
 		Credentials creds = cer.getCredentials();
 		System.out.println("UserId: " + creds.getUserId());
 		assertEquals(creds.getUserId().get(), "root");
+		assertEquals(creds.getPassword().get(), "Kitt@n0or");
 
 		ProtocolServerEndPoint pse1 = new ProtocolServerEndPoint("10.18.68.52", "FTP", "9.122.123.124", 22);
 		CredentialExitResult cer1 = exit.mapMQUserId(pse1, "shashikantht");
