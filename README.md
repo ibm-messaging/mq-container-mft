@@ -1,21 +1,88 @@
-# IBM MQ Managed File Transfer Container
-
-[![Build Status](https://v3.travis.ibm.com/mq-cloudpak/mq-container-mft.svg?token=7pYyVhwaJTAKued5BJcd&branch=master)](https://v3.travis.ibm.com/mq-cloudpak/mq-container-mft)
+# IBM MQ Managed File Transfer Agent in Container
 
 ## Overview
 IBM MQ Managed File Transfer transfers files between systems in a managed and auditable way, regardless of file size or the operating systems used. You can use Managed File Transfer to build a customized, scalable, and automated solution that enables you to manage, trust, and secure file transfers. Managed File Transfer eliminates costly redundancies, lowers maintenance costs, and maximizes your existing IT investments.
 
-IBM MQ Managed File Transfer agent is now available as a container image also in IBM Container Registry (icr.io/ibm-messaging/mqmft). The image can be deployed in a OpenShift Cluster as a standard deployment or running using podman runtime. 
+This image allows you to run IBM MQ Managed File Transfer Agent in a container. The container image can be run using podman or docker runtimes or can be deployed in an OpenShift Cluster via a Deployment yaml. With this container image, you can run both standard and protocol bridge type of agents. The protocol bridge agent supports connections to FTP and SFTP servers.
 
-It must be noted the IBM MQ Managed File Transfer agent image is a `Developer Only` image and hence must not be used in production environment.
+See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 
-See [here](READMEEarlierImp.md) for an earlier implementation of MFT on cloud.
+## What is new in IBM MQ MFT Agent Container 9.4.4.0?
+
+This version of the container image has the following updates:
+
+- Built using the IBM MQ Managed File Transfer 9.4.3.0 LTS Redistributable binaries.
+- Container image is built using ubi9 minimal RedHat Linux image as the base image.
+- Fixes issues found in internal testing and by customers.
+
+
+**Earlier versions of container images**
+
+## What is new in IBM MQ MFT Agent Container 9.4.3.0?
+
+This version of the container image has the following updates:
+
+- Built using the IBM MQ Managed File Transfer 9.4.3.0 LTS Redistributable binaries.
+- Container image is built using ubi9 minimal RedHat Linux image as the base image.
+- Fixes issues found in internal testing and by customers.
+
+## What is new in IBM MQ MFT Agent Container 9.4.2.0?
+
+This version of the container image has the following updates:
+
+- Built using the IBM MQ Managed File Transfer 9.4.2.0 LTS Redistributable binaries.
+- Container image is built using ubi9 minimal RedHat Linux image as the base image.
+- Fixes issues found in internal testing and by customers.
+
+## What is new in IBM MQ MFT Agent Container 9.4.1.0?
+
+This version of the container image has the following updates:
+
+- Built using the IBM MQ Managed File Transfer 9.4.1.0 LTS Redistributable binaries.
+- Container image is built using ubi9 minimal RedHat Linux image as the base image.
+- Fixes issues found in internal testing and by customers.
+
+## IBM MQ 9.4.0.0?
+This version of the container image has the following updates:
+
+- Built using the IBM MQ Managed File Transfer 9.4.0.0 LTS Redistributable binaries.
+- Container image is built using ubi9 minimal RedHat Linux image as the base image.
+- The bridge agent now supports usage of SSH Private Keys for connecting to SFTP Servers. 
+  The SSH private key and host key must be Base 64 encoded. SSH Private key can be supplied through an OpenShift configMap or a secret. See [here](external-how-to-docs/custompbacred.md) for more details.
+- Fixes issues found in internal testing and by customers.
+
+**MQ 9.3.5.0**
+- Container image built with 9.3.5.0 CD of IBM MQ Managed File Transfer Redistributable Image.
+- Fixes issues found in internal testing and by customers.
+
+**MQ 9.3.4.0**
+- Container image built with 9.3.4.0 CD of IBM MQ Managed File Transfer Redistributable Image.
+- Fixes issues found in internal testing and by customers.
+
+**MQ 9.3.3.0**
+- Container image built with 9.3.3.0 CD of IBM MQ Managed File Transfer Redistributable Image.
+- Fixes issues found in internal testing and by customers.
+
+**MQ 9.3.2.0**
+- Container image built with 9.3.2.0 CD of IBM MQ Managed File Transfer Redistributable Image.
+- Fixes issues found in internal testing and by customers.
+
+**MQ 9.3.1.0**
+This version of container image supports TLS secure connections to queue managers. You can now specify cipherspec environment variables as described below. The public keys must be mounted into the container at a specific path. See [here](docs/tls.md) for more details.
+
+
+## Developer image
+Developer version of the MFT Agent container image is available in IBM Container Registry `(icr.io/ibm-messaging/mqmft)`. Use podman/docker command to pull the image.
+
+`podman pull icr.io/ibm-messaging/mqmft`
 
 
 ## Usage
-See [here](docs/run-with-podman/run-test.sh) for details on how to run the image container with Podman runtime. 
 
-See [here](docs/usage-ocp.md) for details on how to deploy the image in an OpenShift Container Platform.
+See [here](external-how-to-docs/usage-podman.md) for details on how to run the image container with Podman runtime. 
+
+See [here](external-how-to-docs/usage-ocp.md) for details on how to deploy the image in an OpenShift Container Platform.
+
 
 Note that in order to use the image, it is necessary to accept the terms of the [IBM MQ license](#license).
 
@@ -26,20 +93,46 @@ Note that in order to use the image, it is necessary to accept the terms of the 
 - **MFT_AGENT_NAME** - Required. Name of the agent to configure. 
 - **BFG_JVM_PROPERTIES** - Optional - Any JVM property that needs to be set when running agent JVM.
 - **MFT_LOG_LEVEL** - Optional - Level of information displayed. `info` and `verbose` are the supported values with `info` being default. Contents of agent's output0.log is displayed if MFT_LOG_LEVEL is set to `verbose`.
-- **MFT_AGENT_TRANSFER_LOG_PUBLISH_CONFIG_FILE** - Optional - Publishing transfer logs to logDNA. Specify a JSON file containing URL and injestion key. See [here](docs/publishlogs.md) for more details on the json structure.
 - **MFT_AGENT_START_WAIT_TIME** - Optionl. An agent might take some time to start after fteStartAgent command is issued. This is the time, in seconds, the containor will wait for an agent to start. If an agent does not within the specified wait time, the container will end.
 - **MFT_MOUNT_PATH** - Optional. Environment variable pointing to path from where agent will read files or write to.
-- **SFTP_EITHER_PRIVATEKEY_OR_PASSWORD** - Optional - Defaults to "False". When set to "True", logs an error if both Private Key and Password are specified for a SFTP authentication.
+- **MFT_COORD_QMGR_CIPHER** - Name of the CipherSpec to be used for securely connecting to coordination queue manager. 
+- **MFT_CMD_QMGR_CIPHER** - Name of the CipherSpec to be used for securely connecting to command queue manager. 
+- **MFT_AGENT_QMGR_CIPHER** -Name of the CipherSpec to be used for securely connecting to agent queue manager. 
 
 ### Location of agent configuration files
 
 Agent in the container will create agent configuration and log files under the fixed directory `/mnt/mftdata`. This folder can be on a persistent volume as well, in which case the volume must be mounted as `/mnt/mftdata` mount point in to the container
 
-### What's new in MQ 9.4.4 MFT Container image
-1) The image built with MQ 9.4.4 Managed File Transfer Redistributable binaries.
-2) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
+### Building your own container image
+See the instructions [here](external-how-to-docs/build.md) to build your own agent container image.
+
+### Lab 
+Step-by-step [guide](lab/README.md) to using agent container.
 
 ## Issues and contributions
+For issues relating specifically to the container image, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mft-cloud/issues). If you do submit a Pull Request related to this container image, please indicate in the Pull Request that you accept and agree to be bound by the terms of the [IBM Contributor License Agreement](CLA.md).
+
+### Known issues
+
+When using secure connections to queue manager, agent running in a container may log the following warning messages to console or agent's output0.log. Container will continue to run though.
+```
+[11/07/2022 07:32:16:099 GMT] 00000022 FileSystemPre W   Could not lock User prefs.  Unix error code 2.
+[11/07/2022 07:32:16:100 GMT] 00000022 FileSystemPre W   Couldn't flush user prefs: java.util.prefs.BackingStoreException: Couldn't get file lock.
+
+```
+
+Do the following to resolve the warnings:
+1) Include the following environment variable in your deployment yaml if you are deploying in OpenShift Container Platform
+ ```
+ - name: BFG_JVM_PROPERTIES
+   value: -Djava.util.prefs.systemRoot=/jprefs/.java/.systemPrefs -Djava.util.prefs.userRoot=/jprefs/.java/.userPrefs
+
+```
+2) Include the following environemt variable while running podman/docker runtime:
+```   
+  --env BFG_JVM_PROPERTIES=-Djava.util.prefs.systemRoot=/jprefs/.java/.systemPrefs -Djava.util.prefs.userRoot=/jprefs/.java/.userPrefs
+```
+   
 
 For issues relating specifically to the container image, please use the [GitHub issue tracker](https://github.com/ibm-messaging/mft-cloud/issues). If you do submit a Pull Request related to this container image, please indicate in the Pull Request that you accept and agree to be bound by the terms of the [IBM Contributor License Agreement](CLA.md).
 
