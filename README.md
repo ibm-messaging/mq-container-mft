@@ -11,7 +11,7 @@ See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 
 This version of the container image has the following updates:
 
-- Built using the IBM MQ Managed File Transfer 9.4.3.0 LTS Redistributable binaries.
+- Built using the IBM MQ Managed File Transfer 9.4.4.0 LTS Redistributable binaries.
 - Container image is built using ubi9 minimal RedHat Linux image as the base image.
 - Fixes issues found in internal testing and by customers.
 
