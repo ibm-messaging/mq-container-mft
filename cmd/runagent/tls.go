@@ -19,14 +19,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/ibm-messaging/mq-container-mft/pkg/utils"
+
+//Git 106 fix: Using crypto/rand for secure random password generation	
+	"crypto/rand"
+    "math/big"
 )
 
 /**
@@ -114,16 +116,22 @@ func CreateKeyStore(keyStoreDir string, keyStoreFile string, certFilePath string
 }
 
 // Generates a random 12 character password from the characters a-z, A-Z, 0-9
+//Git 106 fix: Using crypto/rand for secure random password generation
 func generateRandomPassword() string {
-	rand.Seed(time.Now().Unix())
 	validChars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-	validcharArray := []byte(validChars)
-	password := ""
+	validCharArray := []byte(validChars)
+	password := make([]byte, 12)
+
 	for i := 0; i < 12; i++ {
-		password = password + string(validcharArray[rand.Intn(len(validcharArray))])
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(validCharArray))))
+		if err != nil {
+			// Fallback: deterministic password if crypto/rand fails
+			return "DefaultPass123"
+		}
+		password[i] = validCharArray[n.Int64()]
 	}
 
-	return password
+	return string(password)
 }
 
 // Search the specified directory for certificate files

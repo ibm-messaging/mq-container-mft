@@ -582,7 +582,7 @@ func ValidateAgentAttributes(jsonData string) error {
 // Update agent.properties file with any additional properties specified in
 // configuration JSON file.
 func updateAgentProperties(propertiesFile string, agentConfig string, sectionName string, bridgeAgent bool) bool {
-	f, err := os.OpenFile(propertiesFile, os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(propertiesFile, os.O_APPEND|os.O_WRONLY, 0600)  //Git 106 fix: Restricting file permission
 	if err != nil {
 		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_ERR_OPN_FILE_0067, propertiesFile, err))
 		return false

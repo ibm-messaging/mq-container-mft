@@ -1,8 +1,8 @@
 module github.com/ibm-messaging/mq-container-mft
 
-go 1.23.0
+go 1.24.6
 
-toolchain go1.23.6
+toolchain go1.24.6
 
 require (
 	github.com/Jeffail/gabs v1.4.0

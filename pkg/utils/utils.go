@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2020, 2024
+© Copyright IBM Corporation 2020, 2025
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -200,16 +200,17 @@ func CreatePath(dataPath string) error {
 	_, err := os.Stat(dataPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err := os.MkdirAll(dataPath, 0777)
+			err := os.MkdirAll(dataPath, 0700)  //Git 106 fix: Restricting directory permission
 			if err != nil {
 				return fmt.Errorf("failed to create path %s due to error: %v", dataPath, err)
-			} else {
+			} 
+			/** else {
 				// Change permissions Linux.
 				err = os.Chmod(dataPath, 0777)
 				if err != nil {
 					return fmt.Errorf("failed to modify permissions on path %s due to error %v", dataPath, err)
 				}
-			}
+			} **/
 		} else {
 			return fmt.Errorf("an error occurred while checking e %v", err)
 		}
@@ -300,7 +301,7 @@ func DoesFileExist(fileName string) bool {
 // Write the given buffer to specified file
 func WriteData(fileName string, bufferToWrite string) error {
 	// Create an empty credentials file, truncate if one exists
-	filePointer, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	filePointer, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)  //Git 106 fix: Restricting file permission
 	// if we os.Open returns an error then handle it
 	if err != nil {
 		return err
