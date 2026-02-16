@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2020, 2024
+© Copyright IBM Corporation 2020, 2021
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,22 +109,29 @@ func IsAgentReady(bfgDataPath string, agentName string, coordinationQMgr string)
 			ready = false
 		} else {
 			scanner := backscanner.New(outputLogFile, int(fi.Size()))
-			findBFGAG59I := []byte("BFGAG0059I")
-			// If we don't find BFGAG0059I in last 10 lines, then assume agent
+			findBFGAG0059I := []byte("BFGAG0059I")
+			findEndDisplayEnv := []byte("End Display Current Environment")
+			// If we find the ********* End Display Current Environment ***** message first instead of BFGAG0059I then assume that the agent is not started.
+			// If we don't find BFGAG0059I in last 500 lines, then assume agent
 			// has not started and return false
-			for count < 10 {
+			for count < 500 {
 				line, _, err := scanner.LineBytes()
 				if err != nil {
 					if err == io.EOF {
-						returnError = fmt.Errorf("%q is not found in file", findBFGAG59I)
+						returnError = fmt.Errorf("%q is not found in file", findBFGAG0059I)
 					} else {
 						returnError = fmt.Errorf("error occurred while processing log file %v", err)
 					}
 					break
 				}
 
-				if bytes.Contains(line, findBFGAG59I) {
+				if bytes.Contains(line, findBFGAG0059I) {
 					ready = true
+					break
+				}
+
+				if bytes.Contains(line, findEndDisplayEnv) {
+					returnError = fmt.Errorf("End of the Current Environment detected but ready message is not found in file.")
 					break
 				}
 
@@ -200,16 +207,10 @@ func CreatePath(dataPath string) error {
 	_, err := os.Stat(dataPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err := os.MkdirAll(dataPath, 0777)
+			err := os.MkdirAll(dataPath, 0700) 
 			if err != nil {
 				return fmt.Errorf("failed to create path %s due to error: %v", dataPath, err)
-			} else {
-				// Change permissions Linux.
-				err = os.Chmod(dataPath, 0777)
-				if err != nil {
-					return fmt.Errorf("failed to modify permissions on path %s due to error %v", dataPath, err)
-				}
-			}
+			} 
 		} else {
 			return fmt.Errorf("an error occurred while checking e %v", err)
 		}
@@ -300,7 +301,7 @@ func DoesFileExist(fileName string) bool {
 // Write the given buffer to specified file
 func WriteData(fileName string, bufferToWrite string) error {
 	// Create an empty credentials file, truncate if one exists
-	filePointer, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	filePointer, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600) 
 	// if we os.Open returns an error then handle it
 	if err != nil {
 		return err
