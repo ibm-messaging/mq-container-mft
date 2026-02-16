@@ -1,5 +1,5 @@
 #
-#© Copyright IBM Corporation 2020, 2025
+#© Copyright IBM Corporation 2020, 2026
 #
 #Licensed under the Apache License, Version 2.0 (the "License");
 #you may not use this file except in compliance with the License.
@@ -15,15 +15,15 @@
 #
 
 ARG UBI_BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal
-ARG UBI_BASE_TAG=9.6-1758184547
+ARG UBI_BASE_TAG=9.7-1770267347
 
 ARG GO_TOOLSET_IMAGE=registry.access.redhat.com/ubi9/go-toolset
-ARG GO_TOOLSET_TAG=1.24.6-1758501173
-ARG GO_TOOLCHAIN_VERSION=go1.24.6+auto
+ARG GO_TOOLSET_TAG=1.25.5-1769430014
+ARG GO_TOOLCHAIN_VERSION=go1.25.5+auto
 
 ARG GO_WORKDIR=/opt/app-root/src/go/src/github.com/ibm-messaging/mq-container-mft
 ARG JDK_BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-8
-ARG JDK_BASE_TAG=1.20-2
+ARG JDK_BASE_TAG=1.23-3
 
 ###############################################################################
 # Build stage to build Go code
@@ -73,7 +73,7 @@ USER 0
 RUN mkdir /credentialsexit
 COPY ./credentialsexit /credentialsexit
 # You will need to download com.ibm.wmqfte.exitroutines.api.jar from IBM MQ 
-# Managed File Transfer Redistributable package and json-20250517.jar and 
+# Managed File Transfer Redistributable package and json-20251224.jar and 
 # place them in /credentialsexit/BridgeCredentialExit/thirdparty directory.
 RUN mkdir -p /credentialsexit/BridgeCredentialExit/bin  \
     && javac -source 1.8 -target 1.8 -cp "/credentialsexit/BridgeCredentialExit/thirdparty/*" -d /credentialsexit/BridgeCredentialExit/bin /credentialsexit/BridgeCredentialExit/src/com/ibm/bridgecredentialexit/ProtocolBridgeCustomCredentialExit.java \
@@ -189,13 +189,16 @@ RUN mkdir -p $BFG_DATA \
 
 # Copy the Bridge Credential Exit into container.
 COPY --from=pbaexitbuilder /credentialsexit/BridgeCredentialExit/bin/com.ibm.bridgecredentialexit.jar /customexits/mqft/pbaexit/com.ibm.bridgecredentialexit.jar
-COPY ./credentialsexit/BridgeCredentialExit/thirdparty/json-20250517.jar /customexits/mqft/pbaexit/org.json.jar
+COPY ./credentialsexit/BridgeCredentialExit/thirdparty/json-20251224.jar /customexits/mqft/pbaexit/org.json.jar
 
 # Set path so that we can run our programs
 ENV PATH=$PATH:/opt/mqm/mqft/bin:/opt/mqm/mqft/java/jre64/jre/bin:/opt/mqm/bin:/run
 
 # We will use USER ID 1001
 USER 1001
+
+#Health check, this checks if the MFT agent is alive and responding
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD /run/agentalive || exit 1
 
 # Call our entry point
 ENTRYPOINT ["runagent"]
