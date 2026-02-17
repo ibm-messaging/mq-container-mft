@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2020, 2025
+© Copyright IBM Corporation 2020, 2026
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,22 +109,29 @@ func IsAgentReady(bfgDataPath string, agentName string, coordinationQMgr string)
 			ready = false
 		} else {
 			scanner := backscanner.New(outputLogFile, int(fi.Size()))
-			findBFGAG59I := []byte("BFGAG0059I")
-			// If we don't find BFGAG0059I in last 10 lines, then assume agent
+			findBFGAG0059I := []byte("BFGAG0059I")
+			findEndDisplayEnv := []byte("End Display Current Environment")
+			// If we find the ********* End Display Current Environment ***** message first instead of BFGAG0059I then assume that the agent is not started.
+			// If we don't find BFGAG0059I in last 500 lines, then assume agent
 			// has not started and return false
-			for count < 10 {
+			for count < 500 {
 				line, _, err := scanner.LineBytes()
 				if err != nil {
 					if err == io.EOF {
-						returnError = fmt.Errorf("%q is not found in file", findBFGAG59I)
+						returnError = fmt.Errorf("%q is not found in file", findBFGAG0059I)
 					} else {
 						returnError = fmt.Errorf("error occurred while processing log file %v", err)
 					}
 					break
 				}
 
-				if bytes.Contains(line, findBFGAG59I) {
+				if bytes.Contains(line, findBFGAG0059I) {
 					ready = true
+					break
+				}
+
+				if bytes.Contains(line, findEndDisplayEnv) {
+					returnError = fmt.Errorf("End of the Current Environment detected but ready message is not found in file.")
 					break
 				}
 
