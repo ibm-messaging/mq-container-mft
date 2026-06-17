@@ -7,15 +7,19 @@ This image allows you to run IBM MQ Managed File Transfer Agent in a container. 
 
 See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 
-## What is new in IBM MQ MFT Agent Container 9.4.5.0?
+## What is new in IBM MQ MFT Agent Container 10.0.0.0?
 
 This version of the container image has the following updates:
 
-1) The image built with MQ 9.4.5 Managed File Transfer Redistributable binaries.
-2) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
+1) The image built with MQ 10.0.0 Managed File Transfer Redistributable binaries.
+3) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
 
 
 **Earlier versions of container images**
+**IBM MQ 9.4.5.0**
+1) The image built with MQ 9.4.5 Managed File Transfer Redistributable binaries.
+2) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
+
 **IBM MQ 9.4.4.0**
 - Built using the IBM MQ Managed File Transfer 9.4.4.0 LTS Redistributable binaries.
 - Container image is built using ubi9 minimal RedHat Linux image as the base image.
@@ -130,11 +134,11 @@ For issues relating specifically to the container image, please use the [GitHub 
 
 ## Licenses
 
-The Dockerfiles and associated code and scripts are licensed under the [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0.html).
+The Dockerfiles and associated code and scripts are licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html).
 Licenses for the products installed within the images are as follows:
 
-- [IBM MQ Advanced for Developers](http://www.ibm.com/terms/?id=L-HYGL-6STWD6) (International License Agreement for Non-Warranted Programs). This license may be viewed from an image using the `LICENSE=view` environment variable as described above or by following the link above.
-- [IBM MQ Advanced](http://www.ibm.com/terms/?id=L-NUUP-23NH8Y) (International Program License Agreement). This license may be viewed from an image using the `LICENSE=view` environment variable as described above or by following the link above.
+- [IBM MQ Advanced for Developers](https://www.ibm.com/support/customer/csol/terms/?id=L-GWLM-M6WVZU) (International License Agreement for Non-Warranted Programs). This license may be viewed from an image using the `LICENSE=view` environment variable as described above or by following the link above.
+- [IBM MQ Advanced](https://www.ibm.com/support/customer/csol/terms/?id=L-CXDB-XTZ9J8) (International Program License Agreement). This license may be viewed from an image using the `LICENSE=view` environment variable as described above or by following the link above.
 
 Note: The IBM MQ Advanced for Developers license does not permit further distribution and the terms restrict usage to a developer machine.
 
