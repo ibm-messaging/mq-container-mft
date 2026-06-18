@@ -1,11 +1,11 @@
 /*
-© Copyright IBM Corporation 2022, 2024
+© Copyright IBM Corporation 2022, 2026
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -647,9 +647,12 @@ func updateAgentProperties(propertiesFile string, agentConfig string, sectionNam
 // Updates ProtocolBridgeProperties file with specified additional attributes
 func updateProtocolBridgePropertiesFile(propertiesFile string, agentConfig string) bool {
 	// First read the entire contents of the ProtocolBridgeProperties file and build a xml file
+	//
 	bridgeProperitesXml := readFileContents(propertiesFile)
 	if logLevel >= LOG_LEVEL_VERBOSE {
+
 		utils.PrintLog(bridgeProperitesXml)
+
 	}
 	protocolBridgeConfigs := gjson.Get(agentConfig, "protocolServers").Array()
 

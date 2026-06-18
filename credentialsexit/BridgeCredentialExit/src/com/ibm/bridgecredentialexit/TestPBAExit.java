@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,7 +30,7 @@ import com.ibm.wmqfte.exitroutine.api.Credentials;
 import com.ibm.wmqfte.exitroutine.api.ProtocolServerEndPoint;
 
 /**
- * @author SHASHIKANTHTHAMBRAHA
+ * @author longuser1
  *
  */
 public class TestPBAExit {
@@ -118,7 +118,7 @@ public class TestPBAExit {
 		props.put("protocolBridgeCredentialConfiguration", file.getAbsolutePath());
 		assertTrue(exit.initialize(props));
 		ProtocolServerEndPoint pse = new ProtocolServerEndPoint("mykanos", "FTP", "9.122.123.124", 22);
-		CredentialExitResult cer = exit.mapMQUserId(pse, "shashikantht");
+		CredentialExitResult cer = exit.mapMQUserId(pse, "longuser1");
 		assertNotEquals(cer.getResultCode(), CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED);
 	}
 
@@ -136,6 +136,7 @@ public class TestPBAExit {
 		Credentials creds = cer.getCredentials();
 		System.out.println("UserId: " + creds.getUserId());
 		assertEquals(creds.getUserId().get(), "root");
+		assertEquals(creds.getPassword().get(), "pass123");
 
 		ProtocolServerEndPoint pse1 = new ProtocolServerEndPoint("10.18.68.52", "FTP", "9.122.123.124", 22);
 		CredentialExitResult cer1 = exit.mapMQUserId(pse1, "longuser1");
@@ -143,6 +144,7 @@ public class TestPBAExit {
 		Credentials creds1 = cer1.getCredentials();
 		System.out.println("UserId: " + creds.getUserId());
 		assertEquals(creds1.getUserId().get(), "greekman");
+		assertEquals(creds1.getPassword().get(), "pass123");
 
 	}
 
@@ -165,7 +167,7 @@ public class TestPBAExit {
 		props.put("protocolBridgeCredentialConfiguration", file.getAbsolutePath());
 		assertTrue(exit.initialize(props));
 		ProtocolServerEndPoint pse = new ProtocolServerEndPoint("nopassword", "SFTP", "9.122.123.124", 22);
-		CredentialExitResult cer = exit.mapMQUserId(pse, "shashikantht");
+		CredentialExitResult cer = exit.mapMQUserId(pse, "longuser1");
 		assertEquals(cer.getResultCode(), CredentialExitResultCode.USER_SUCCESSFULLY_MAPPED);
 	}
 

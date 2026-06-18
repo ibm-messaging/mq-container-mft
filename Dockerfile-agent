@@ -5,7 +5,7 @@
 #you may not use this file except in compliance with the License.
 #You may obtain a copy of the License at
 #
-#http://www.apache.org/licenses/LICENSE-2.0
+#https://www.apache.org/licenses/LICENSE-2.0
 #
 #Unless required by applicable law or agreed to in writing, software
 #distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,15 +15,15 @@
 #
 
 ARG UBI_BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-minimal
-ARG UBI_BASE_TAG=9.7-1770267347
+ARG UBI_BASE_TAG=9.8-1780378819
 
 ARG GO_TOOLSET_IMAGE=registry.access.redhat.com/ubi9/go-toolset
-ARG GO_TOOLSET_TAG=1.25.5-1769430014
-ARG GO_TOOLCHAIN_VERSION=go1.25.5+auto
+ARG GO_TOOLSET_TAG=1.26.3-1780490420
+ARG GO_TOOLCHAIN_VERSION=go1.26.3+auto
 
 ARG GO_WORKDIR=/opt/app-root/src/go/src/github.com/ibm-messaging/mq-container-mft
 ARG JDK_BASE_IMAGE=registry.access.redhat.com/ubi8/openjdk-8
-ARG JDK_BASE_TAG=1.23-3
+ARG JDK_BASE_TAG=1.23-4.1780484407
 
 ###############################################################################
 # Build stage to build Go code
@@ -93,6 +93,9 @@ ARG ARG_MQMFT_BFG_DATA
 # this path. If using a persistent volume, then volume must be mounted to this path. 
 ENV BFG_DATA=/mnt/mftdata
 ENV KEYSTORE_PATH=/run/keystores
+
+# Add this to set BFG_JVM_PROPERTIES 
+ENV BFG_JVM_PROPERTIES="-Dcom.ibm.msg.client.commonservices.log.outputName=/tmp/mqjms.log"
 
 # Envrionment variables passed
 ENV ENV_BASE_IMAGE_NAME="Red Hat Universal Base Image"
