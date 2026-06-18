@@ -1,11 +1,11 @@
 /*
-© Copyright IBM Corporation 2020, 2021
+© Copyright IBM Corporation 2020, 2026
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -87,3 +87,66 @@ func TestReadConfigurationDataFromFile(t *testing.T) {
 	}
 }
 
+// Test updating of agent properties file
+func TestUpdateAgentPropertieS(t *testing.T) {
+	configDataValid :=  `{
+      "dataPath":"/mqmft/mftdata",
+      "monitoringInterval":300,
+      "displayAgentLogs":true,
+      "displayLineCount":50,
+      "waitTimeToStart":10,
+      "coordinationQMgr":{"name":"QUICKSTART","host":"10.254.0.4","port":1414,"channel":"MFT_HA_CHN"},
+      "commandsQMgr":{"name":"QUICKSTART","host":"10.254.0.4","port":1414,"channel":"MFT_HA_CHN"},
+      "agent":{
+         "name":"KXAGNT",
+         "type":"STANDARD",
+         "qmgrName":"QUICKSTART",
+         "qmgrHost":"10.254.0.4",
+         "qmgrPort":1414,
+         "qmgrChannel":"MFT_HA_CHN",
+         "credentialsFile":"/usr/local/bin/MQMFTCredentials.xml",
+		 "additionalProperties":{
+		 	"enableQueueInputOutput":"true"
+		 },
+         "protocolBridge":{
+		 	"credentialsFile":"/usr/local/bin/ProtocolBridgeCredentials.xml","serverType":"SFTP","serverHost":"9.199.144.110","serverTimezone":"","serverPlatform":"UNIX","serverLocale":"en-US","serverFileEncoding":"UTF-8","serverPort":22,"serverTrustStoreFile":"","serverLimitedWrite":"","serverListFormat":"","serverUserId":"root","serverPassword":"Kitt@n0or"
+		 }
+      }
+    }`
+	initialProps := "agentQMgr=MFTQM\nagentQMgrPort=1414\nagentDesc=\nagentQMgrHost=localhost\nagentQMgrChannel=MFT_CHN\nagentName=SRC\ntrace=com.ibm.wmqfte=all"
+	compareTemplate := "agentQMgr=MFTQM\nagentQMgrPort=1414\nagentDesc=\nagentQMgrHost=localhost\nagentQMgrChannel=MFT_CHN\nagentName=SRC\ntrace=com.ibm.wmqfte=all\nlogCapture=true\nmaxRestartCount=0\nenableQueueInputOutput=true"
+
+	agentProps, err := ioutil.TempFile("", t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(agentProps.Name())
+	t.Log(agentProps.Name())
+	agentPropsF, err := os.OpenFile(agentProps.Name(), os.O_WRONLY, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Write initial properties into file and close
+	fmt.Fprintln(agentPropsF, initialProps)
+	agentPropsF.Close()
+
+	// Update the agent.properties file with data from configuration file
+	updateAgentProperties(agentProps.Name(), configDataValid, "agent.additionalProperties", false)
+
+	content, err := ioutil.ReadFile(agentProps.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Convert []byte to string and print to screen
+	updatedProps := string(content)
+
+	// Now compare with template
+	if strings.EqualFold(strings.TrimSpace(updatedProps), strings.TrimSpace(compareTemplate)) == true {
+		t.Log("OK: Properties file updated as expected")
+	} else {
+		t.Log(strings.TrimSpace(updatedProps))
+		t.Log(strings.TrimSpace(compareTemplate))
+		t.Fatal("Properties file not updated correctly")
+	}
+}
