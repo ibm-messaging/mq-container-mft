@@ -30,7 +30,7 @@ import com.ibm.wmqfte.exitroutine.api.Credentials;
 import com.ibm.wmqfte.exitroutine.api.ProtocolServerEndPoint;
 
 /**
- * @author longuser1HAMBRAHA
+ * @author longuser1
  *
  */
 public class TestPBAExit {
