@@ -12,7 +12,7 @@ See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 This version of the container image has the following updates:
 
 1) The image built with MQ 10.0.0 Managed File Transfer Redistributable binaries.
-3) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
+2) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
 
 
 **Earlier versions of container images**
