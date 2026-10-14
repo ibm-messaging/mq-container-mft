@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2020, 2026
+© Copyright IBM Corporation 2020, 2024
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -73,6 +73,7 @@ const KEY_INJESTION_DNA = "logDNA.injestionKey"
 const KEY_URL_ELK = "elk.url"
 
 const DIR_AGENT_LOGS = "/mqft/logs/"
+const PROBE_LOG_FILE_PATH = "/tmp/mft-probe-logs/mft-probe-00.log"
 const DIR_AGENTS = "/agents/"
 
 // License file path

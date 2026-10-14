@@ -1,5 +1,5 @@
 /*
-© Copyright IBM Corporation 2020, 2026
+© Copyright IBM Corporation 2020, 2022
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -376,6 +376,9 @@ func main() {
 	// Push transfer logs to specified server
 	setupMirrorTransferLogs(ctxAgentLog, &wg, bfgDataPath, coordinationQMgr, agentNameEnv)
 
+	// Mirror contents of probe logs to stdout
+	setupMirrorProbeLogs(ctxAgentLog, &wg, agentNameEnv)
+
 	// If agent status is READY or ACTIVE, then we are good.
 	if agentReady {
 		utils.PrintLog(fmt.Sprintf(utils.MFT_CONT_AGNT_STARTED_0038, agentNameEnv))
@@ -432,6 +435,19 @@ func setupMirrorTraceLogs(ctxCaptureLog context.Context, wg *sync.WaitGroup, bfg
 			mirrorAgentLogs(ctxCaptureLog, wg, agentNameEnv, agentTracePath, "", "", LOG_TYPE_CONSOLE, -1)
 		}
 	}
+}
+
+// Setup a mirror to tail probe failure logs to console
+func setupMirrorProbeLogs(ctx context.Context, wg *sync.WaitGroup, agentNameEnv string) {
+	mf := func(msg string) bool {
+		// Only mirror probe failure messages (suppress PASSED to avoid filling container logs)
+		if strings.Contains(msg, "] FAILED:") {
+			utils.PrintLog(msg)
+			return true
+		}
+		return false
+	}
+	mirrorAgentEventLogs(ctx, wg, PROBE_LOG_FILE_PATH, false, mf)
 }
 
 // Setup a mirror to push transfer logs to specified server

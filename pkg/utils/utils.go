@@ -23,7 +23,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -36,29 +38,28 @@ const FIXED_BFG_DATAPATH = "/mnt/mftdata"
 // Default agent configuration json file
 const MFT_DEFAULT_CONFIG_JSON = "/run/mqmft/config.json"
 
-// Read configuration data from json file
+// MFT_PROBE_LOG_DIR holds hourly probe-log segment files named mft-probe-YYYYMMDD-HH.log.
+// /tmp is always writable regardless of OpenShift SCC.
+const MFT_PROBE_LOG_DIR = "/tmp/mft-probe-logs"
+
 func ReadConfigurationDataFromFile(configFile string) (string, error) {
 	var configData string
 	jsonFile, err := os.Open(configFile)
-	// if we os.Open returns an error then handle it
 	if err != nil {
 		return "", err
 	}
-	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()
 
-	// read file
 	var data []byte
 	data, err = io.ReadAll(jsonFile)
 	if err != nil {
 		return "", err
 	}
-	// Convert to a string
 	configData = string(data)
 	return configData, err
 }
 
-// Is agent running?
+// IsAgentRunning checks whether the process with the given PID is still alive.
 func IsAgentRunning(agentPid int32) (bool, error) {
 	if agentPid <= 0 {
 		return false, fmt.Errorf("invalid agentPid %d", agentPid)
@@ -87,21 +88,19 @@ func IsAgentRunning(agentPid int32) (bool, error) {
 	return false, err
 }
 
-// Is agent ready - basically check for BFGAG0059I message in agent's log file
+// IsAgentReady scans output0.log backwards for the BFGAG0059I ready message.
+// Returns false if the "End Display Current Environment" marker is found first,
+// or if BFGAG0059I is not present within the last 500 lines.
 func IsAgentReady(bfgDataPath string, agentName string, coordinationQMgr string) (bool, error) {
 	var ready bool = false
-	//var errorMessages []string
 	var count int
 	var returnError error
 	errorMessages := list.New()
 
-	// Read the agentPid file from the agent logs directory
 	outputLogFilePath := bfgDataPath + "/mqft/logs/" + coordinationQMgr + "/agents/" + agentName + "/logs/output0.log"
 	outputLogFile, err := os.Open(outputLogFilePath)
 
-	// if we os.Open returns an error then handle it
 	if err == nil {
-		// defer the closing of our jsonFile so that we can parse it later on
 		defer outputLogFile.Close()
 		fi, err := outputLogFile.Stat()
 		if err != nil {
@@ -111,9 +110,6 @@ func IsAgentReady(bfgDataPath string, agentName string, coordinationQMgr string)
 			scanner := backscanner.New(outputLogFile, int(fi.Size()))
 			findBFGAG0059I := []byte("BFGAG0059I")
 			findEndDisplayEnv := []byte("End Display Current Environment")
-			// If we find the ********* End Display Current Environment ***** message first instead of BFGAG0059I then assume that the agent is not started.
-			// If we don't find BFGAG0059I in last 500 lines, then assume agent
-			// has not started and return false
 			for count < 500 {
 				line, _, err := scanner.LineBytes()
 				if err != nil {
@@ -138,9 +134,7 @@ func IsAgentReady(bfgDataPath string, agentName string, coordinationQMgr string)
 				errorMessages.PushFront(string(line))
 				count++
 			}
-			// Agent did not start, return error message
 			if !ready {
-				// Iterate through list and print its contents.
 				errorMsg := ""
 				for e := errorMessages.Front(); e != nil; e = e.Next() {
 					errorMsg += fmt.Sprintf("%s\n", e.Value)
@@ -165,7 +159,7 @@ func ListDirectory(dirName string) {
 	}
 }
 
-// Returns Process ID of agent JVM from .pid file
+// GetAgentPid returns the process ID of the agent JVM from its .pid file.
 func GetAgentPid(pidFileName string) (int32, error) {
 	var agentPid int32
 	var returnError error
@@ -176,11 +170,8 @@ func GetAgentPid(pidFileName string) (int32, error) {
 	}
 
 	pidFile, err := os.Open(pidFileName)
-	// if we os.Open returns an error then handle it
 	if err == nil {
-		// defer the closing of our jsonFile so that we can parse it later on
 		defer pidFile.Close()
-		// read file
 		var data []byte
 		data, err = io.ReadAll(pidFile)
 		if err == nil {
@@ -202,22 +193,15 @@ func GetAgentPid(pidFileName string) (int32, error) {
 	return agentPid, returnError
 }
 
-// Create specified path if it does not exist
+// CreatePath creates the directory at dataPath (and any parents) if it does not already exist.
 func CreatePath(dataPath string) error {
 	_, err := os.Stat(dataPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err := os.MkdirAll(dataPath, 0700)  //Git 106 fix: Restricting directory permission
+			err := os.MkdirAll(dataPath, 0700)
 			if err != nil {
 				return fmt.Errorf("failed to create path %s due to error: %v", dataPath, err)
-			} 
-			/** else {
-				// Change permissions Linux.
-				err = os.Chmod(dataPath, 0777)
-				if err != nil {
-					return fmt.Errorf("failed to modify permissions on path %s due to error %v", dataPath, err)
-				}
-			} **/
+			}
 		} else {
 			return fmt.Errorf("an error occurred while checking e %v", err)
 		}
@@ -226,7 +210,7 @@ func CreatePath(dataPath string) error {
 	return nil
 }
 
-// Copy a file from source to destination
+// CopyFile copies a file from srcPath to dstPath.
 func CopyFile(srcPath string, dstPath string) error {
 	srcFile, err := os.Open(srcPath)
 	if err != nil {
@@ -248,7 +232,7 @@ func CopyFile(srcPath string, dstPath string) error {
 	return destFile.Close()
 }
 
-// Delete the specified directory
+// DeleteDir removes the directory at dirPath and all its contents.
 func DeleteDir(dirPath string) error {
 	err := os.RemoveAll(dirPath)
 	if err != nil {
@@ -265,36 +249,28 @@ func DeleteFile(filePath string) error {
 	return nil
 }
 
-// Is the given string a number
 func IsNumeric(s string) (bool, error) {
 	_, err := strconv.ParseInt(s, 10, 64)
 	return err == nil, err
 }
 
-// Convert to a number. Return -1 if can't convert
+// ToNumber parses s as a base-10 integer. Returns -1 on failure.
 func ToNumber(s string) (int64, error) {
 	num, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-
 		return -1, err
 	}
 	return num, nil
 }
 
-// Print log statement on console
 func PrintLog(logToPrint string) {
-	format := "02/01/2006 15:04:05.000"
+	format := "2006/01/02 15:04:05.000"
 	now := time.Now()
 	zone, _ := now.Local().Zone()
 	loc, _ := time.LoadLocation(zone)
 	fmt.Printf("[%s %s] %s\n", now.In(loc).Format(format), zone, logToPrint)
 }
 
-/**
-* Check if the specified file exist.
-* @param - Name of the file.
-* @return - True if file exists else false or some error occurs.
- */
 func DoesFileExist(fileName string) bool {
 	_, err := os.Stat(fileName)
 	if err != nil {
@@ -305,21 +281,121 @@ func DoesFileExist(fileName string) bool {
 	return true
 }
 
-// Write the given buffer to specified file
+// WriteData writes bufferToWrite to fileName, creating or truncating the file.
 func WriteData(fileName string, bufferToWrite string) error {
-	// Create an empty credentials file, truncate if one exists
-	filePointer, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)  //Git 106 fix: Restricting file permission
-	// if we os.Open returns an error then handle it
+	filePointer, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
 	defer filePointer.Close()
 
-	// Write the updated properties to file.
 	_, writeErr := filePointer.WriteString(bufferToWrite)
 	if writeErr != nil {
 		return writeErr
 	}
 
 	return nil
+}
+
+// MFT_PROBE_LOG_RETAIN_HOURS controls how many completed hours of probe logs to
+// retain in addition to the current hour. Valid range: 1–23. Default: 2.
+const MFT_PROBE_LOG_RETAIN_HOURS = "MFT_PROBE_LOG_RETAIN_HOURS"
+
+// probeRetainHours reads MFT_PROBE_LOG_RETAIN_HOURS and returns the configured
+// retain count. Falls back to 2 when unset, blank, non-numeric, or out of range.
+func probeRetainHours() int {
+	const defaultRetain = 2
+	const minRetain = 1
+	const maxRetain = 23
+	val, set := os.LookupEnv(MFT_PROBE_LOG_RETAIN_HOURS)
+	if !set || strings.TrimSpace(val) == "" {
+		return defaultRetain
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(val))
+	if err != nil || n < minRetain || n > maxRetain {
+		return defaultRetain
+	}
+	return n
+}
+
+// probeSegmentPaths returns the ordered slice of segment file paths for the
+// given retain count. Index 0 is the active file (mft-probe-00.log);
+// higher indices are progressively older.
+func probeSegmentPaths(retain int) []string {
+	paths := make([]string, retain+1)
+	for i := range paths {
+		paths[i] = filepath.Join(MFT_PROBE_LOG_DIR, fmt.Sprintf("mft-probe-%02d.log", i))
+	}
+	return paths
+}
+
+// rotateProbeSegments shifts all segment files one slot older and removes the
+// slot that falls outside the retain window. After this call mft-probe-00.log
+// does not exist and is ready to be created fresh by the next write.
+// Errors are silently ignored — a probe must never fail because of logging.
+func rotateProbeSegments(paths []string) {
+	last := len(paths) - 1
+	_ = os.Remove(paths[last])
+	for i := last; i > 0; i-- {
+		_ = os.Rename(paths[i-1], paths[i])
+	}
+}
+
+// needsRotation reports whether the current UTC hour differs from the UTC hour
+// recorded in the modification time of mft-probe-00.log.
+func needsRotation(paths []string, now time.Time) bool {
+	fi, err := os.Stat(paths[0])
+	if err != nil {
+		return false // file absent — no rotation needed
+	}
+	return fi.ModTime().UTC().Truncate(time.Hour).Before(now.UTC().Truncate(time.Hour))
+}
+
+// WriteProbeLog appends a single timestamped line to mft-probe-00.log under
+// MFT_PROBE_LOG_DIR. Files are rotated at the start of each new UTC hour:
+//
+//	mft-probe-00.log (latest) → mft-probe-01.log → … → deleted
+//
+// The number of retained files is controlled by MFT_PROBE_LOG_RETAIN_HOURS
+// (default 2, range 1–23).
+// Errors are silently ignored — a probe must never fail because of logging.
+func WriteProbeLog(probeType string, result string, detail string) {
+	const timestampFormat = "2006/01/02 15:04:05.000"
+
+	now := time.Now()
+	zone, _ := now.Zone()
+
+	var sb strings.Builder
+	sb.WriteByte('[')
+	sb.WriteString(now.Format(timestampFormat))
+	sb.WriteByte(' ')
+	sb.WriteString(zone)
+	sb.WriteString("] [")
+	sb.WriteString(probeType)
+	sb.WriteString("] ")
+	sb.WriteString(result)
+	if detail != "" {
+		sb.WriteString(": ")
+		sb.WriteString(detail)
+	}
+	sb.WriteByte('\n')
+	line := sb.String()
+
+	if err := os.MkdirAll(MFT_PROBE_LOG_DIR, 0755); err != nil {
+		return
+	}
+
+	paths := probeSegmentPaths(probeRetainHours())
+
+	if needsRotation(paths, now) {
+		rotateProbeSegments(paths)
+	}
+
+	// O_APPEND is atomic for writes ≤ PIPE_BUF on Linux so no locking needed.
+	f, err := os.OpenFile(paths[0], os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	f.WriteString(line) //nolint:errcheck
+	f.Close()
 }
