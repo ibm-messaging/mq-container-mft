@@ -30,14 +30,16 @@ Note that in order to use the image, it is necessary to accept the terms of the 
 - **MFT_AGENT_START_WAIT_TIME** - Optionl. An agent might take some time to start after fteStartAgent command is issued. This is the time, in seconds, the containor will wait for an agent to start. If an agent does not within the specified wait time, the container will end.
 - **MFT_MOUNT_PATH** - Optional. Environment variable pointing to path from where agent will read files or write to.
 - **SFTP_EITHER_PRIVATEKEY_OR_PASSWORD** - Optional - Defaults to "False". When set to "True", logs an error if both Private Key and Password are specified for a SFTP authentication.
-
+- **MFT_PROBE_LOG_RETAIN_HOURS** - Optional. Hours of probe logs to keep in `/tmp/mft-probe-logs/` (1–23, default: 2).
 ### Location of agent configuration files
 
 Agent in the container will create agent configuration and log files under the fixed directory `/mnt/mftdata`. This folder can be on a persistent volume as well, in which case the volume must be mounted as `/mnt/mftdata` mount point in to the container
 
-### What's new in MQ 10.0.0 MFT Container image
-1) The image built with MQ 10.0.0 Managed File Transfer Redistributable binaries.
-2) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
+### What's new in MQ 10.0.1 MFT Container image
+1) The image built with MQ 10.0.1 Managed File Transfer Redistributable binaries.
+2) **UBI 9 Micro Base Image**: Rebased onto `ubi9/ubi-micro` using multi-stage builds to produce a lightweight, minimal runtime container image with no package manager footprint and reduced vulnerability surface.
+3) **Enhanced Readiness Probe & Probe Logging**: Updated `/run/agentready` to query agent and queue manager availability directly via Unix domain socket IPC (`GETA` command), along with hourly rotating probe logs (`/tmp/mft-probe-logs/`) configurable via `MFT_PROBE_LOG_RETAIN_HOURS`.
+4) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
 
 ## Issues and contributions
 

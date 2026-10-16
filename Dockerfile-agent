@@ -15,7 +15,7 @@
 #
 
 ARG UBI_BASE_IMAGE=registry.access.redhat.com/ubi9/ubi-micro
-ARG UBI_BASE_TAG=9.8-1789345812
+ARG UBI_BASE_TAG=9.8-1791895366
 
 ARG GO_TOOLSET_IMAGE=registry.access.redhat.com/ubi9/go-toolset
 ARG GO_TOOLSET_TAG=1.26.7-1791275853
