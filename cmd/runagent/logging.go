@@ -38,6 +38,18 @@ import (
  */
 var eventLog *logger.Logger
 
+func init() {
+	// Initialise eventLog to a safe default so that goroutines spawned before
+	// configureLogger is called (e.g. setupMirrorProbeLogs) never dereference
+	// a nil pointer. configureLogger will overwrite this with the real logger.
+	var err error
+	eventLog, err = logger.NewLogger(os.Stdout, false, false, "", "", "", -1)
+	if err != nil {
+		// Fall back to nil — Logger methods now guard against this.
+		eventLog = nil
+	}
+}
+
 func logTerminationf(format string, args ...interface{}) {
 	logTermination(fmt.Sprintf(format, args...))
 }

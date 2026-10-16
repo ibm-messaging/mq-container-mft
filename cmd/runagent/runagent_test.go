@@ -86,4 +86,3 @@ func TestReadConfigurationDataFromFile(t *testing.T) {
 		fmt.Println("Supplied agent configuration data has invalid attributes")
 	}
 }
-

@@ -123,10 +123,12 @@ const MFT_ENV_AGNT_CFG_FILE_NOT_SPECIFIED = "MFT_AGENT_CONFIG_FILE environment v
 const AGENT_REDY_ENV_AGENT_NAME_NOT_SET_3001 = "IBMFT3001E: MFT_AGENT_NAME environment variable not specified."
 const AGENT_REDY_ENV_AGENT_CFG_FILE_NOT_SET_3002 = "IBMFT3002E: MFT_AGENT_CONFIG_FILE environment variable not specified."
 const AGENT_REDY_ENV_CFG_FILE_READ_3003 = "IBMFT3003E: An error occurred when attempting to read the configuration file [%s]. The error is: %v."
-const AGENT_REDY_NOT_RUNNING_3004 = "IBMFT3004E: Agent %s is not running."
-const AGENT_REDY_EVNT_NOT_FOUND_3005 = "IBMFT3005E: Agent ready event not found in output0.log file."
+const AGENT_REDY_QM_NOT_CONNECTED_3004 = "IBMFT3004E: Agent %s is alive but queue manager is not connected: %s."
+const AGENT_REDY_NOT_READY_3005 = "IBMFT3005E: Agent %s is not ready: %s."
+const AGENT_REDY_NOT_IN_CFG_3006 = "IBMFT3006E: Agent %s not found in configuration file %s."
+const AGENT_REDY_IPC_ERROR_3007 = "IBMFT3007E: An error occurred communicating with agent %s over IPC: %v."
 
-// Contains constants and messages for angetready probe
+// Contains constants and messages for agentalive probe
 // Constants must begin at 4000 as numbers 3000-3999 are reserverd for agentready application
 const AGENT_ALIV_ENV_AGENT_NAME_NOT_SET_4001 = "IBMFT4001E: MFT_AGENT_NAME environment variable not specified."
 const AGENT_ALIV_ENV_AGENT_CFG_FILE_NOT_SET_4002 = "IBMFT4002E: MFT_AGENT_CONFIG_FILE environment variable not specified."

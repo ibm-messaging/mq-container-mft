@@ -7,15 +7,22 @@ This image allows you to run IBM MQ Managed File Transfer Agent in a container. 
 
 See [here](archive/README.md) for an earlier implementation of MFT on cloud.
 
-## What is new in IBM MQ MFT Agent Container 10.0.0.0?
+## What is new in IBM MQ MFT Agent Container 10.0.1.0?
 
 This version of the container image has the following updates:
 
-1) The image built with MQ 10.0.0 Managed File Transfer Redistributable binaries.
-2) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
+1) The image built with MQ 10.0.1.0 Managed File Transfer Redistributable binaries.
+2) **UBI 9 Micro Base Image**: Rebased onto `ubi9/ubi-micro` using multi-stage builds to produce a lightweight, minimal runtime container image with no package manager footprint and reduced vulnerability surface.
+3) **Enhanced Readiness Probe & Probe Logging**: Updated `/run/agentready` to query agent and queue manager availability directly via Unix domain socket IPC (`GETA` command), along with hourly rotating probe logs (`/tmp/mft-probe-logs/`) configurable via `MFT_PROBE_LOG_RETAIN_HOURS`.
+4) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
 
 
 **Earlier versions of container images**
+**IBM MQ 10.0.0.0**
+1) The image built with MQ 10.0.0.0 Managed File Transfer Redistributable binaries.
+2) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
+
+
 **IBM MQ 9.4.5.0**
 1) The image built with MQ 9.4.5 Managed File Transfer Redistributable binaries.
 2) Fixes for issue(s) found in internal testing and reported from field via public git [issues](https://github.com/ibm-messaging/mft-cloud/issues).
@@ -94,6 +101,7 @@ Note that in order to use the image, it is necessary to accept the terms of the 
 - **MFT_COORD_QMGR_CIPHER** - Name of the CipherSpec to be used for securely connecting to coordination queue manager. 
 - **MFT_CMD_QMGR_CIPHER** - Name of the CipherSpec to be used for securely connecting to command queue manager. 
 - **MFT_AGENT_QMGR_CIPHER** -Name of the CipherSpec to be used for securely connecting to agent queue manager. 
+- **MFT_PROBE_LOG_RETAIN_HOURS** - Optional. Hours of probe logs to keep in `/tmp/mft-probe-logs/` (1–23, default: 2).
 
 ### Location of agent configuration files
 

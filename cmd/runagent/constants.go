@@ -73,6 +73,7 @@ const KEY_INJESTION_DNA = "logDNA.injestionKey"
 const KEY_URL_ELK = "elk.url"
 
 const DIR_AGENT_LOGS = "/mqft/logs/"
+const PROBE_LOG_FILE_PATH = "/tmp/mft-probe-logs/mft-probe-00.log"
 const DIR_AGENTS = "/agents/"
 
 // License file path

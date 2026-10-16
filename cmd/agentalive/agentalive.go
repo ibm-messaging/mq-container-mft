@@ -54,7 +54,9 @@ func main() {
 	//Name of the agent is retrieved from environment variable MFT_AGENT_NAME
 	agentNameEnv, agentNameEnvSet := os.LookupEnv("MFT_AGENT_NAME")
 	if !agentNameEnvSet {
-		utils.PrintLog(utils.AGENT_ALIV_ENV_AGENT_NAME_NOT_SET_4001)
+		msg := utils.AGENT_ALIV_ENV_AGENT_NAME_NOT_SET_4001
+		fmt.Fprintln(os.Stderr, msg)
+		utils.WriteProbeLog("LIVENESS", "FAILED", msg)
 		os.Exit(AGENT_ALIV_EXIT_CODE_1)
 	}
 
@@ -64,25 +66,21 @@ func main() {
 	 */
 	bfgConfigFilePath, bfgConfigFilePathSet := os.LookupEnv("MFT_AGENT_CONFIG_FILE")
 	if !bfgConfigFilePathSet {
-		// MFT_AGENT_CONFIG_FILE environment variable not specified. Looking for
-		// config.json file in /run/mqmft directory.
 		msg := fmt.Sprintf(utils.MFT_ENV_AGNT_CFG_FILE_NOT_SPECIFIED, utils.MFT_DEFAULT_CONFIG_JSON)
-		utils.PrintLog(msg)
-		// Assign the default config filename, so that rest of the processing goes on.
+		fmt.Fprintln(os.Stderr, msg)
+		utils.WriteProbeLog("LIVENESS", "INFO", msg)
 		bfgConfigFilePath = utils.MFT_DEFAULT_CONFIG_JSON
 	} else {
 		bfgConfigFilePath = strings.TrimSpace(bfgConfigFilePath)
-		if bfgConfigFilePath == "" {
-			utils.PrintLog(utils.MFT_CONT_ENV_AGNT_CFG_FILE_BLANK_0012)
-			os.Exit(AGENT_ALIV_EXIT_CODE_2)
-		}
 	}
 
 	// Read agent configuration data from JSON file.
 	agentConfig, e = utils.ReadConfigurationDataFromFile(bfgConfigFilePath)
 	// Exit if we had any error when reading configuration file
 	if e != nil {
-		utils.PrintLog(fmt.Sprintf(utils.AGENT_ALIV_ENV_CFG_FILE_READ_4003, bfgConfigFilePath, e))
+		msg := fmt.Sprintf(utils.AGENT_ALIV_ENV_CFG_FILE_READ_4003, bfgConfigFilePath, e)
+		fmt.Fprintln(os.Stderr, msg)
+		utils.WriteProbeLog("LIVENESS", "FAILED", msg)
 		os.Exit(AGENT_ALIV_EXIT_CODE_3)
 	}
 
@@ -104,22 +102,25 @@ func main() {
 	// Read the agentPid file from the agent logs directory
 	agentPidPath := bfgDataPath + "/mqft/logs/" + gjson.Get(agentConfig, "coordinationQMgr.name").String() + "/agents/" + agentNameEnv + "/agent.pid"
 	// Open agent.pid file and read the pid from the file.
-	agentPid, _ := utils.GetAgentPid(agentPidPath)
+	agentPid, pidErr := utils.GetAgentPid(agentPidPath)
 	if agentPid > 1 {
 		agentRunning, err := utils.IsAgentRunning(agentPid)
 		if err != nil {
-			utils.PrintLog(fmt.Sprintf(utils.AGENT_ALIV_NOT_RUNNING_4004, agentNameEnv))
+			utils.WriteProbeLog("LIVENESS", "FAILED", fmt.Sprintf("agent %s: process check failed for pid %d: %v", agentNameEnv, agentPid, err))
 			os.Exit(AGENT_ALIV_EXIT_CODE_4)
 		} else {
 			if agentRunning {
+				utils.WriteProbeLog("LIVENESS", "PASSED", fmt.Sprintf("agent %s is alive (pid %d)", agentNameEnv, agentPid))
 				os.Exit(AGENT_ALIV_EXIT_CODE_0)
 			} else {
-				utils.PrintLog(fmt.Sprintf(utils.AGENT_ALIV_NOT_RUNNING_4004, agentNameEnv))
+				msg := fmt.Sprintf(utils.AGENT_ALIV_NOT_RUNNING_4004, agentNameEnv)
+				fmt.Fprintln(os.Stderr, msg)
+				utils.WriteProbeLog("LIVENESS", "FAILED", msg)
 				os.Exit(AGENT_ALIV_EXIT_CODE_5)
 			}
 		}
 	} else {
-		utils.PrintLog(fmt.Sprintf(utils.AGENT_ALIV_NOT_RUNNING_4004, agentNameEnv))
+		utils.WriteProbeLog("LIVENESS", "FAILED", fmt.Sprintf("agent %s: could not read pid file %s: %v", agentNameEnv, agentPidPath, pidErr))
 		os.Exit(AGENT_ALIV_EXIT_CODE_6)
 	}
 }

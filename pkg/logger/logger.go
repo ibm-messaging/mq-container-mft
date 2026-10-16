@@ -121,6 +121,9 @@ func (l *Logger) log(level string, msg string) {
 
 // Debug logs a line as debug
 func (l *Logger) Debug(args ...interface{}) {
+	if l == nil {
+		return
+	}
 	if l.debug {
 		l.log(debugLevel, fmt.Sprint(args...))
 	}
@@ -128,6 +131,9 @@ func (l *Logger) Debug(args ...interface{}) {
 
 // Debugf logs a line as debug using format specifiers
 func (l *Logger) Debugf(format string, args ...interface{}) {
+	if l == nil {
+		return
+	}
 	if l.debug {
 		l.log(debugLevel, fmt.Sprintf(format, args...))
 	}
@@ -135,6 +141,9 @@ func (l *Logger) Debugf(format string, args ...interface{}) {
 
 // Print logs a message as info
 func (l *Logger) Print(args ...interface{}) {
+	if l == nil {
+		return
+	}
 	l.log(infoLevel, fmt.Sprint(args...))
 }
 
@@ -145,27 +154,45 @@ func (l *Logger) Println(args ...interface{}) {
 
 // Printf logs a message as info using format specifiers
 func (l *Logger) Printf(format string, args ...interface{}) {
+	if l == nil {
+		return
+	}
 	l.log(infoLevel, fmt.Sprintf(format, args...))
 }
 
 // PrintString logs a string as info
 func (l *Logger) PrintString(msg string) {
+	if l == nil {
+		return
+	}
 	l.log(infoLevel, msg)
 }
 
 // Errorf logs a message as error
 func (l *Logger) Error(args ...interface{}) {
+	if l == nil {
+		fmt.Fprintln(os.Stderr, args...)
+		return
+	}
 	l.log(errorLevel, fmt.Sprint(args...))
 }
 
 // Errorf logs a message as error using format specifiers
 func (l *Logger) Errorf(format string, args ...interface{}) {
+	if l == nil {
+		fmt.Fprintf(os.Stderr, format+"\n", args...)
+		return
+	}
 	l.log(errorLevel, fmt.Sprintf(format, args...))
 }
 
 // Fatalf logs a message as fatal using format specifiers
 // TODO: Remove this
 func (l *Logger) Fatalf(format string, args ...interface{}) {
+	if l == nil {
+		fmt.Fprintf(os.Stderr, format+"\n", args...)
+		return
+	}
 	l.log("FATAL", fmt.Sprintf(format, args...))
 }
 
